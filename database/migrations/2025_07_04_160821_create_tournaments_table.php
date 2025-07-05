@@ -17,7 +17,7 @@ return new class extends Migration
             $table->date('start_date');
             $table->date('end_date');
             $table->date('availability_deadline');
-            $table->foreignId('circle_id')->constrained('circles');
+            $table->foreignId('club_id')->constrained('clubs');
             $table->foreignId('tournament_category_id')->constrained('tournament_categories');
             $table->foreignId('zone_id')->constrained('zones');
             $table->text('notes')->nullable();
@@ -41,7 +41,7 @@ return new class extends Migration
             $table->index(['zone_id', 'status']);
             $table->index(['start_date', 'status']);
             $table->index(['tournament_category_id', 'status']);
-            $table->index(['circle_id', 'status']);
+            $table->index(['club_id', 'status']);
         });
     }
 

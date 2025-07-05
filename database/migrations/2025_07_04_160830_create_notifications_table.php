@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('notifications', function (Blueprint $table) {
             $table->id();
             $table->foreignId('assignment_id')->constrained('assignments');
-            $table->enum('recipient_type', ['referee', 'circle', 'institutional']);
+            $table->enum('recipient_type', ['referee', 'club', 'institutional']);
             $table->string('recipient_email');
             $table->string('subject');
             $table->text('body');

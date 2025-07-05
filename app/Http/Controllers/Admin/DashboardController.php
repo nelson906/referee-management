@@ -22,8 +22,8 @@ class DashboardController extends Controller
 
         // Get zones accessible by user
         $zones = $isNationalAdmin
-            ? Zone::with('circles', 'referees')->get()
-            : Zone::where('id', $user->zone_id)->with('circles', 'referees')->get();
+            ? Zone::with('clubs', 'referees')->get()
+            : Zone::where('id', $user->zone_id)->with('clubs', 'referees')->get();
 
         // Base queries
         $tournamentsQuery = Tournament::query();
@@ -111,7 +111,7 @@ class DashboardController extends Controller
                     'tournaments' => $zone->tournaments()->count(),
                     'active_tournaments' => $zone->tournaments()->active()->count(),
                     'referees' => $zone->referees()->where('is_active', true)->count(),
-                    'circles' => $zone->circles()->where('is_active', true)->count(),
+                    'clubs' => $zone->clubs()->where('is_active', true)->count(),
                 ];
             }
         }

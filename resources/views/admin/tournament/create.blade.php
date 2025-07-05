@@ -112,25 +112,25 @@
                 </div>
                 @endif
 
-                {{-- Circle --}}
+                {{-- club --}}
                 <div>
-                    <label for="circle_id" class="block text-sm font-medium text-gray-700">
+                    <label for="club_id" class="block text-sm font-medium text-gray-700">
                         Circolo <span class="text-red-500">*</span>
                     </label>
-                    <select name="circle_id"
-                            id="circle_id"
-                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 @error('circle_id') border-red-500 @enderror"
+                    <select name="club_id"
+                            id="club_id"
+                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 @error('club_id') border-red-500 @enderror"
                             required>
                         <option value="">Seleziona circolo...</option>
-                        @foreach($circles as $circle)
-                            <option value="{{ $circle->id }}"
-                                {{ old('circle_id') == $circle->id ? 'selected' : '' }}
-                                data-zone-id="{{ $circle->zone_id }}">
-                                {{ $circle->name }} ({{ $circle->city }})
+                        @foreach($clubs as $club)
+                            <option value="{{ $club->id }}"
+                                {{ old('club_id') == $club->id ? 'selected' : '' }}
+                                data-zone-id="{{ $club->zone_id }}">
+                                {{ $club->name }} ({{ $club->city }})
                             </option>
                         @endforeach
                     </select>
-                    @error('circle_id')
+                    @error('club_id')
                         <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                     @enderror
                 </div>
@@ -306,27 +306,27 @@ document.addEventListener('DOMContentLoaded', function() {
     @if(auth()->user()->user_type === 'national_admin')
     // Zone change handler (for national admin)
     const zoneSelect = document.getElementById('zone_id');
-    const circleSelect = document.getElementById('circle_id');
-    const allCircleOptions = Array.from(circleSelect.options);
+    const clubSelect = document.getElementById('club_id');
+    const allclubOptions = Array.from(clubSelect.options);
 
     zoneSelect.addEventListener('change', function() {
         const selectedZoneId = this.value;
 
-        // Reset circle select
-        circleSelect.innerHTML = '<option value="">Seleziona circolo...</option>';
+        // Reset club select
+        clubSelect.innerHTML = '<option value="">Seleziona circolo...</option>';
 
-        // Filter circles by zone
+        // Filter clubs by zone
         if (selectedZoneId) {
-            allCircleOptions.forEach(option => {
+            allclubOptions.forEach(option => {
                 if (option.value && option.dataset.zoneId === selectedZoneId) {
-                    circleSelect.appendChild(option.cloneNode(true));
+                    clubSelect.appendChild(option.cloneNode(true));
                 }
             });
         } else {
-            // Show all circles if no zone selected
-            allCircleOptions.forEach(option => {
+            // Show all clubs if no zone selected
+            allclubOptions.forEach(option => {
                 if (option.value) {
-                    circleSelect.appendChild(option.cloneNode(true));
+                    clubSelect.appendChild(option.cloneNode(true));
                 }
             });
         }

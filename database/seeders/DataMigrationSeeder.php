@@ -27,7 +27,7 @@ class DataMigrationSeeder extends Seeder
         // 3. Crea referees dai users
         $this->createReferees();
 
-        // 4. Migra clubs → circles
+        // 4. Migra clubs → clubs
         $this->migrateClubs();
 
         // 5. Migra tournament_types → tournament_categories
@@ -159,12 +159,12 @@ class DataMigrationSeeder extends Seeder
 
     private function migrateClubs()
     {
-        $this->command->info('🏌️ Migrazione clubs → circles...');
+        $this->command->info('🏌️ Migrazione clubs → clubs...');
 
         $oldClubs = DB::connection('old')->table('clubs')->get();
 
         foreach ($oldClubs as $club) {
-            DB::table('circles')->updateOrInsert(
+            DB::table('clubs')->updateOrInsert(
                 ['id' => $club->id],
                 [
                     'name' => $club->name,
@@ -183,7 +183,7 @@ class DataMigrationSeeder extends Seeder
             );
         }
 
-        $this->command->info("✅ Migrati " . $oldClubs->count() . " clubs → circles");
+        $this->command->info("✅ Migrati " . $oldClubs->count() . " clubs → clubs");
     }
 
     private function migrateTournamentTypes()
@@ -246,7 +246,7 @@ class DataMigrationSeeder extends Seeder
                     'start_date' => $tournament->start_date,
                     'end_date' => $tournament->end_date,
                     'availability_deadline' => $tournament->availability_deadline,
-                    'circle_id' => $tournament->club_id, // club_id → circle_id
+                    'club_id' => $tournament->club_id, // club_id → club_id
                     'tournament_category_id' => $tournament->tournament_type_id, // tournament_type_id → tournament_category_id
                     'zone_id' => $tournament->zone_id,
                     'notes' => $tournament->notes,
@@ -353,7 +353,7 @@ class DataMigrationSeeder extends Seeder
                 ['name' => $template->name],
                 [
                     'name' => $template->name,
-                    'type' => $template->type === 'club' ? 'circle' : $template->type,
+                    'type' => $template->type === 'club' ? 'club' : $template->type,
                     'subject' => $template->header ?: 'Comunicazione',
                     'body' => $template->body,
                     'zone_id' => $template->zone_id,

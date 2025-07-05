@@ -353,7 +353,7 @@
                             </div>
                             <div>
                                 <span class="text-gray-500">Circoli:</span>
-                                <span class="font-medium">{{ $stats['circles'] }}</span>
+                                <span class="font-medium">{{ $stats['clubs'] }}</span>
                             </div>
                         </div>
                     </div>

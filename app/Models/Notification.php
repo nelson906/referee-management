@@ -60,12 +60,12 @@ class Notification extends Model
      * Recipient types
      */
     const TYPE_REFEREE = 'referee';
-    const TYPE_CIRCLE = 'circle';
+    const TYPE_club = 'club';
     const TYPE_INSTITUTIONAL = 'institutional';
 
     const RECIPIENT_TYPES = [
         self::TYPE_REFEREE => 'Arbitro',
-        self::TYPE_CIRCLE => 'Circolo',
+        self::TYPE_club => 'Circolo',
         self::TYPE_INSTITUTIONAL => 'Istituzionale',
     ];
 

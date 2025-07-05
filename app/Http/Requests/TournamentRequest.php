@@ -6,7 +6,7 @@ use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use App\Models\Tournament;
 use App\Models\TournamentCategory;
-use App\Models\Circle;
+use App\Models\club;
 use Carbon\Carbon;
 
 class TournamentRequest extends FormRequest
@@ -67,18 +67,18 @@ class TournamentRequest extends FormRequest
                     }
                 },
             ],
-            'circle_id' => [
+            'club_id' => [
                 'required',
-                'exists:circles,id',
+                'exists:clubs,id',
                 function ($attribute, $value, $fail) {
-                    $circle = Circle::find($value);
-                    if ($circle && !$circle->is_active) {
+                    $club = club::find($value);
+                    if ($club && !$club->is_active) {
                         $fail('Il circolo selezionato non è attivo.');
                     }
 
-                    // Check zone access for circle
+                    // Check zone access for club
                     $user = $this->user();
-                    if ($user->user_type === 'admin' && $circle->zone_id !== $user->zone_id) {
+                    if ($user->user_type === 'admin' && $club->zone_id !== $user->zone_id) {
                         $fail('Non puoi selezionare un circolo di un\'altra zona.');
                     }
                 },
@@ -140,8 +140,8 @@ class TournamentRequest extends FormRequest
             'name.max' => 'Il nome del torneo non può superare i 255 caratteri.',
             'tournament_category_id.required' => 'La categoria del torneo è obbligatoria.',
             'tournament_category_id.exists' => 'La categoria selezionata non è valida.',
-            'circle_id.required' => 'Il circolo è obbligatorio.',
-            'circle_id.exists' => 'Il circolo selezionato non è valido.',
+            'club_id.required' => 'Il circolo è obbligatorio.',
+            'club_id.exists' => 'Il circolo selezionato non è valido.',
             'zone_id.required' => 'La zona è obbligatoria.',
             'zone_id.exists' => 'La zona selezionata non è valida.',
             'start_date.required' => 'La data di inizio è obbligatoria.',
@@ -165,12 +165,12 @@ class TournamentRequest extends FormRequest
      */
     protected function prepareForValidation(): void
     {
-        // If not a national admin, set zone_id from the selected circle
-        if ($this->user()->user_type !== 'national_admin' && $this->has('circle_id')) {
-            $circle = Circle::find($this->circle_id);
-            if ($circle) {
+        // If not a national admin, set zone_id from the selected club
+        if ($this->user()->user_type !== 'national_admin' && $this->has('club_id')) {
+            $club = club::find($this->club_id);
+            if ($club) {
                 $this->merge([
-                    'zone_id' => $circle->zone_id
+                    'zone_id' => $club->zone_id
                 ]);
             }
         }
@@ -191,7 +191,7 @@ class TournamentRequest extends FormRequest
         return [
             'name' => 'nome torneo',
             'tournament_category_id' => 'categoria',
-            'circle_id' => 'circolo',
+            'club_id' => 'circolo',
             'zone_id' => 'zona',
             'start_date' => 'data inizio',
             'end_date' => 'data fine',

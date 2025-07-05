@@ -82,8 +82,8 @@ Route::middleware(['auth'])->group(function () {
         Route::get('referees/{referee}/availabilities', [Admin\RefereeController::class, 'availabilities'])
             ->name('referees.availabilities');
 
-        // Circle Management (for zone admins)
-        Route::resource('circles', Admin\CircleController::class);
+        // club Management (for zone admins)
+        Route::resource('clubs', Admin\clubController::class);
 
         // Assignment Management
         Route::resource('assignments', Admin\AssignmentController::class, ['only' => ['index', 'show', 'update', 'destroy']]);

@@ -58,9 +58,9 @@
                                 Arbitri
                             </a>
 
-                            <a href="{{ route('admin.circles.index') }}"
+                            <a href="{{ route('admin.clubs.index') }}"
                                class="inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium leading-5 transition duration-150 ease-in-out
-                               {{ request()->routeIs('admin.circles.*') ? 'border-white text-white' : 'border-transparent text-blue-100 hover:text-white hover:border-blue-300' }}">
+                               {{ request()->routeIs('admin.clubs.*') ? 'border-white text-white' : 'border-transparent text-blue-100 hover:text-white hover:border-blue-300' }}">
                                 Circoli
                             </a>
 
@@ -226,9 +226,9 @@
                         Arbitri
                     </a>
 
-                    <a href="{{ route('admin.circles.index') }}"
+                    <a href="{{ route('admin.clubs.index') }}"
                        class="block pl-3 pr-4 py-2 border-l-4 text-base font-medium transition duration-150 ease-in-out
-                       {{ request()->routeIs('admin.circles.*') ? 'border-white text-white bg-blue-800' : 'border-transparent text-blue-100 hover:text-white hover:bg-blue-800 hover:border-blue-300' }}">
+                       {{ request()->routeIs('admin.clubs.*') ? 'border-white text-white bg-blue-800' : 'border-transparent text-blue-100 hover:text-white hover:bg-blue-800 hover:border-blue-300' }}">
                         Circoli
                     </a>
 

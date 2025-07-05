@@ -5,11 +5,11 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Zone extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory;
 
     /**
      * The attributes that are mass assignable.
@@ -18,19 +18,11 @@ class Zone extends Model
      */
     protected $fillable = [
         'name',
-        'code',
         'description',
-        'region',
-        'contact_person',
-        'contact_email',
-        'contact_phone',
-        'address',
-        'city',
-        'postal_code',
-        'is_active',
         'is_national',
-        'sort_order',
-        'settings',
+        'header_document_path',
+        'header_updated_at',
+        'header_updated_by',
     ];
 
     /**
@@ -39,24 +31,12 @@ class Zone extends Model
      * @var array<string, string>
      */
     protected $casts = [
-        'is_active' => 'boolean',
         'is_national' => 'boolean',
-        'sort_order' => 'integer',
-        'settings' => 'array',
+        'header_updated_at' => 'datetime',
     ];
 
     /**
-     * Default settings structure
-     */
-    protected $attributes = [
-        'settings' => '{}',
-        'is_active' => true,
-        'is_national' => false,
-        'sort_order' => 0,
-    ];
-
-    /**
-     * Get the users (referees and admins) for the zone.
+     * Get the users in this zone.
      */
     public function users(): HasMany
     {
@@ -64,31 +44,23 @@ class Zone extends Model
     }
 
     /**
-     * Get the referees for the zone.
+     * Get the referees in this zone.
      */
     public function referees(): HasMany
     {
-        return $this->hasMany(User::class)->referees();
+        return $this->hasMany(User::class)->where('user_type', 'referee');
     }
 
     /**
-     * Get the active referees for the zone.
-     */
-    public function activeReferees(): HasMany
-    {
-        return $this->hasMany(User::class)->referees()->active();
-    }
-
-    /**
-     * Get the zone admins.
+     * Get the admins in this zone.
      */
     public function admins(): HasMany
     {
-        return $this->hasMany(User::class)->where('user_type', User::TYPE_ADMIN);
+        return $this->hasMany(User::class)->where('user_type', 'admin');
     }
 
     /**
-     * Get the clubs in the zone.
+     * Get the clubs in this zone.
      */
     public function clubs(): HasMany
     {
@@ -96,7 +68,7 @@ class Zone extends Model
     }
 
     /**
-     * Get the tournaments in the zone.
+     * Get the tournaments in this zone.
      */
     public function tournaments(): HasMany
     {
@@ -104,7 +76,7 @@ class Zone extends Model
     }
 
     /**
-     * Get the institutional emails for the zone.
+     * Get the institutional emails for this zone.
      */
     public function institutionalEmails(): HasMany
     {
@@ -112,7 +84,7 @@ class Zone extends Model
     }
 
     /**
-     * Get the letter templates for the zone.
+     * Get the letter templates for this zone.
      */
     public function letterTemplates(): HasMany
     {
@@ -120,23 +92,23 @@ class Zone extends Model
     }
 
     /**
-     * Scope a query to only include active zones.
+     * Get the letterheads for this zone.
      */
-    public function scopeActive($query)
+    public function letterheads(): HasMany
     {
-        return $query->where('is_active', true);
+        return $this->hasMany(Letterhead::class);
     }
 
     /**
-     * Scope a query to only include national zones.
+     * Get the user who last updated the header.
      */
-    public function scopeNational($query)
+    public function headerUpdatedBy(): BelongsTo
     {
-        return $query->where('is_national', true);
+        return $this->belongsTo(User::class, 'header_updated_by');
     }
 
     /**
-     * Scope a query to only include regional zones.
+     * Scope a query to only include non-national zones.
      */
     public function scopeRegional($query)
     {
@@ -144,158 +116,91 @@ class Zone extends Model
     }
 
     /**
-     * Scope a query to order by sort order.
+     * Get active referees count
      */
-    public function scopeOrdered($query)
+    public function getActiveRefereesCountAttribute(): int
     {
-        return $query->orderBy('sort_order')->orderBy('name');
+        return $this->referees()->where('is_active', true)->count();
     }
 
     /**
-     * Get the zone's full address.
+     * Get active clubs count
      */
-    public function getFullAddressAttribute(): string
+    public function getActiveClubsCountAttribute(): int
     {
-        $address = collect([
-            $this->address,
-            $this->postal_code ? $this->postal_code . ' ' . $this->city : $this->city,
-        ])->filter()->implode(', ');
-
-        return $address;
+        return $this->clubs()->where('is_active', true)->count();
     }
 
     /**
-     * Get the zone's contact info.
+     * DEPRECATED: Use getActiveClubsCountAttribute() instead
      */
-    public function getContactInfoAttribute(): string
+    public function getActiveCirclesCountAttribute(): int
     {
-        $info = [];
-
-        if ($this->contact_person) {
-            $info[] = $this->contact_person;
-        }
-
-        if ($this->contact_email) {
-            $info[] = $this->contact_email;
-        }
-
-        if ($this->contact_phone) {
-            $info[] = $this->contact_phone;
-        }
-
-        return implode(' - ', $info);
+        return $this->getActiveClubsCountAttribute();
     }
 
     /**
-     * Get referees count by level.
-     */
-    public function getRefereesByLevel(): array
-    {
-        $referees = $this->activeReferees()
-            ->selectRaw('level, COUNT(*) as count')
-            ->groupBy('level')
-            ->pluck('count', 'level')
-            ->toArray();
-
-        // Ensure all levels are present
-        $levels = array_keys(User::REFEREE_LEVELS);
-        $result = [];
-
-        foreach ($levels as $level) {
-            $result[$level] = $referees[$level] ?? 0;
-        }
-
-        return $result;
-    }
-
-    /**
-     * Get this year's tournament count.
-     */
-    public function getThisYearTournamentsCountAttribute(): int
-    {
-        return $this->tournaments()
-            ->whereYear('start_date', now()->year)
-            ->count();
-    }
-
-    /**
-     * Get this year's assignments count.
-     */
-    public function getThisYearAssignmentsCountAttribute(): int
-    {
-        return Assignment::whereHas('tournament', function ($q) {
-                $q->where('zone_id', $this->id)
-                  ->whereYear('start_date', now()->year);
-            })
-            ->count();
-    }
-
-    /**
-     * Get upcoming tournaments count.
+     * Get upcoming tournaments count
      */
     public function getUpcomingTournamentsCountAttribute(): int
     {
-        return $this->tournaments()
-            ->where('start_date', '>=', now())
-            ->count();
+        return $this->tournaments()->upcoming()->count();
     }
 
     /**
-     * Check if zone has active admin.
+     * Get active tournaments count
      */
-    public function hasActiveAdmin(): bool
+    public function getActiveTournamentsCountAttribute(): int
     {
-        return $this->admins()->active()->exists();
+        return $this->tournaments()->active()->count();
     }
 
     /**
-     * Get statistics for the zone.
+     * Get statistics for the zone
      */
-    public function getStatistics(): array
+    public function getStatisticsAttribute(): array
     {
         return [
-            'total_referees' => $this->activeReferees()->count(),
-            'referees_by_level' => $this->getRefereesByLevel(),
-            'total_clubs' => $this->clubs()->active()->count(),
-            'tournaments_this_year' => $this->this_year_tournaments_count,
-            'assignments_this_year' => $this->this_year_assignments_count,
+            'total_referees' => $this->referees()->count(),
+            'active_referees' => $this->active_referees_count,
+            'total_clubs' => $this->clubs()->count(),
+            'active_clubs' => $this->active_clubs_count,
+            'total_circles' => $this->clubs()->count(), // For backward compatibility
+            'active_circles' => $this->active_clubs_count, // For backward compatibility
+            'total_tournaments' => $this->tournaments()->count(),
             'upcoming_tournaments' => $this->upcoming_tournaments_count,
+            'active_tournaments' => $this->active_tournaments_count,
+            'completed_tournaments' => $this->tournaments()->where('status', 'completed')->count(),
         ];
     }
 
     /**
-     * Check if zone can be deleted.
+     * Get referee statistics by level
      */
-    public function canBeDeleted(): bool
+    public function getRefereesByLevelAttribute(): array
     {
-        // Cannot delete if has users, clubs, or tournaments
-        return $this->users()->count() === 0 &&
-               $this->clubs()->count() === 0 &&
-               $this->tournaments()->count() === 0;
+        return $this->referees()
+            ->where('is_active', true)
+            ->get()
+            ->groupBy('level')
+            ->map(function ($referees) {
+                return $referees->count();
+            })
+            ->toArray();
     }
 
     /**
-     * Deactivate zone and related entities.
+     * Get tournaments by category
      */
-    public function deactivate(): void
+    public function getTournamentsByCategoryAttribute(): array
     {
-        $this->update(['is_active' => false]);
-
-        // Deactivate related users
-        $this->users()->update(['is_active' => false]);
-
-        // Deactivate related clubs
-        $this->clubs()->update(['is_active' => false]);
-    }
-
-    /**
-     * Activate zone and related entities.
-     */
-    public function activate(): void
-    {
-        $this->update(['is_active' => true]);
-
-        // Note: We don't automatically activate users and clubs
-        // as they might have been deactivated for other reasons
+        return $this->tournaments()
+            ->with('tournamentCategory')
+            ->get()
+            ->groupBy('tournamentCategory.name')
+            ->map(function ($tournaments) {
+                return $tournaments->count();
+            })
+            ->toArray();
     }
 }

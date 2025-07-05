@@ -37,8 +37,8 @@ class NotificationService
             // 1. Send notification to referee
             $this->sendRefereeNotification($assignment);
 
-            // 2. Send notification to circle
-            $this->sendCircleNotification($assignment);
+            // 2. Send notification to club
+            $this->sendclubNotification($assignment);
 
             // 3. Send to institutional emails
             $this->sendInstitutionalNotifications($assignment);
@@ -100,9 +100,9 @@ class NotificationService
 
 
 /**
-     * Send notification to circle/club
+     * Send notification to club/club
      */
-    protected function sendCircleNotification(Assignment $assignment): void
+    protected function sendclubNotification(Assignment $assignment): void
     {
         $club = $assignment->tournament->club;
 
@@ -112,11 +112,11 @@ class NotificationService
         }
 
         // Get template
-        $template = $this->getTemplate('circle', $assignment->tournament->zone_id);
+        $template = $this->getTemplate('club', $assignment->tournament->zone_id);
 
-        // Prepare variables (use both club_ and circle_ for compatibility)
+        // Prepare variables (use both club_ and club_ for compatibility)
         $variables = [
-            'circle_name' => $club->name,
+            'club_name' => $club->name,
             'club_name' => $club->name,
             'tournament_name' => $assignment->tournament->name,
             'tournament_dates' => $assignment->tournament->date_range,
@@ -124,17 +124,17 @@ class NotificationService
             'referee_level' => ucfirst($assignment->user->level),
             'referee_code' => $assignment->user->referee_code,
             'contact_person' => $club->contact_person,
-            'circle_address' => $club->full_address,
             'club_address' => $club->full_address,
-            'circle_phone' => $club->best_phone,
+            'club_address' => $club->full_address,
             'club_phone' => $club->best_phone,
-            'circle_email' => $club->best_email,
+            'club_phone' => $club->best_phone,
+            'club_email' => $club->best_email,
             'club_email' => $club->best_email,
         ];
 
         // Replace variables
         $subject = $this->replaceVariables($template->subject ?? 'Arbitro Assegnato', $variables);
-        $body = $this->replaceVariables($template->body ?? $this->getDefaultCircleBody(), $variables);
+        $body = $this->replaceVariables($template->body ?? $this->getDefaultclubBody(), $variables);
 
         // Generate club letter if needed
         $clubLetterPath = null;
@@ -146,7 +146,7 @@ class NotificationService
         // Create notification
         $notification = Notification::create([
             'assignment_id' => $assignment->id,
-            'recipient_type' => 'circle',
+            'recipient_type' => 'club',
             'recipient_email' => $club->best_email,
             'subject' => $subject,
             'body' => $body,
@@ -310,11 +310,11 @@ class NotificationService
     }
 
     /**
-     * Get default circle body
+     * Get default club body
      */
-    protected function getDefaultCircleBody(): string
+    protected function getDefaultclubBody(): string
     {
-        return "Spett.le {{circle_name}},\n\n" .
+        return "Spett.le {{club_name}},\n\n" .
                "Vi informiamo che per il torneo:\n\n" .
                "{{tournament_name}} ({{tournament_dates}})\n\n" .
                "È stato assegnato il seguente arbitro:\n" .

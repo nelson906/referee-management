@@ -32,7 +32,7 @@ return new class extends Migration
         Schema::create('letter_templates', function (Blueprint $table) {
             $table->id();
             $table->string('name');
-            $table->enum('type', ['assignment', 'convocation', 'circle', 'institutional'])->default('assignment');
+            $table->enum('type', ['assignment', 'convocation', 'club', 'institutional'])->default('assignment');
             $table->string('subject');
             $table->text('body');
             $table->foreignId('zone_id')->nullable()->constrained('zones');

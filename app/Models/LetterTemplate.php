@@ -44,13 +44,13 @@ class LetterTemplate extends Model
      */
     const TYPE_CONVOCATION = 'convocation';
     const TYPE_ASSIGNMENT = 'assignment';
-    const TYPE_CIRCLE = 'circle';
+    const TYPE_club = 'club';
     const TYPE_GENERAL = 'general';
 
     const TYPES = [
         self::TYPE_CONVOCATION => 'Convocazione Arbitro',
         self::TYPE_ASSIGNMENT => 'Notifica Assegnazione',
-        self::TYPE_CIRCLE => 'Comunicazione Circolo',
+        self::TYPE_club => 'Comunicazione Circolo',
         self::TYPE_GENERAL => 'Generale',
     ];
 
@@ -62,8 +62,8 @@ class LetterTemplate extends Model
             'tournament_name' => 'Nome Torneo',
             'tournament_dates' => 'Date Torneo',
             'tournament_category' => 'Categoria Torneo',
-            'circle_name' => 'Nome Circolo',
-            'circle_address' => 'Indirizzo Circolo',
+            'club_name' => 'Nome Circolo',
+            'club_address' => 'Indirizzo Circolo',
             'zone_name' => 'Nome Zona',
             'current_date' => 'Data Corrente',
             'current_year' => 'Anno Corrente',
@@ -81,7 +81,7 @@ class LetterTemplate extends Model
             'assigned_date' => 'Data Assegnazione',
             'assigned_by' => 'Assegnato da',
         ],
-        'circle' => [
+        'club' => [
             'contact_person' => 'Persona di Contatto',
             'referee_list' => 'Lista Arbitri',
             'total_referees' => 'Totale Arbitri',
@@ -207,8 +207,8 @@ class LetterTemplate extends Model
             'tournament_name' => 'Torneo di Esempio',
             'tournament_dates' => '01/07 - 03/07/2025',
             'tournament_category' => 'Open Nazionale',
-            'circle_name' => 'Golf Club Esempio',
-            'circle_address' => 'Via Esempio 123, Città',
+            'club_name' => 'Golf Club Esempio',
+            'club_address' => 'Via Esempio 123, Città',
             'zone_name' => 'Zona Centro',
             'current_date' => now()->format('d/m/Y'),
             'current_year' => now()->year,

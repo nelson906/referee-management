@@ -6,7 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\TournamentRequest;
 use App\Models\Tournament;
 use App\Models\TournamentCategory;
-use App\Models\Circle;
+use App\Models\club;
 use App\Models\Zone;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -103,15 +103,15 @@ class TournamentController extends Controller
             ? Zone::orderBy('name')->get()
             : Zone::where('id', $user->zone_id)->get();
 
-        // Get circles for the selected zone
-        $circles = Circle::active()
+        // Get clubs for the selected zone
+        $clubs = club::active()
             ->when(!$isNationalAdmin, function ($q) use ($user) {
                 $q->where('zone_id', $user->zone_id);
             })
             ->ordered()
             ->get();
 
-        return view('admin.tournaments.create', compact('categories', 'zones', 'circles'));
+        return view('admin.tournaments.create', compact('categories', 'zones', 'clubs'));
     }
 
     /**
@@ -121,10 +121,10 @@ class TournamentController extends Controller
     {
         $data = $request->validated();
 
-        // Set zone_id from circle if not national admin
+        // Set zone_id from club if not national admin
         if (auth()->user()->user_type !== 'national_admin') {
-            $circle = Circle::findOrFail($data['circle_id']);
-            $data['zone_id'] = $circle->zone_id;
+            $club = club::findOrFail($data['club_id']);
+            $data['zone_id'] = $club->zone_id;
         }
 
         // Create tournament
@@ -213,13 +213,13 @@ class TournamentController extends Controller
             ? Zone::orderBy('name')->get()
             : Zone::where('id', $user->zone_id)->get();
 
-        // Get circles
-        $circles = Circle::active()
+        // Get clubs
+        $clubs = club::active()
             ->where('zone_id', $tournament->zone_id)
             ->ordered()
             ->get();
 
-        return view('admin.tournaments.edit', compact('tournament', 'categories', 'zones', 'circles'));
+        return view('admin.tournaments.edit', compact('tournament', 'categories', 'zones', 'clubs'));
     }
 
     /**
@@ -239,10 +239,10 @@ class TournamentController extends Controller
 
         $data = $request->validated();
 
-        // Update zone_id from circle if changed
-        if (isset($data['circle_id']) && $data['circle_id'] != $tournament->circle_id) {
-            $circle = Circle::findOrFail($data['circle_id']);
-            $data['zone_id'] = $circle->zone_id;
+        // Update zone_id from club if changed
+        if (isset($data['club_id']) && $data['club_id'] != $tournament->club_id) {
+            $club = club::findOrFail($data['club_id']);
+            $data['zone_id'] = $club->zone_id;
         }
 
         $tournament->update($data);
@@ -383,19 +383,19 @@ class TournamentController extends Controller
     }
 
     /**
-     * Get circles for a specific zone (AJAX).
+     * Get clubs for a specific zone (AJAX).
      */
-    public function getCirclesByZone(Request $request)
+    public function getclubsByZone(Request $request)
     {
         $request->validate([
             'zone_id' => 'required|exists:zones,id',
         ]);
 
-        $circles = Circle::active()
+        $clubs = club::active()
             ->where('zone_id', $request->zone_id)
             ->ordered()
             ->get(['id', 'name', 'code']);
 
-        return response()->json($circles);
+        return response()->json($clubs);
     }
 }

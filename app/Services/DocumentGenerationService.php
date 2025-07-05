@@ -87,7 +87,7 @@ class DocumentGenerationService
             ]);
 
             // Get template
-            $template = $this->getTemplate('circle', $tournament);
+            $template = $this->getTemplate('club', $tournament);
 
             // Prepare variables
             $variables = $this->getClubLetterVariables($tournament);
@@ -163,10 +163,10 @@ class DocumentGenerationService
             'tournament_name' => $tournament->name,
             'tournament_dates' => $tournament->date_range,
             'tournament_category' => $tournament->tournamentCategory->name,
-            'circle_name' => $tournament->club->name,
-            'circle_address' => $tournament->club->full_address,
-            'circle_phone' => $tournament->club->phone,
-            'circle_email' => $tournament->club->email,
+            'club_name' => $tournament->club->name,
+            'club_address' => $tournament->club->full_address,
+            'club_phone' => $tournament->club->phone,
+            'club_email' => $tournament->club->email,
             'zone_name' => $tournament->zone->name,
             'role' => $assignment->role,
             'assignment_notes' => $assignment->notes,
@@ -186,7 +186,7 @@ class DocumentGenerationService
             'tournament_name' => $tournament->name,
             'tournament_dates' => $tournament->date_range,
             'tournament_category' => $tournament->tournamentCategory->name,
-            'circle_name' => $tournament->club->name,
+            'club_name' => $tournament->club->name,
             'contact_person' => $tournament->club->contact_person,
             'zone_name' => $tournament->zone->name,
             'total_referees' => $tournament->assignedReferees->count(),
@@ -290,8 +290,8 @@ class DocumentGenerationService
         $section->addText("Torneo: {$variables['tournament_name']}", ['bold' => true]);
         $section->addText("Date: {$variables['tournament_dates']}");
         $section->addText("Categoria: {$variables['tournament_category']}");
-        $section->addText("Circolo: {$variables['circle_name']}");
-        $section->addText("Indirizzo: {$variables['circle_address']}");
+        $section->addText("Circolo: {$variables['club_name']}");
+        $section->addText("Indirizzo: {$variables['club_address']}");
         $section->addText("Ruolo: {$variables['role']}");
         $section->addTextBreak();
 
