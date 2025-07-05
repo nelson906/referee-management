@@ -5,10 +5,9 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use Carbon\Carbon;
 
-class Assignment extends Model
+class Notification extends Model
 {
     use HasFactory;
 
@@ -18,16 +17,17 @@ class Assignment extends Model
      * @var array<int, string>
      */
     protected $fillable = [
-        'tournament_id',
-        'user_id',
-        'assigned_by_id',
-        'role',
-        'notes',
-        'is_confirmed',
-        'confirmed_at',
-        'assigned_at',
-        'notification_sent',
-        'notification_sent_at',
+        'assignment_id',
+        'recipient_type',
+        'recipient_email',
+        'subject',
+        'body',
+        'template_used',
+        'status',
+        'sent_at',
+        'error_message',
+        'retry_count',
+        'attachments',
     ];
 
     /**
@@ -36,244 +36,169 @@ class Assignment extends Model
      * @var array<string, string>
      */
     protected $casts = [
-        'is_confirmed' => 'boolean',
-        'notification_sent' => 'boolean',
-        'confirmed_at' => 'datetime',
-        'assigned_at' => 'datetime',
-        'notification_sent_at' => 'datetime',
+        'sent_at' => 'datetime',
+        'retry_count' => 'integer',
+        'attachments' => 'array',
     ];
 
     /**
-     * Boot method to set default values
+     * Notification statuses
      */
-    protected static function boot()
-    {
-        parent::boot();
+    const STATUS_PENDING = 'pending';
+    const STATUS_SENT = 'sent';
+    const STATUS_FAILED = 'failed';
+    const STATUS_CANCELLED = 'cancelled';
 
-        static::creating(function ($assignment) {
-            if (!$assignment->assigned_at) {
-                $assignment->assigned_at = now();
-            }
-        });
-    }
-
-    /**
-     * Assignment roles
-     */
-    const ROLE_REFEREE = 'Arbitro';
-    const ROLE_TOURNAMENT_DIRECTOR = 'Direttore di Torneo';
-    const ROLE_OBSERVER = 'Osservatore';
-
-    const ROLES = [
-        self::ROLE_REFEREE => 'Arbitro',
-        self::ROLE_TOURNAMENT_DIRECTOR => 'Direttore di Torneo',
-        self::ROLE_OBSERVER => 'Osservatore',
+    const STATUSES = [
+        self::STATUS_PENDING => 'In attesa',
+        self::STATUS_SENT => 'Inviata',
+        self::STATUS_FAILED => 'Fallita',
+        self::STATUS_CANCELLED => 'Annullata',
     ];
 
     /**
-     * Get the tournament that the assignment belongs to.
+     * Recipient types
      */
-    public function tournament(): BelongsTo
+    const TYPE_REFEREE = 'referee';
+    const TYPE_CIRCLE = 'circle';
+    const TYPE_INSTITUTIONAL = 'institutional';
+
+    const RECIPIENT_TYPES = [
+        self::TYPE_REFEREE => 'Arbitro',
+        self::TYPE_CIRCLE => 'Circolo',
+        self::TYPE_INSTITUTIONAL => 'Istituzionale',
+    ];
+
+    /**
+     * Maximum retry attempts
+     */
+    const MAX_RETRY_ATTEMPTS = 3;
+
+    /**
+     * Get the assignment that this notification belongs to.
+     */
+    public function assignment(): BelongsTo
     {
-        return $this->belongsTo(Tournament::class);
+        return $this->belongsTo(Assignment::class);
     }
 
     /**
-     * Get the user (referee) assigned.
+     * Scope a query to only include sent notifications.
      */
-    public function user(): BelongsTo
+    public function scopeSent($query)
     {
-        return $this->belongsTo(User::class);
+        return $query->where('status', self::STATUS_SENT);
     }
 
     /**
-     * Get the user who created the assignment.
+     * Scope a query to only include pending notifications.
      */
-    public function assignedBy(): BelongsTo
+    public function scopePending($query)
     {
-        return $this->belongsTo(User::class, 'assigned_by_id');
+        return $query->where('status', self::STATUS_PENDING);
     }
 
     /**
-     * Get the notifications for the assignment.
+     * Scope a query to only include failed notifications.
      */
-    public function notifications(): HasMany
+    public function scopeFailed($query)
     {
-        return $this->hasMany(Notification::class);
+        return $query->where('status', self::STATUS_FAILED);
     }
 
     /**
-     * Scope a query to only include confirmed assignments.
+     * Scope a query to only include notifications for a specific recipient type.
      */
-    public function scopeConfirmed($query)
+    public function scopeForRecipientType($query, string $type)
     {
-        return $query->where('is_confirmed', true);
+        return $query->where('recipient_type', $type);
     }
 
     /**
-     * Scope a query to only include unconfirmed assignments.
+     * Scope a query to only include notifications that can be retried.
      */
-    public function scopeUnconfirmed($query)
+    public function scopeRetryable($query)
     {
-        return $query->where('is_confirmed', false);
+        return $query->where('status', self::STATUS_FAILED)
+                    ->where('retry_count', '<', self::MAX_RETRY_ATTEMPTS);
     }
 
     /**
-     * Scope a query to only include assignments for a specific user.
+     * Scope a query to only include recent notifications.
      */
-    public function scopeForUser($query, $userId)
+    public function scopeRecent($query, int $days = 7)
     {
-        return $query->where('user_id', $userId);
+        return $query->where('created_at', '>=', now()->subDays($days));
     }
 
     /**
-     * Scope a query to only include assignments for a specific tournament.
+     * Mark notification as sent.
      */
-    public function scopeForTournament($query, $tournamentId)
-    {
-        return $query->where('tournament_id', $tournamentId);
-    }
-
-    /**
-     * Scope a query to only include assignments for a specific role.
-     */
-    public function scopeForRole($query, string $role)
-    {
-        return $query->where('role', $role);
-    }
-
-    /**
-     * Scope a query to only include assignments for upcoming tournaments.
-     */
-    public function scopeUpcoming($query)
-    {
-        return $query->whereHas('tournament', function ($q) {
-            $q->where('start_date', '>=', now());
-        });
-    }
-
-    /**
-     * Scope a query to only include assignments for past tournaments.
-     */
-    public function scopePast($query)
-    {
-        return $query->whereHas('tournament', function ($q) {
-            $q->where('end_date', '<', now());
-        });
-    }
-
-    /**
-     * Scope a query to include assignments in a specific zone.
-     */
-    public function scopeInZone($query, $zoneId)
-    {
-        return $query->whereHas('tournament', function ($q) use ($zoneId) {
-            $q->where('zone_id', $zoneId);
-        });
-    }
-
-    /**
-     * Scope a query to include assignments for a specific year.
-     */
-    public function scopeForYear($query, $year = null)
-    {
-        $year = $year ?: now()->year;
-
-        return $query->whereHas('tournament', function ($q) use ($year) {
-            $q->whereYear('start_date', $year);
-        });
-    }
-
-    /**
-     * Confirm the assignment.
-     */
-    public function confirm(): void
+    public function markAsSent(): void
     {
         $this->update([
-            'is_confirmed' => true,
-            'confirmed_at' => now(),
+            'status' => self::STATUS_SENT,
+            'sent_at' => now(),
+            'error_message' => null,
         ]);
     }
 
     /**
-     * Mark assignment as notified.
+     * Mark notification as failed.
      */
-    public function markAsNotified(): void
+    public function markAsFailed(string $errorMessage): void
     {
         $this->update([
-            'notification_sent' => true,
-            'notification_sent_at' => now(),
+            'status' => self::STATUS_FAILED,
+            'error_message' => $errorMessage,
+            'retry_count' => $this->retry_count + 1,
         ]);
     }
 
     /**
-     * Check if assignment has been notified.
+     * Mark notification as cancelled.
      */
-    public function hasBeenNotified(): bool
+    public function markAsCancelled(): void
     {
-        return $this->notification_sent;
+        $this->update([
+            'status' => self::STATUS_CANCELLED,
+        ]);
     }
 
     /**
-     * Get the latest notification.
+     * Reset notification for retry.
      */
-    public function getLatestNotificationAttribute(): ?Notification
+    public function resetForRetry(): void
     {
-        return $this->notifications()->latest()->first();
+        $this->update([
+            'status' => self::STATUS_PENDING,
+            'error_message' => null,
+        ]);
     }
 
     /**
-     * Get days until tournament.
+     * Check if notification can be retried.
      */
-    public function getDaysUntilTournamentAttribute(): int
+    public function canBeRetried(): bool
     {
-        return now()->diffInDays($this->tournament->start_date, false);
+        return $this->status === self::STATUS_FAILED &&
+               $this->retry_count < self::MAX_RETRY_ATTEMPTS;
     }
 
     /**
-     * Check if needs confirmation reminder.
+     * Check if notification has exceeded max retry attempts.
      */
-    public function needsConfirmationReminder(): bool
+    public function hasExceededMaxRetries(): bool
     {
-        if ($this->is_confirmed) {
-            return false;
-        }
-
-        // Send reminder if tournament is within 7 days and not confirmed
-        return $this->days_until_tournament <= 7 && $this->days_until_tournament > 0;
+        return $this->retry_count >= self::MAX_RETRY_ATTEMPTS;
     }
 
     /**
-     * Get role badge color.
+     * Get recipient type label.
      */
-    public function getRoleBadgeColorAttribute(): string
+    public function getRecipientTypeLabelAttribute(): string
     {
-        return match($this->role) {
-            self::ROLE_REFEREE => 'blue',
-            self::ROLE_TOURNAMENT_DIRECTOR => 'purple',
-            self::ROLE_OBSERVER => 'gray',
-            default => 'gray',
-        };
-    }
-
-    /**
-     * Get assignment status.
-     */
-    public function getStatusAttribute(): string
-    {
-        if ($this->tournament->status === 'completed') {
-            return 'completed';
-        }
-
-        if ($this->is_confirmed) {
-            return 'confirmed';
-        }
-
-        if ($this->days_until_tournament < 0) {
-            return 'expired';
-        }
-
-        return 'pending';
+        return self::RECIPIENT_TYPES[$this->recipient_type] ?? ucfirst($this->recipient_type);
     }
 
     /**
@@ -281,100 +206,176 @@ class Assignment extends Model
      */
     public function getStatusLabelAttribute(): string
     {
-        return match($this->status) {
-            'completed' => 'Completato',
-            'confirmed' => 'Confermato',
-            'expired' => 'Scaduto',
-            'pending' => 'In attesa',
-            default => 'Sconosciuto',
-        };
+        return self::STATUSES[$this->status] ?? ucfirst($this->status);
     }
 
     /**
-     * Get status color.
+     * Get status color for UI.
      */
     public function getStatusColorAttribute(): string
     {
         return match($this->status) {
-            'completed' => 'gray',
-            'confirmed' => 'green',
-            'expired' => 'red',
-            'pending' => 'yellow',
+            self::STATUS_SENT => 'green',
+            self::STATUS_PENDING => 'yellow',
+            self::STATUS_FAILED => 'red',
+            self::STATUS_CANCELLED => 'gray',
             default => 'gray',
         };
     }
 
     /**
-     * Check if assignment can be confirmed.
+     * Get time since sent/created.
      */
-    public function canBeConfirmed(): bool
+    public function getTimeSinceAttribute(): string
     {
-        return !$this->is_confirmed &&
-               $this->tournament->status !== 'completed' &&
-               $this->days_until_tournament >= 0;
+        $date = $this->sent_at ?? $this->created_at;
+        return $date->diffForHumans();
     }
 
     /**
-     * Check if assignment can be cancelled.
+     * Get days since creation.
      */
-    public function canBeCancelled(): bool
+    public function getDaysSinceCreationAttribute(): int
     {
-        return $this->tournament->status !== 'completed' &&
-               $this->days_until_tournament > 0;
+        return $this->created_at->diffInDays(now());
     }
 
     /**
-     * Get assignment summary for notifications.
+     * Check if notification is recent.
      */
-    public function getSummaryAttribute(): string
+    public function isRecent(int $days = 7): bool
     {
-        return sprintf(
-            '%s - %s (%s) - %s',
-            $this->tournament->name,
-            $this->tournament->date_range,
-            $this->tournament->club->name,
-            $this->role
-        );
+        return $this->days_since_creation <= $days;
     }
 
     /**
-     * Check if this is the main referee (not observer or director).
+     * Get attachment count.
      */
-    public function isMainReferee(): bool
+    public function getAttachmentCountAttribute(): int
     {
-        return $this->role === self::ROLE_REFEREE;
+        return $this->attachments ? count($this->attachments) : 0;
     }
 
     /**
-     * Check if assignment is for a national tournament.
+     * Check if notification has attachments.
      */
-    public function isNationalTournament(): bool
+    public function hasAttachments(): bool
     {
-        return $this->tournament->tournamentCategory->is_national;
+        return $this->attachment_count > 0;
     }
 
     /**
-     * Get assignment priority (for sorting).
+     * Get attachment names.
+     */
+    public function getAttachmentNamesAttribute(): array
+    {
+        if (!$this->attachments) {
+            return [];
+        }
+
+        return array_keys($this->attachments);
+    }
+
+    /**
+     * Get attachment paths.
+     */
+    public function getAttachmentPathsAttribute(): array
+    {
+        if (!$this->attachments) {
+            return [];
+        }
+
+        return array_values($this->attachments);
+    }
+
+    /**
+     * Get template display name.
+     */
+    public function getTemplateDisplayNameAttribute(): string
+    {
+        return $this->template_used ?: 'Template predefinito';
+    }
+
+    /**
+     * Get notification priority for queue processing.
      */
     public function getPriorityAttribute(): int
     {
-        // Priority based on role and confirmation status
         $priority = 0;
 
-        if ($this->role === self::ROLE_TOURNAMENT_DIRECTOR) {
-            $priority += 100;
-        } elseif ($this->role === self::ROLE_REFEREE) {
-            $priority += 50;
-        }
-
-        if (!$this->is_confirmed) {
+        // Higher priority for referees
+        if ($this->recipient_type === self::TYPE_REFEREE) {
             $priority += 10;
         }
 
-        if ($this->isNationalTournament()) {
+        // Higher priority for urgent tournaments (within 3 days)
+        if ($this->assignment) {
+            $daysUntil = now()->diffInDays($this->assignment->tournament->start_date, false);
+            if ($daysUntil <= 3) {
+                $priority += 20;
+            }
+        }
+
+        // Higher priority for retries
+        if ($this->status === self::STATUS_FAILED) {
             $priority += 5;
         }
 
         return $priority;
+    }
+
+    /**
+     * Get summary for logging/display.
+     */
+    public function getSummaryAttribute(): string
+    {
+        $summary = "{$this->recipient_type_label} - {$this->recipient_email}";
+
+        if ($this->assignment) {
+            $summary .= " - {$this->assignment->tournament->name}";
+        }
+
+        return $summary;
+    }
+
+    /**
+     * Create notification for assignment.
+     */
+    public static function createForAssignment(Assignment $assignment, array $data): self
+    {
+        return self::create(array_merge($data, [
+            'assignment_id' => $assignment->id,
+        ]));
+    }
+
+    /**
+     * Get failed notifications requiring attention.
+     */
+    public static function getFailedNotificationsRequiringAttention()
+    {
+        return self::failed()
+            ->where('retry_count', '>=', self::MAX_RETRY_ATTEMPTS)
+            ->where('created_at', '>=', now()->subDays(7))
+            ->with(['assignment.tournament', 'assignment.user'])
+            ->get();
+    }
+
+    /**
+     * Get notifications statistics.
+     */
+    public static function getStatistics(int $days = 30): array
+    {
+        $query = self::where('created_at', '>=', now()->subDays($days));
+
+        return [
+            'total' => $query->count(),
+            'sent' => $query->where('status', self::STATUS_SENT)->count(),
+            'pending' => $query->where('status', self::STATUS_PENDING)->count(),
+            'failed' => $query->where('status', self::STATUS_FAILED)->count(),
+            'by_type' => $query->selectRaw('recipient_type, COUNT(*) as count')
+                              ->groupBy('recipient_type')
+                              ->pluck('count', 'recipient_type')
+                              ->toArray(),
+        ];
     }
 }

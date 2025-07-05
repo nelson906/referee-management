@@ -19,7 +19,7 @@ return new class extends Migration
             $table->text('description')->nullable();
             $table->boolean('is_active')->default(true);
             $table->foreignId('zone_id')->nullable()->constrained('zones');
-            $table->enum('category', ['federazione', 'comitato', 'zona', 'altro'])->default('altro');
+            $table->enum('category', ['federazione', 'comitati', 'zone', 'altro'])->default('altro');
             $table->boolean('receive_all_notifications')->default(false);
             $table->json('notification_types')->nullable();
             $table->timestamps();

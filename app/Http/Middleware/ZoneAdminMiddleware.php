@@ -21,19 +21,9 @@ class ZoneAdminMiddleware
 
         $user = auth()->user();
 
-        // Check if user is specifically a zone admin (not national admin)
-        if ($user->user_type !== 'admin') {
+        // Allow access for zone admins and higher roles
+        if (!in_array($user->user_type, ['admin', 'national_admin', 'super_admin'])) {
             abort(403, 'Accesso non autorizzato. Solo gli amministratori di zona possono accedere a questa sezione.');
-        }
-
-        // Check if zone admin has a zone assigned
-        if (!$user->zone_id) {
-            abort(403, 'Il tuo account non ha una zona assegnata. Contatta il supporto tecnico.');
-        }
-
-        // Check if zone is active
-        if ($user->zone && !$user->zone->is_active) {
-            abort(403, 'La tua zona non è attiva. Contatta il supporto tecnico.');
         }
 
         return $next($request);

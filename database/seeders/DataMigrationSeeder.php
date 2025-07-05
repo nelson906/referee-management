@@ -13,7 +13,10 @@ class DataMigrationSeeder extends Seeder
      */
     public function run(): void
     {
-        $this->command->info('🚀 Inizio migrazione dati dal vecchio database...');
+            // Configura connessione al database vecchio
+        $this->setupOldDatabaseConnection();
+
+    $this->command->info('🚀 Inizio migrazione dati dal vecchio database...');
 
         // 1. Migra zones (dovrebbero essere già presenti)
         $this->migrateZones();
@@ -332,7 +335,7 @@ class DataMigrationSeeder extends Seeder
                     'email' => $address->email,
                     'description' => $address->description,
                     'zone_id' => $address->zone_id,
-                    'category' => $address->category ?: 'altro',
+                    'category' => $address->category ?? null,
                     'is_active' => $address->active,
                     'receive_all_notifications' => true,
                     'notification_types' => json_encode(['assignment', 'availability']),
@@ -373,4 +376,29 @@ class DataMigrationSeeder extends Seeder
 
         return $code;
     }
+
+        private function setupOldDatabaseConnection()
+    {
+        config(['database.connections.old' => [
+            'driver' => 'mysql',
+            'host' => config('database.connections.mysql.host'),
+            'port' => config('database.connections.mysql.port'),
+            'database' => 'golf_referee_new',
+            'username' => config('database.connections.mysql.username'),
+            'password' => config('database.connections.mysql.password'),
+            'charset' => 'utf8mb4',
+            'collation' => 'utf8mb4_unicode_ci',
+        ]]);
+    }
+
+    private function checkOldDatabase(): bool
+    {
+        try {
+            DB::connection('old')->getPdo();
+            return true;
+        } catch (\Exception $e) {
+            return false;
+        }
+    }
+
 }

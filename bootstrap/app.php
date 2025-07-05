@@ -11,68 +11,54 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // Global middleware stack
+        $middleware->append([
+            \App\Http\Middleware\TrustProxies::class,
+            \Illuminate\Http\Middleware\HandleCors::class,
+            \App\Http\Middleware\PreventRequestsDuringMaintenance::class,
+            \Illuminate\Foundation\Http\Middleware\ValidatePostSize::class,
+            \App\Http\Middleware\TrimStrings::class,
+            \Illuminate\Foundation\Http\Middleware\ConvertEmptyStringsToNull::class,
+        ]);
 
-        // Global HTTP middleware stack
+        // Web middleware group
         $middleware->web(append: [
-            \App\Http\Middleware\HandleInertiaRequests::class,
-            \Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets::class,
+            \Illuminate\Cookie\Middleware\EncryptCookies::class,
+            \Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse::class,
+            \Illuminate\Session\Middleware\StartSession::class,
+            \Illuminate\View\Middleware\ShareErrorsFromSession::class,
+            \Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class,
+            \Illuminate\Routing\Middleware\SubstituteBindings::class,
         ]);
 
         // API middleware group
         $middleware->api(append: [
-            // Add API-specific middleware here if needed
+            \Illuminate\Routing\Middleware\ThrottleRequests::class.':api',
+            \Illuminate\Routing\Middleware\SubstituteBindings::class,
         ]);
 
-        // Middleware aliases for the golf referee system
+        // Middleware aliases
         $middleware->alias([
+            'auth' => \Illuminate\Auth\Middleware\Authenticate::class,
+            'auth.basic' => \Illuminate\Auth\Middleware\AuthenticateWithBasicAuth::class,
+            'auth.session' => \Illuminate\Session\Middleware\AuthenticateSession::class,
+            'cache.headers' => \Illuminate\Http\Middleware\SetCacheHeaders::class,
+            'can' => \Illuminate\Auth\Middleware\Authorize::class,
+            'guest' => \App\Http\Middleware\RedirectIfAuthenticated::class,
+            'password.confirm' => \Illuminate\Auth\Middleware\RequirePassword::class,
+            'precognitive' => \Illuminate\Foundation\Http\Middleware\HandlePrecognitiveRequests::class,
+            'signed' => \App\Http\Middleware\ValidateSignature::class,
+            'throttle' => \Illuminate\Routing\Middleware\ThrottleRequests::class,
+            'verified' => \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class,
+
+            // Custom middleware for golf referee system
             'superadmin' => \App\Http\Middleware\SuperAdminMiddleware::class,
             'admin' => \App\Http\Middleware\AdminMiddleware::class,
             'referee' => \App\Http\Middleware\RefereeMiddleware::class,
             'zone.access' => \App\Http\Middleware\ZoneAccessMiddleware::class,
             'zone.admin' => \App\Http\Middleware\ZoneAdminMiddleware::class,
         ]);
-
-        // Middleware groups for different user types
-        $middleware->group('superadmin-group', [
-            'auth',
-            'verified',
-            'superadmin',
-        ]);
-
-        $middleware->group('admin-group', [
-            'auth',
-            'verified',
-            'admin',
-        ]);
-
-        $middleware->group('referee-group', [
-            'auth',
-            'verified',
-            'referee',
-        ]);
-
-        // Priority middleware - executed first
-        $middleware->priority([
-            \Illuminate\Cookie\Middleware\EncryptCookies::class,
-            \Illuminate\Session\Middleware\StartSession::class,
-            \Illuminate\View\Middleware\ShareErrorsFromSession::class,
-            \Illuminate\Contracts\Auth\Middleware\AuthenticatesRequests::class,
-            \Illuminate\Routing\Middleware\ThrottleRequests::class,
-            \Illuminate\Session\Middleware\AuthenticateSession::class,
-            \Illuminate\Routing\Middleware\SubstituteBindings::class,
-            \Illuminate\Auth\Middleware\Authorize::class,
-        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        // Custom exception handling for the golf referee system
-        $exceptions->render(function (\Illuminate\Auth\Access\AuthorizationException $e, $request) {
-            if ($request->expectsJson()) {
-                return response()->json([
-                    'message' => 'Non sei autorizzato ad accedere a questa risorsa.',
-                    'error' => 'Unauthorized'
-                ], 403);
-            }
-
-            return redirect()->route('dashboard')->with('error', 'Non sei autorizzato ad accedere a questa sezione.');
-        });
+        //
     })->create();

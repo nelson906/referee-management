@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('circles', function (Blueprint $table) {
             $table->id();
             $table->string('name');
-            $table->string('code', 20)->unique()->nullable();
+            $table->string('code', 250)->unique();
             $table->foreignId('zone_id')->constrained('zones');
             $table->string('address')->nullable();
             $table->string('city');

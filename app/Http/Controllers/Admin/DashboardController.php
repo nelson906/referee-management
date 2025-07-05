@@ -1,216 +1,178 @@
 <?php
 
-namespace App\Models;
+namespace App\Http\Controllers\Admin;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Support\Facades\Storage;
+use App\Http\Controllers\Controller;
+use App\Models\Tournament;
+use App\Models\Assignment;
+use App\Models\User;
+use App\Models\Zone;
+use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 
-class Letterhead extends Model
+class DashboardController extends Controller
 {
-    use HasFactory;
-
     /**
-     * The attributes that are mass assignable.
-     *
-     * @var array<int, string>
+     * Display the admin dashboard.
      */
-    protected $fillable = [
-        'zone_id',
-        'title',
-        'logo_path',
-        'header_text',
-        'header_content',
-        'footer_text',
-        'footer_content',
-        'contact_info',
-        'is_active',
-        'is_default',
-        'settings',
-    ];
-
-    /**
-     * The attributes that should be cast.
-     *
-     * @var array<string, string>
-     */
-    protected $casts = [
-        'contact_info' => 'array',
-        'is_active' => 'boolean',
-        'is_default' => 'boolean',
-        'settings' => 'array',
-    ];
-
-    /**
-     * Default settings structure
-     */
-    protected $attributes = [
-        'settings' => '{}',
-        'contact_info' => '{}',
-        'is_active' => true,
-        'is_default' => false,
-    ];
-
-    /**
-     * Get the zone that owns the letterhead.
-     */
-    public function zone(): BelongsTo
+    public function index()
     {
-        return $this->belongsTo(Zone::class);
-    }
+        $user = auth()->user();
+        $isNationalAdmin = $user->user_type === 'national_admin';
 
-    /**
-     * Scope a query to only include active letterheads.
-     */
-    public function scopeActive($query)
-    {
-        return $query->where('is_active', true);
-    }
+        // Get zones accessible by user
+        $zones = $isNationalAdmin
+            ? Zone::with('circles', 'referees')->get()
+            : Zone::where('id', $user->zone_id)->with('circles', 'referees')->get();
 
-    /**
-     * Scope a query to only include default letterheads.
-     */
-    public function scopeDefault($query)
-    {
-        return $query->where('is_default', true);
-    }
+        // Base queries
+        $tournamentsQuery = Tournament::query();
+        $assignmentsQuery = Assignment::query();
+        $refereesQuery = User::where('user_type', 'referee');
 
-    /**
-     * Scope a query to get letterhead for a specific zone.
-     */
-    public function scopeForZone($query, $zoneId)
-    {
-        return $query->where(function ($q) use ($zoneId) {
-            $q->where('zone_id', $zoneId)
-              ->orWhereNull('zone_id');
-        });
-    }
-
-    /**
-     * Get the logo URL
-     */
-    public function getLogoUrlAttribute(): ?string
-    {
-        if (!$this->logo_path) {
-            return null;
+        // Filter by zone for zone admins
+        if (!$isNationalAdmin && $user->user_type !== 'super_admin') {
+            $tournamentsQuery->where('zone_id', $user->zone_id);
+            $assignmentsQuery->whereHas('tournament', function ($q) use ($user) {
+                $q->where('zone_id', $user->zone_id);
+            });
+            $refereesQuery->where('zone_id', $user->zone_id);
         }
 
-        return Storage::url($this->logo_path);
-    }
-
-    /**
-     * Get formatted contact info
-     */
-    public function getFormattedContactInfoAttribute(): string
-    {
-        $info = $this->contact_info ?? [];
-        $parts = [];
-
-        if (!empty($info['address'])) {
-            $parts[] = $info['address'];
-        }
-
-        if (!empty($info['phone'])) {
-            $parts[] = "Tel: " . $info['phone'];
-        }
-
-        if (!empty($info['email'])) {
-            $parts[] = "Email: " . $info['email'];
-        }
-
-        if (!empty($info['website'])) {
-            $parts[] = "Web: " . $info['website'];
-        }
-
-        return implode(' | ', $parts);
-    }
-
-    /**
-     * Get scope display
-     */
-    public function getScopeDisplayAttribute(): string
-    {
-        return $this->zone ? $this->zone->name : 'Globale';
-    }
-
-    /**
-     * Set as default for zone
-     */
-    public function setAsDefault(): void
-    {
-        // Remove default from other letterheads in same zone
-        self::where('zone_id', $this->zone_id)
-            ->where('id', '!=', $this->id)
-            ->update(['is_default' => false]);
-
-        // Set this as default
-        $this->update(['is_default' => true]);
-    }
-
-    /**
-     * Get margin settings
-     */
-    public function getMarginSettingsAttribute(): array
-    {
-        return $this->settings['margins'] ?? [
-            'top' => 20,
-            'bottom' => 20,
-            'left' => 25,
-            'right' => 25,
+        // General Statistics
+        $stats = [
+            'total_tournaments' => (clone $tournamentsQuery)->count(),
+            'active_tournaments' => (clone $tournamentsQuery)->active()->count(),
+            'upcoming_tournaments' => (clone $tournamentsQuery)->upcoming()->count(),
+            'total_referees' => (clone $refereesQuery)->count(),
+            'active_referees' => (clone $refereesQuery)->where('is_active', true)->count(),
+            'total_assignments' => (clone $assignmentsQuery)->count(),
+            'pending_confirmations' => (clone $assignmentsQuery)->where('is_confirmed', false)->count(),
+            'zones_count' => $zones->count(),
         ];
-    }
 
-    /**
-     * Get font settings
-     */
-    public function getFontSettingsAttribute(): array
-    {
-        return $this->settings['font'] ?? [
-            'family' => 'Arial',
-            'size' => 11,
-            'color' => '#000000',
-        ];
-    }
+        // Tournaments by status
+        $tournamentsByStatus = (clone $tournamentsQuery)
+            ->select('status', DB::raw('count(*) as total'))
+            ->groupBy('status')
+            ->pluck('total', 'status')
+            ->toArray();
 
-    /**
-     * Clone letterhead
-     */
-    public function cloneLetterhead(array $overrides = []): self
-    {
-        $clone = $this->replicate();
-        $clone->title = $this->title . ' (Copia)';
-        $clone->is_default = false;
-        $clone->is_active = false;
+        // Upcoming tournaments needing referees
+        $tournamentsNeedingReferees = (clone $tournamentsQuery)
+            ->with(['club', 'tournamentCategory'])
+            ->whereIn('status', ['open', 'closed'])
+            ->whereRaw('(SELECT COUNT(*) FROM assignments WHERE tournament_id = tournaments.id) <
+                       (SELECT min_referees FROM tournament_categories WHERE id = tournaments.tournament_category_id)')
+            ->orderBy('start_date')
+            ->limit(10)
+            ->get();
 
-        foreach ($overrides as $key => $value) {
-            $clone->$key = $value;
-        }
+        // Recent assignments
+        $recentAssignments = (clone $assignmentsQuery)
+            ->with(['user', 'tournament.club'])
+            ->orderBy('assigned_at', 'desc')
+            ->limit(10)
+            ->get();
 
-        // Copy logo if exists
-        if ($this->logo_path && Storage::exists($this->logo_path)) {
-            $extension = pathinfo($this->logo_path, PATHINFO_EXTENSION);
-            $newPath = 'letterheads/logo_' . uniqid() . '.' . $extension;
-            Storage::copy($this->logo_path, $newPath);
-            $clone->logo_path = $newPath;
-        }
+        // Availability deadlines approaching
+        $deadlinesApproaching = (clone $tournamentsQuery)
+            ->with(['club', 'tournamentCategory'])
+            ->where('status', 'open')
+            ->whereBetween('availability_deadline', [Carbon::today(), Carbon::today()->addDays(7)])
+            ->orderBy('availability_deadline')
+            ->get();
 
-        $clone->save();
+        // Referees by level (for current zone(s))
+        $refereesByLevel = (clone $refereesQuery)
+            ->where('is_active', true)
+            ->select('level', DB::raw('count(*) as total'))
+            ->groupBy('level')
+            ->pluck('total', 'level')
+            ->toArray();
 
-        return $clone;
-    }
+        // Monthly tournament trend (last 6 months)
+        $monthlyTrend = (clone $tournamentsQuery)
+            ->select(
+                DB::raw('DATE_FORMAT(start_date, "%Y-%m") as month'),
+                DB::raw('count(*) as total')
+            )
+            ->where('start_date', '>=', Carbon::now()->subMonths(6)->startOfMonth())
+            ->groupBy('month')
+            ->orderBy('month')
+            ->pluck('total', 'month')
+            ->toArray();
 
-    /**
-     * Delete logo file when deleting letterhead
-     */
-    protected static function boot()
-    {
-        parent::boot();
-
-        static::deleting(function ($letterhead) {
-            if ($letterhead->logo_path && Storage::exists($letterhead->logo_path)) {
-                Storage::delete($letterhead->logo_path);
+        // Zone statistics (for national admin)
+        $zoneStats = [];
+        if ($isNationalAdmin) {
+            foreach ($zones as $zone) {
+                $zoneStats[$zone->name] = [
+                    'tournaments' => $zone->tournaments()->count(),
+                    'active_tournaments' => $zone->tournaments()->active()->count(),
+                    'referees' => $zone->referees()->where('is_active', true)->count(),
+                    'circles' => $zone->circles()->where('is_active', true)->count(),
+                ];
             }
-        });
+        }
+
+        // Top referees by assignments (current year)
+        $topReferees = (clone $refereesQuery)
+            ->withCount(['assignments' => function ($query) {
+                $query->whereYear('assigned_at', Carbon::now()->year);
+            }])
+            ->where('is_active', true)
+            ->orderBy('assignments_count', 'desc')
+            ->limit(5)
+            ->get();
+
+        // Alerts and notifications
+        $alerts = [];
+
+        // Check for tournaments without enough referees starting soon
+        $tournamentsStartingSoon = (clone $tournamentsQuery)
+            ->whereIn('status', ['open', 'closed'])
+            ->whereBetween('start_date', [Carbon::today(), Carbon::today()->addDays(14)])
+            ->get();
+
+        foreach ($tournamentsStartingSoon as $tournament) {
+            if ($tournament->assignments()->count() < $tournament->required_referees) {
+                $alerts[] = [
+                    'type' => 'warning',
+                    'message' => "Il torneo '{$tournament->name}' inizia il {$tournament->start_date->format('d/m/Y')} ma ha solo {$tournament->assignments()->count()} arbitri su {$tournament->required_referees} richiesti.",
+                    'link' => route('admin.tournaments.show', $tournament),
+                ];
+            }
+        }
+
+        // Check for unconfirmed assignments
+        $unconfirmedCount = (clone $assignmentsQuery)
+            ->where('is_confirmed', false)
+            ->whereHas('tournament', function ($q) {
+                $q->where('start_date', '>=', Carbon::today());
+            })
+            ->count();
+
+        if ($unconfirmedCount > 0) {
+            $alerts[] = [
+                'type' => 'info',
+                'message' => "Ci sono {$unconfirmedCount} assegnazioni non ancora confermate dagli arbitri.",
+                'link' => route('admin.assignments.index', ['status' => 'pending']),
+            ];
+        }
+
+        return view('admin.dashboard', compact(
+            'stats',
+            'tournamentsByStatus',
+            'tournamentsNeedingReferees',
+            'recentAssignments',
+            'deadlinesApproaching',
+            'refereesByLevel',
+            'monthlyTrend',
+            'zoneStats',
+            'topReferees',
+            'alerts',
+            'isNationalAdmin'
+        ));
     }
 }
