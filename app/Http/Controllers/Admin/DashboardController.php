@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use App\Models\Tournament;
 use App\Models\User;
 use App\Models\Assignment;
-use App\Models\Club;
 use Illuminate\View\View;
 use Carbon\Carbon;
 
@@ -46,39 +45,42 @@ class DashboardController extends Controller
      */
     private function getStatistics($user, $isNationalAdmin): array
     {
-        // Base queries for tournaments and assignments
-        $tournamentsQuery = Tournament::query();
-        $assignmentsQuery = Assignment::query();
-        $refereesQuery = User::where('user_type', 'referee');
-        $clubsQuery = Club::query();
+        $query = Tournament::query();
 
-        // Apply zone filtering for non-national admins
         if (!$isNationalAdmin && $user->user_type !== 'super_admin') {
-            $tournamentsQuery->where('zone_id', $user->zone_id);
-            $assignmentsQuery->whereHas('tournament', function($q) use ($user) {
-                $q->where('zone_id', $user->zone_id);
-            });
-            $refereesQuery->where('zone_id', $user->zone_id);
-            $clubsQuery->where('zone_id', $user->zone_id);
+            $query->where('zone_id', $user->zone_id);
         }
 
+        $totalTournaments = $query->count();
+        $activeTournaments = (clone $query)->whereIn('status', ['open', 'closed', 'assigned'])->count();
+        $completedTournaments = (clone $query)->where('status', 'completed')->count();
+
+        $assignmentQuery = Assignment::query();
+        if (!$isNationalAdmin && $user->user_type !== 'super_admin') {
+            $assignmentQuery->whereHas('tournament', function($q) use ($user) {
+                $q->where('zone_id', $user->zone_id);
+            });
+        }
+
+        $totalAssignments = $assignmentQuery->count();
+        $pendingConfirmations = (clone $assignmentQuery)->where('is_confirmed', false)->count();
+
+        $refereeQuery = User::where('user_type', 'referee')->where('is_active', true);
+        if (!$isNationalAdmin && $user->user_type !== 'super_admin') {
+            $refereeQuery->where('zone_id', $user->zone_id);
+        }
+
+        $activeReferees = $refereeQuery->count();
+
         return [
-            'total_tournaments' => $tournamentsQuery->count(),
-            'active_tournaments' => $tournamentsQuery->active()->count(),
-            'upcoming_tournaments' => $tournamentsQuery->upcoming()->count(),
-            'draft_tournaments' => $tournamentsQuery->where('status', 'draft')->count(),
-
-            'total_referees' => $refereesQuery->count(),
-            'active_referees' => $refereesQuery->where('is_active', true)->count(),
-            'inactive_referees' => $refereesQuery->where('is_active', false)->count(),
-
-            'total_assignments' => $assignmentsQuery->count(),
-            'unconfirmed_assignments' => $assignmentsQuery->where('is_confirmed', false)->count(),
-            'confirmed_assignments' => $assignmentsQuery->where('is_confirmed', true)->count(),
-            'current_year_assignments' => $assignmentsQuery->whereYear('created_at', now()->year)->count(),
-
-            'total_clubs' => $clubsQuery->count(),
-            'active_clubs' => $clubsQuery->where('is_active', true)->count(),
+            'total_tournaments' => $totalTournaments,
+            'active_tournaments' => $activeTournaments,
+            'completed_tournaments' => $completedTournaments,
+            'total_assignments' => $totalAssignments,
+            'pending_confirmations' => $pendingConfirmations,
+            'active_referees' => $activeReferees,
+            'zones_count' => $isNationalAdmin ? \App\Models\Zone::count() : 1,
+            'upcoming_tournaments' => (clone $query)->where('start_date', '>=', Carbon::today())->count(),
         ];
     }
 
@@ -89,32 +91,28 @@ class DashboardController extends Controller
     {
         $alerts = [];
 
-        // Check for unconfirmed assignments
-        $unconfirmedQuery = Assignment::where('is_confirmed', false);
-        if (!$isNationalAdmin && $user->user_type !== 'super_admin') {
-            $unconfirmedQuery->whereHas('tournament', function($q) use ($user) {
-                $q->where('zone_id', $user->zone_id);
-            });
-        }
-        $unconfirmedCount = $unconfirmedQuery->count();
-
-        if ($unconfirmedCount > 0) {
+        // Check for tournaments needing referees
+        $tournamentsNeedingReferees = $this->getTournamentsNeedingReferees($user, $isNationalAdmin)->count();
+        if ($tournamentsNeedingReferees > 0) {
             $alerts[] = [
                 'type' => 'warning',
-                'message' => "Ci sono {$unconfirmedCount} assegnazioni non ancora confermate dagli arbitri.",
-                'action_url' => route('admin.assignments.index', ['status' => 'unconfirmed']),
-                'action_text' => 'Visualizza'
+                'message' => "Ci sono {$tournamentsNeedingReferees} tornei che necessitano di arbitri."
             ];
         }
 
-        // Check for tournaments needing referees
-        $tournamentsNeedingReferees = $this->getTournamentsNeedingReferees($user, $isNationalAdmin);
-        if ($tournamentsNeedingReferees->count() > 0) {
+        // Check for unconfirmed assignments
+        $assignmentQuery = Assignment::where('is_confirmed', false);
+        if (!$isNationalAdmin && $user->user_type !== 'super_admin') {
+            $assignmentQuery->whereHas('tournament', function($q) use ($user) {
+                $q->where('zone_id', $user->zone_id);
+            });
+        }
+        $unconfirmedAssignments = $assignmentQuery->count();
+
+        if ($unconfirmedAssignments > 0) {
             $alerts[] = [
                 'type' => 'info',
-                'message' => "Ci sono {$tournamentsNeedingReferees->count()} tornei che necessitano ancora di arbitri.",
-                'action_url' => route('admin.tournaments.index', ['status' => 'open']),
-                'action_text' => 'Visualizza'
+                'message' => "Ci sono {$unconfirmedAssignments} assegnazioni in attesa di conferma."
             ];
         }
 
@@ -130,16 +128,16 @@ class DashboardController extends Controller
             ->whereIn('status', ['open', 'closed'])
             ->where('start_date', '>=', Carbon::today());
 
-        // Apply zone filtering for non-national admins
         if (!$isNationalAdmin && $user->user_type !== 'super_admin') {
             $query->where('zone_id', $user->zone_id);
         }
 
+        // Filter tournaments that need more referees
         return $query->get()->filter(function ($tournament) {
-            $assignedCount = $tournament->assignments()->count();
-            $minRequired = $tournament->tournamentCategory->min_referees ?? 1;
-            return $assignedCount < $minRequired;
-        })->take(5);
+            $assignedReferees = $tournament->assignments()->count();
+            $requiredReferees = $tournament->tournamentCategory->max_referees ?? 1;
+            return $assignedReferees < $requiredReferees;
+        })->take(10);
     }
 
     /**
@@ -147,19 +145,15 @@ class DashboardController extends Controller
      */
     private function getRecentAssignments($user, $isNationalAdmin)
     {
-        $query = Assignment::with([
-            'user:id,name,referee_code',
-            'tournament:id,name,start_date,club_id',
-            'tournament.club:id,name'
-        ])->orderBy('created_at', 'desc');
+        $query = Assignment::with(['user', 'tournament.club', 'assignedBy'])
+            ->orderBy('created_at', 'desc');
 
-        // Apply zone filtering for non-national admins
         if (!$isNationalAdmin && $user->user_type !== 'super_admin') {
             $query->whereHas('tournament', function($q) use ($user) {
                 $q->where('zone_id', $user->zone_id);
             });
         }
 
-        return $query->limit(5)->get();
+        return $query->limit(10)->get();
     }
 }
