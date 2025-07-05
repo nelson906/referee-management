@@ -6,62 +6,53 @@ use App\Http\Controllers\Controller;
 use App\Models\Assignment;
 use App\Models\Tournament;
 use App\Models\User;
-use App\Services\NotificationService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
-use Carbon\Carbon;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\View\View;
 
 class AssignmentController extends Controller
 {
-    protected $notificationService;
-
-    public function __construct(NotificationService $notificationService)
-    {
-        $this->notificationService = $notificationService;
-    }
-
     /**
      * Display a listing of assignments.
      */
-    public function index(Request $request)
+    public function index(Request $request): View
     {
         $user = auth()->user();
         $isNationalAdmin = $user->user_type === 'national_admin';
 
-        // Base query
-        $query = Assignment::with(['user', 'tournament.club', 'tournament.zone', 'assignedBy'])
-            ->join('tournaments', 'assignments.tournament_id', '=', 'tournaments.id');
+        $query = Assignment::with([
+            'user:id,name,email,level',
+            'tournament:id,name,start_date,end_date,club_id,tournament_category_id',
+            'tournament.club:id,name',
+            'tournament.tournamentCategory:id,name',
+            'assignedBy:id,name'
+        ]);
 
-        // Filter by zone for zone admins
+        // Filter by zone for non-national admins
         if (!$isNationalAdmin && $user->user_type !== 'super_admin') {
-            $query->where('tournaments.zone_id', $user->zone_id);
+            $query->whereHas('tournament', function ($q) use ($user) {
+                $q->where('zone_id', $user->zone_id);
+            });
         }
 
         // Apply filters
-        if ($request->has('tournament_id') && $request->tournament_id !== '') {
-            $query->where('assignments.tournament_id', $request->tournament_id);
+        if ($request->filled('tournament_id')) {
+            $query->where('tournament_id', $request->tournament_id);
         }
 
-        if ($request->has('referee_id') && $request->referee_id !== '') {
-            $query->where('assignments.user_id', $request->referee_id);
+        if ($request->filled('user_id')) {
+            $query->where('user_id', $request->user_id);
         }
 
-        if ($request->has('status') && $request->status !== '') {
+        if ($request->filled('status')) {
             if ($request->status === 'confirmed') {
-                $query->where('assignments.is_confirmed', true);
-            } elseif ($request->status === 'pending') {
-                $query->where('assignments.is_confirmed', false);
+                $query->where('is_confirmed', true);
+            } elseif ($request->status === 'unconfirmed') {
+                $query->where('is_confirmed', false);
             }
         }
 
-        if ($request->has('month') && $request->month !== '') {
-            $startOfMonth = Carbon::parse($request->month)->startOfMonth();
-            $endOfMonth = Carbon::parse($request->month)->endOfMonth();
-            $query->whereBetween('tournaments.start_date', [$startOfMonth, $endOfMonth]);
-        }
-
-        // Order by tournament date
-        $assignments = $query->select('assignments.*')
+        $assignments = $query
             ->orderBy('tournaments.start_date', 'desc')
             ->orderBy('assignments.created_at', 'desc')
             ->paginate(20);
@@ -93,7 +84,7 @@ class AssignmentController extends Controller
     /**
      * Show the form for creating a new assignment.
      */
-    public function create(Request $request)
+    public function create(Request $request): View
     {
         $tournamentId = $request->get('tournament_id');
         $tournament = null;
@@ -106,7 +97,7 @@ class AssignmentController extends Controller
         $user = auth()->user();
         $isNationalAdmin = $user->user_type === 'national_admin';
 
-        // Get tournaments that need referees
+        // Get tournaments that need referees - now using physical columns
         $tournaments = Tournament::with(['club', 'tournamentCategory'])
             ->whereIn('status', ['open', 'closed'])
             ->when(!$isNationalAdmin && $user->user_type !== 'super_admin', function ($q) use ($user) {
@@ -115,6 +106,7 @@ class AssignmentController extends Controller
             ->whereRaw('(SELECT COUNT(*) FROM assignments WHERE tournament_id = tournaments.id) <
                        (SELECT max_referees FROM tournament_categories WHERE id = tournaments.tournament_category_id)')
             ->orderBy('start_date')
+            ->limit(10)
             ->get();
 
         return view('admin.assignments.create', compact('tournament', 'tournaments'));
@@ -123,7 +115,7 @@ class AssignmentController extends Controller
     /**
      * Store a newly created assignment.
      */
-    public function store(Request $request)
+    public function store(Request $request): RedirectResponse
     {
         $request->validate([
             'tournament_id' => 'required|exists:tournaments,id',
@@ -143,107 +135,28 @@ class AssignmentController extends Controller
                 ->with('error', 'Impossibile assegnare questo arbitro al torneo.');
         }
 
-        DB::beginTransaction();
-
-        try {
-            // Create assignment
-            $assignment = Assignment::create([
-                'user_id' => $referee->id,
-                'tournament_id' => $tournament->id,
-                'role' => $request->role,
-                'is_confirmed' => false,
-                'assigned_at' => Carbon::now(),
-                'assigned_by' => auth()->id(),
-                'notes' => $request->notes,
-            ]);
-
-            // Send notifications
-            $this->notificationService->sendAssignmentNotification($assignment);
-
-            // Update tournament status if needed
-            $tournament->updateStatus();
-
-            DB::commit();
-
-            return redirect()
-                ->route('admin.tournaments.show', $tournament)
-                ->with('success', 'Arbitro assegnato con successo!');
-
-        } catch (\Exception $e) {
-            DB::rollback();
-
-            return redirect()->back()
-                ->with('error', 'Errore durante l\'assegnazione: ' . $e->getMessage());
-        }
-    }
-
-    /**
-     * Bulk assign referees from availability list.
-     */
-    public function bulkAssign(Request $request)
-    {
-        $request->validate([
-            'tournament_id' => 'required|exists:tournaments,id',
-            'referee_ids' => 'required|array',
-            'referee_ids.*' => 'exists:users,id',
-            'role' => 'required|in:Arbitro,Direttore di Torneo,Osservatore',
+        // Create assignment
+        $assignment = Assignment::create([
+            'tournament_id' => $tournament->id,
+            'user_id' => $referee->id,
+            'role' => $request->role,
+            'notes' => $request->notes,
+            'assigned_at' => now(),
+            'assigned_by' => auth()->id(),
+            'is_confirmed' => false,
         ]);
 
-        $tournament = Tournament::findOrFail($request->tournament_id);
-        $this->checkTournamentAccess($tournament);
+        // TODO: Send notification to referee
 
-        $assigned = 0;
-        $errors = [];
-
-        DB::beginTransaction();
-
-        try {
-            foreach ($request->referee_ids as $refereeId) {
-                $referee = User::find($refereeId);
-
-                if (!$tournament->canAssignReferee($referee)) {
-                    $errors[] = "Impossibile assegnare {$referee->name}";
-                    continue;
-                }
-
-                $assignment = Assignment::create([
-                    'user_id' => $referee->id,
-                    'tournament_id' => $tournament->id,
-                    'role' => $request->role,
-                    'is_confirmed' => false,
-                    'assigned_at' => Carbon::now(),
-                    'assigned_by' => auth()->id(),
-                ]);
-
-                $this->notificationService->sendAssignmentNotification($assignment);
-                $assigned++;
-            }
-
-            $tournament->updateStatus();
-
-            DB::commit();
-
-            $message = "Assegnati {$assigned} arbitri con successo.";
-            if (!empty($errors)) {
-                $message .= " Errori: " . implode(', ', $errors);
-            }
-
-            return redirect()
-                ->route('admin.tournaments.show', $tournament)
-                ->with($assigned > 0 ? 'success' : 'error', $message);
-
-        } catch (\Exception $e) {
-            DB::rollback();
-
-            return redirect()->back()
-                ->with('error', 'Errore durante l\'assegnazione: ' . $e->getMessage());
-        }
+        return redirect()
+            ->route('admin.assignments.index')
+            ->with('success', "Arbitro {$referee->name} assegnato con successo al torneo {$tournament->name}.");
     }
 
     /**
      * Display the specified assignment.
      */
-    public function show(Assignment $assignment)
+    public function show(Assignment $assignment): View
     {
         $this->checkAssignmentAccess($assignment);
 
@@ -252,119 +165,72 @@ class AssignmentController extends Controller
             'tournament.club',
             'tournament.zone',
             'tournament.tournamentCategory',
-            'assignedBy',
-            'notifications'
+            'assignedBy'
         ]);
 
         return view('admin.assignments.show', compact('assignment'));
     }
 
     /**
-     * Remove the specified assignment.
+     * Update the specified assignment.
      */
-    public function remove(Assignment $assignment)
+    public function update(Request $request, Assignment $assignment): RedirectResponse
     {
         $this->checkAssignmentAccess($assignment);
 
-        $tournament = $assignment->tournament;
+        $request->validate([
+            'role' => 'required|in:Arbitro,Direttore di Torneo,Osservatore',
+            'notes' => 'nullable|string|max:500',
+        ]);
 
-        // Check if tournament is in a state that allows removal
-        if (in_array($tournament->status, ['assigned', 'completed'])) {
-            return redirect()->back()
-                ->with('error', 'Non è possibile rimuovere assegnazioni da tornei assegnati o completati.');
-        }
+        $assignment->update([
+            'role' => $request->role,
+            'notes' => $request->notes,
+        ]);
 
-        DB::beginTransaction();
-
-        try {
-            // Delete related notifications
-            $assignment->notifications()->delete();
-
-            // Delete assignment
-            $assignment->delete();
-
-            // Update tournament status
-            $tournament->updateStatus();
-
-            DB::commit();
-
-            return redirect()
-                ->route('admin.tournaments.show', $tournament)
-                ->with('success', 'Assegnazione rimossa con successo.');
-
-        } catch (\Exception $e) {
-            DB::rollback();
-
-            return redirect()->back()
-                ->with('error', 'Errore durante la rimozione: ' . $e->getMessage());
-        }
+        return redirect()
+            ->route('admin.assignments.show', $assignment)
+            ->with('success', 'Assegnazione aggiornata con successo.');
     }
 
     /**
-     * Confirm assignment (mark as confirmed by admin).
+     * Confirm assignment.
      */
-    public function confirm(Assignment $assignment)
+    public function confirm(Assignment $assignment): RedirectResponse
     {
         $this->checkAssignmentAccess($assignment);
 
         $assignment->update(['is_confirmed' => true]);
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Assegnazione confermata.'
-        ]);
+        return redirect()->back()
+            ->with('success', 'Assegnazione confermata con successo.');
     }
 
     /**
-     * Get available referees for a tournament (AJAX).
+     * Remove the specified assignment.
      */
-    public function getAvailableReferees(Request $request)
+    public function destroy(Assignment $assignment): RedirectResponse
     {
-        $request->validate([
-            'tournament_id' => 'required|exists:tournaments,id',
-        ]);
+        $this->checkAssignmentAccess($assignment);
 
-        $tournament = Tournament::findOrFail($request->tournament_id);
-        $this->checkTournamentAccess($tournament);
+        $tournamentName = $assignment->tournament->name;
+        $refereeName = $assignment->user->name;
 
-        // Get referees who declared availability
-        $availableReferees = $tournament->availableReferees()
-            ->whereNotIn('users.id', $tournament->assignments()->pluck('user_id'))
-            ->select('users.id', 'users.name', 'users.level', 'users.referee_code', 'availabilities.notes')
-            ->get();
+        $assignment->delete();
 
-        // Get all eligible referees
-        $eligibleReferees = User::where('user_type', 'referee')
-            ->where('is_active', true)
-            ->whereNotIn('id', $tournament->assignments()->pluck('user_id'))
-            ->when(!$tournament->tournamentCategory->is_national, function ($q) use ($tournament) {
-                $q->where('zone_id', $tournament->zone_id);
-            })
-            ->where(function ($q) use ($tournament) {
-                $requiredLevel = $tournament->tournamentCategory->required_referee_level;
-                $levels = array_keys(\App\Models\TournamentCategory::REFEREE_LEVELS);
-                $requiredIndex = array_search($requiredLevel, $levels);
-                $eligibleLevels = array_slice($levels, $requiredIndex);
-                $q->whereIn('level', $eligibleLevels);
-            })
-            ->select('id', 'name', 'level', 'referee_code')
-            ->orderBy('name')
-            ->get();
-
-        return response()->json([
-            'available' => $availableReferees,
-            'eligible' => $eligibleReferees,
-        ]);
+        return redirect()
+            ->route('admin.assignments.index')
+            ->with('success', "Assegnazione di {$refereeName} al torneo {$tournamentName} rimossa con successo.");
     }
 
     /**
-     * Check tournament access.
+     * Check if user can access the tournament.
      */
-    private function checkTournamentAccess(Tournament $tournament)
+    private function checkTournamentAccess(Tournament $tournament): void
     {
         $user = auth()->user();
 
-        if (in_array($user->user_type, ['super_admin', 'national_admin'])) {
+        if ($user->user_type === 'super_admin' || $user->user_type === 'national_admin') {
             return;
         }
 
@@ -374,9 +240,9 @@ class AssignmentController extends Controller
     }
 
     /**
-     * Check assignment access.
+     * Check if user can access the assignment.
      */
-    private function checkAssignmentAccess(Assignment $assignment)
+    private function checkAssignmentAccess(Assignment $assignment): void
     {
         $this->checkTournamentAccess($assignment->tournament);
     }

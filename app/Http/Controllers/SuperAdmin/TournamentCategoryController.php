@@ -45,7 +45,7 @@ class TournamentCategoryController extends Controller
     {
         $data = $request->validated();
 
-        // Prepara le impostazioni
+        // Prepara le impostazioni per il campo JSON
         $settings = [
             'required_referee_level' => $data['required_referee_level'] ?? 'aspirante',
             'min_referees' => $data['min_referees'] ?? 1,
@@ -61,7 +61,7 @@ class TournamentCategoryController extends Controller
             $settings['visibility_zones'] = $data['visibility_zones'] ?? [];
         }
 
-        // Crea la categoria
+        // Crea la categoria con entrambi i sistemi (colonne fisiche + JSON)
         $category = TournamentCategory::create([
             'name' => $data['name'],
             'code' => strtoupper($data['code']),
@@ -71,6 +71,12 @@ class TournamentCategoryController extends Controller
             'required_level' => $data['required_referee_level'] ?? 'aspirante',
             'sort_order' => $data['sort_order'] ?? 0,
             'is_active' => $data['is_active'] ?? true,
+
+            // Colonne fisiche
+            'min_referees' => $data['min_referees'] ?? 1,
+            'max_referees' => $data['max_referees'] ?? $data['min_referees'] ?? 1,
+
+            // Campo JSON (sincronizzato automaticamente dal modello)
             'settings' => $settings,
         ]);
 
@@ -121,7 +127,7 @@ class TournamentCategoryController extends Controller
     {
         $data = $request->validated();
 
-        // Prepara le impostazioni
+        // Prepara le impostazioni per il campo JSON
         $settings = [
             'required_referee_level' => $data['required_referee_level'] ?? 'aspirante',
             'min_referees' => $data['min_referees'] ?? 1,
@@ -137,7 +143,7 @@ class TournamentCategoryController extends Controller
             $settings['visibility_zones'] = $data['visibility_zones'] ?? [];
         }
 
-        // Aggiorna la categoria
+        // Aggiorna la categoria con entrambi i sistemi
         $tournamentCategory->update([
             'name' => $data['name'],
             'code' => strtoupper($data['code']),
@@ -147,11 +153,17 @@ class TournamentCategoryController extends Controller
             'required_level' => $data['required_referee_level'] ?? 'aspirante',
             'sort_order' => $data['sort_order'] ?? 0,
             'is_active' => $data['is_active'] ?? true,
+
+            // Colonne fisiche
+            'min_referees' => $data['min_referees'] ?? 1,
+            'max_referees' => $data['max_referees'] ?? $data['min_referees'] ?? 1,
+
+            // Campo JSON (sincronizzato automaticamente dal modello)
             'settings' => $settings,
         ]);
 
         return redirect()
-            ->route('super-admin.tournament-categories.index')
+            ->route('super-admin.tournament-categories.show', $tournamentCategory)
             ->with('success', 'Categoria torneo aggiornata con successo!');
     }
 
@@ -160,22 +172,37 @@ class TournamentCategoryController extends Controller
      */
     public function destroy(TournamentCategory $tournamentCategory)
     {
-        // Verifica se ci sono tornei associati
-        if ($tournamentCategory->tournaments()->exists()) {
+        if (!$tournamentCategory->canBeDeleted()) {
             return redirect()
                 ->route('super-admin.tournament-categories.index')
-                ->with('error', 'Impossibile eliminare la categoria: ci sono tornei associati.');
+                ->with('error', 'Impossibile eliminare una categoria con tornei associati.');
         }
 
+        $name = $tournamentCategory->name;
         $tournamentCategory->delete();
 
         return redirect()
             ->route('super-admin.tournament-categories.index')
-            ->with('success', 'Categoria torneo eliminata con successo!');
+            ->with('success', "Categoria torneo \"{$name}\" eliminata con successo!");
     }
 
     /**
-     * Update categories order via AJAX
+     * Toggle active status.
+     */
+    public function toggleActive(TournamentCategory $tournamentCategory)
+    {
+        $tournamentCategory->update([
+            'is_active' => !$tournamentCategory->is_active
+        ]);
+
+        $status = $tournamentCategory->is_active ? 'attivata' : 'disattivata';
+
+        return redirect()->back()
+            ->with('success', "Categoria \"{$tournamentCategory->name}\" {$status} con successo!");
+    }
+
+    /**
+     * Update display order.
      */
     public function updateOrder(Request $request)
     {
@@ -194,33 +221,19 @@ class TournamentCategoryController extends Controller
     }
 
     /**
-     * Toggle category active status
+     * Duplicate a tournament category.
      */
-    public function toggleActive(TournamentCategory $tournamentCategory)
-    {
-        $tournamentCategory->update([
-            'is_active' => !$tournamentCategory->is_active
-        ]);
-
-        return response()->json([
-            'success' => true,
-            'is_active' => $tournamentCategory->is_active
-        ]);
-    }
-
-    /**
-     * Duplicate a tournament category
-     */
-    public function duplicate(TournamentCategory $tournamentCategory)
+    public function duplicateCategory(TournamentCategory $tournamentCategory)
     {
         $newCategory = $tournamentCategory->replicate();
         $newCategory->name = $tournamentCategory->name . ' (Copia)';
         $newCategory->code = $tournamentCategory->code . '_COPY';
+        $newCategory->sort_order = TournamentCategory::max('sort_order') + 10;
         $newCategory->is_active = false;
         $newCategory->save();
 
         return redirect()
             ->route('super-admin.tournament-categories.edit', $newCategory)
-            ->with('success', 'Categoria duplicata con successo! Modifica i dettagli e attivala quando pronta.');
+            ->with('success', "Categoria duplicata con successo! Modifica i dettagli e attivala quando pronta.");
     }
 }

@@ -59,11 +59,11 @@ class DataMigrationSeeder extends Seeder
                 ['id' => $zone->id],
                 [
                     'name' => $zone->name,
-                    'code' => 'Z' . str_pad($zone->id, 2, '0', STR_PAD_LEFT),
                     'description' => $zone->description,
                     'is_national' => $zone->is_national,
-                    'is_active' => true,
-                    'sort_order' => $zone->id * 10,
+                    'header_document_path' => $zone->header_document_path,
+                    'header_updated_at' => $zone->header_updated_at,
+                    'header_updated_by' => $zone->header_updated_by,
                     'created_at' => $zone->created_at,
                     'updated_at' => $zone->updated_at,
                 ]

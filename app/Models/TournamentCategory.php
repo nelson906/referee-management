@@ -25,6 +25,8 @@ class TournamentCategory extends Model
         'sort_order',
         'is_active',
         'settings',
+        'min_referees',
+        'max_referees',
     ];
 
     /**
@@ -37,6 +39,8 @@ class TournamentCategory extends Model
         'is_active' => 'boolean',
         'settings' => 'array',
         'sort_order' => 'integer',
+        'min_referees' => 'integer',
+        'max_referees' => 'integer',
     ];
 
     /**
@@ -49,6 +53,8 @@ class TournamentCategory extends Model
         'is_active' => true,
         'sort_order' => 0,
         'level' => 'zonale',
+        'min_referees' => 1,
+        'max_referees' => 1,
     ];
 
     /**
@@ -69,6 +75,22 @@ class TournamentCategory extends Model
         'zonale' => 'Zonale',
         'nazionale' => 'Nazionale',
     ];
+
+    /**
+     * Boot method to keep JSON settings in sync with physical columns
+     */
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::saving(function ($model) {
+            // Sync physical columns to JSON settings
+            $settings = $model->settings ?? [];
+            $settings['min_referees'] = $model->min_referees;
+            $settings['max_referees'] = $model->max_referees;
+            $model->settings = $settings;
+        });
+    }
 
     /**
      * Get the tournaments for the category.
@@ -111,27 +133,11 @@ class TournamentCategory extends Model
     }
 
     /**
-     * Get the minimum number of referees required
-     */
-    public function getMinRefereesAttribute(): int
-    {
-        return $this->settings['min_referees'] ?? 1;
-    }
-
-    /**
-     * Get the maximum number of referees allowed
-     */
-    public function getMaxRefereesAttribute(): int
-    {
-        return $this->settings['max_referees'] ?? $this->min_referees;
-    }
-
-    /**
-     * Get the required referee level
+     * Get the required referee level from settings (for backward compatibility)
      */
     public function getRequiredRefereeLevelAttribute(): string
     {
-        return $this->settings['required_referee_level'] ?? 'aspirante';
+        return $this->settings['required_referee_level'] ?? $this->required_level ?? 'aspirante';
     }
 
     /**
@@ -151,7 +157,7 @@ class TournamentCategory extends Model
         $requiredIndex = array_search($this->required_referee_level, $levels);
         $checkIndex = array_search($level, $levels);
 
-        return $checkIndex >= $requiredIndex;
+        return $checkIndex !== false && $requiredIndex !== false && $checkIndex >= $requiredIndex;
     }
 
     /**
@@ -171,11 +177,22 @@ class TournamentCategory extends Model
     }
 
     /**
-     * Update settings
+     * Update settings and sync with physical columns
      */
     public function updateSettings(array $settings): void
     {
-        $this->settings = array_merge($this->settings ?? [], $settings);
+        $currentSettings = $this->settings ?? [];
+        $newSettings = array_merge($currentSettings, $settings);
+
+        // Update physical columns if provided in settings
+        if (isset($settings['min_referees'])) {
+            $this->min_referees = $settings['min_referees'];
+        }
+        if (isset($settings['max_referees'])) {
+            $this->max_referees = $settings['max_referees'];
+        }
+
+        $this->settings = $newSettings;
         $this->save();
     }
 
@@ -205,29 +222,23 @@ class TournamentCategory extends Model
     }
 
     /**
-     * Get color for calendar display
+     * Check if can be deleted
      */
-    public function getCalendarColorAttribute(): string
+    public function canBeDeleted(): bool
     {
-        // Definisci colori per codici specifici
-        $colorMap = [
-            'T18' => '#3B82F6',      // Blue
-            'S14' => '#8B5CF6',      // Purple
-            'GN-36' => '#EC4899',    // Pink
-            'GN-54' => '#EF4444',    // Red
-            'GN-72' => '#F59E0B',    // Amber
-            'GN-72/54' => '#F97316', // Orange
-            'CI' => '#84CC16',       // Lime
-            'CNZ' => '#14B8A6',      // Teal
-            'TNZ' => '#06B6D4',      // Cyan
+        return !$this->tournaments()->exists();
+    }
+
+    /**
+     * Get display information
+     */
+    public function getDisplayInfoAttribute(): array
+    {
+        return [
+            'formatted_name' => $this->formatted_name,
+            'referee_range' => "{$this->min_referees}-{$this->max_referees} arbitri",
+            'required_level' => self::REFEREE_LEVELS[$this->required_referee_level] ?? 'Non specificato',
+            'visibility' => $this->is_national ? 'Nazionale' : 'Zonale',
         ];
-
-        // Se è nazionale, usa indigo
-        if ($this->is_national) {
-            return '#4F46E5';
-        }
-
-        // Altrimenti usa il colore mappato o verde di default
-        return $colorMap[$this->code] ?? '#10B981';
     }
 }

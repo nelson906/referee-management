@@ -5,14 +5,15 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use Illuminate\Database\Eloquent\Relations\HasOne;
+use Laravel\Sanctum\HasApiTokens;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class User extends Authenticatable
 {
-    use HasFactory, Notifiable, SoftDeletes;
+    use HasApiTokens, HasFactory, Notifiable, SoftDeletes;
 
     /**
      * The attributes that are mass assignable.
@@ -23,14 +24,15 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
-        'user_type',
+        'referee_code',
+        'level',
+        'category',
         'zone_id',
         'phone',
-        'city',
+        'notes',
         'is_active',
-        'email_verified_at',
-        'last_login_at',
-        'preferences',
+        'user_type',
+        'certified_date',
     ];
 
     /**
@@ -50,34 +52,44 @@ class User extends Authenticatable
      */
     protected $casts = [
         'email_verified_at' => 'datetime',
-        'last_login_at' => 'datetime',
-        'is_active' => 'boolean',
-        'preferences' => 'array',
         'password' => 'hashed',
+        'is_active' => 'boolean',
+        'certified_date' => 'date',
     ];
 
     /**
      * User types
      */
-    const TYPE_SUPER_ADMIN = 'super_admin';
-    const TYPE_NATIONAL_ADMIN = 'national_admin';
-    const TYPE_ADMIN = 'admin';
     const TYPE_REFEREE = 'referee';
+    const TYPE_ADMIN = 'admin';
+    const TYPE_NATIONAL_ADMIN = 'national_admin';
+    const TYPE_SUPER_ADMIN = 'super_admin';
 
     const USER_TYPES = [
-        self::TYPE_SUPER_ADMIN => 'Super Admin',
-        self::TYPE_NATIONAL_ADMIN => 'Amministratore Nazionale',
-        self::TYPE_ADMIN => 'Amministratore Zona',
         self::TYPE_REFEREE => 'Arbitro',
+        self::TYPE_ADMIN => 'Admin Zona',
+        self::TYPE_NATIONAL_ADMIN => 'Admin CRC',
+        self::TYPE_SUPER_ADMIN => 'Super Admin',
     ];
 
     /**
-     * Get the referee details (if user is a referee).
+     * Referee levels
      */
-    public function referee(): HasOne
-    {
-        return $this->hasOne(Referee::class);
-    }
+    const LEVEL_ASPIRANT = 'aspirante';
+    const LEVEL_FIRST = 'primo_livello';
+    const LEVEL_REGIONAL = 'regionale';
+    const LEVEL_NATIONAL = 'nazionale';
+    const LEVEL_INTERNATIONAL = 'internazionale';
+    const LEVEL_ARCHIVE = 'archivio';
+
+    const REFEREE_LEVELS = [
+        self::LEVEL_ASPIRANT => 'Aspirante',
+        self::LEVEL_FIRST => 'Primo Livello',
+        self::LEVEL_REGIONAL => 'Regionale',
+        self::LEVEL_NATIONAL => 'Nazionale',
+        self::LEVEL_INTERNATIONAL => 'Internazionale',
+        self::LEVEL_ARCHIVE => 'Archivio',
+    ];
 
     /**
      * Get the zone that the user belongs to.
@@ -88,7 +100,15 @@ class User extends Authenticatable
     }
 
     /**
-     * Get the availabilities for the user.
+     * Get the referee details.
+     */
+    public function refereeDetails(): HasOne
+    {
+        return $this->hasOne(RefereeDetail::class);
+    }
+
+    /**
+     * Get the availabilities declared by the user.
      */
     public function availabilities(): HasMany
     {
@@ -104,19 +124,11 @@ class User extends Authenticatable
     }
 
     /**
-     * Get the notifications for the user.
+     * Get the assignments made by this user (as admin).
      */
-    public function notifications(): HasMany
+    public function assignmentsMade(): HasMany
     {
-        return $this->hasMany(Notification::class, 'assignment_id');
-    }
-
-    /**
-     * Get assignments created by this user (for admins).
-     */
-    public function createdAssignments(): HasMany
-    {
-        return $this->hasMany(Assignment::class, 'assigned_by_id');
+        return $this->hasMany(Assignment::class, 'assigned_by');
     }
 
     /**
@@ -136,55 +148,43 @@ class User extends Authenticatable
     }
 
     /**
-     * Scope a query to only include admins.
+     * Scope a query to only include admins (all types).
      */
     public function scopeAdmins($query)
     {
-        return $query->whereIn('user_type', [self::TYPE_ADMIN, self::TYPE_NATIONAL_ADMIN]);
+        return $query->whereIn('user_type', [
+            self::TYPE_ADMIN,
+            self::TYPE_NATIONAL_ADMIN,
+            self::TYPE_SUPER_ADMIN
+        ]);
     }
 
     /**
      * Scope a query to only include users from a specific zone.
      */
-    public function scopeInZone($query, $zoneId)
+    public function scopeFromZone($query, $zoneId)
     {
         return $query->where('zone_id', $zoneId);
     }
 
     /**
-     * Scope a query to only include national level referees.
+     * Scope a query to only include referees of a specific level.
      */
-    public function scopeNationalLevel($query)
+    public function scopeOfLevel($query, $level)
     {
-        return $query->whereIn('level', [self::LEVEL_NAZIONALE, self::LEVEL_INTERNAZIONALE]);
+        return $query->where('level', $level);
     }
 
     /**
-     * Check if user is a super admin.
+     * Scope a query to only include national/international referees.
      */
-    public function isSuperAdmin(): bool
+    public function scopeNationalReferees($query)
     {
-        return $this->user_type === self::TYPE_SUPER_ADMIN;
+        return $query->whereIn('level', [self::LEVEL_NATIONAL, self::LEVEL_INTERNATIONAL]);
     }
 
     /**
-     * Check if user is a national admin.
-     */
-    public function isNationalAdmin(): bool
-    {
-        return $this->user_type === self::TYPE_NATIONAL_ADMIN;
-    }
-
-    /**
-     * Check if user is an admin (zone or national).
-     */
-    public function isAdmin(): bool
-    {
-        return in_array($this->user_type, [self::TYPE_ADMIN, self::TYPE_NATIONAL_ADMIN]);
-    }
-
-    /**
-     * Check if user is a referee.
+     * Check if user is a referee
      */
     public function isReferee(): bool
     {
@@ -192,124 +192,167 @@ class User extends Authenticatable
     }
 
     /**
-     * Check if referee can access national tournaments.
+     * Check if user is an admin (any type)
      */
-    public function canAccessNationalTournaments(): bool
+    public function isAdmin(): bool
     {
-        if (!$this->isReferee() || !$this->referee) {
-            return false;
-        }
-
-        return $this->referee->canAccessNationalTournaments();
+        return in_array($this->user_type, [
+            self::TYPE_ADMIN,
+            self::TYPE_NATIONAL_ADMIN,
+            self::TYPE_SUPER_ADMIN
+        ]);
     }
 
     /**
-     * Check if user has completed their profile.
+     * Check if user is a zone admin
      */
-    public function hasCompletedProfile(): bool
+    public function isZoneAdmin(): bool
     {
-        if (!$this->isReferee()) {
-            return true; // Non-referees don't need extended profile
-        }
-
-        return $this->referee && $this->referee->hasCompletedProfile();
+        return $this->user_type === self::TYPE_ADMIN;
     }
 
     /**
-     * Mark profile as completed.
+     * Check if user is a national admin
      */
-    public function markProfileAsCompleted(): void
+    public function isNationalAdmin(): bool
     {
-        if ($this->isReferee() && $this->referee) {
-            $this->referee->markProfileAsCompleted();
-        }
+        return $this->user_type === self::TYPE_NATIONAL_ADMIN;
     }
 
     /**
-     * Get the user's full name with referee code.
+     * Check if user is a super admin
      */
-    public function getFullNameWithCodeAttribute(): string
+    public function isSuperAdmin(): bool
     {
-        if ($this->isReferee() && $this->referee && $this->referee->referee_code) {
-            return "{$this->name} ({$this->referee->referee_code})";
+        return $this->user_type === self::TYPE_SUPER_ADMIN;
+    }
+
+    /**
+     * Check if user can manage zone
+     */
+    public function canManageZone($zoneId): bool
+    {
+        if ($this->isSuperAdmin() || $this->isNationalAdmin()) {
+            return true;
         }
 
+        if ($this->isZoneAdmin() && $this->zone_id == $zoneId) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Check if user can view tournament
+     */
+    public function canViewTournament(Tournament $tournament): bool
+    {
+        // Admins can view based on zone access
+        if ($this->isAdmin()) {
+            return $this->canManageZone($tournament->zone_id);
+        }
+
+        // Referees can view if tournament is visible to them
+        if ($this->isReferee()) {
+            // National tournaments are visible to all
+            if ($tournament->tournamentCategory->is_national) {
+                return true;
+            }
+
+            // Zone tournaments are visible to zone referees
+            return $this->zone_id === $tournament->zone_id;
+        }
+
+        return false;
+    }
+
+    /**
+     * Get user type label
+     */
+    public function getUserTypeLabelAttribute(): string
+    {
+        return self::USER_TYPES[$this->user_type] ?? $this->user_type;
+    }
+
+    /**
+     * Get referee level label
+     */
+    public function getLevelLabelAttribute(): string
+    {
+        return self::REFEREE_LEVELS[$this->level] ?? $this->level;
+    }
+
+    /**
+     * Get full display name with code
+     */
+    public function getFullNameAttribute(): string
+    {
+        if ($this->referee_code) {
+            return "{$this->name} ({$this->referee_code})";
+        }
         return $this->name;
     }
 
     /**
-     * Get the user's level label.
+     * Get upcoming assignments
      */
-    public function getLevelLabelAttribute(): string
-    {
-        if ($this->isReferee() && $this->referee) {
-            return $this->referee->level_label;
-        }
-
-        return '';
-    }
-
-    /**
-     * Get the user's category label.
-     */
-    public function getCategoryLabelAttribute(): string
-    {
-        if ($this->isReferee() && $this->referee) {
-            return $this->referee->category_label;
-        }
-
-        return '';
-    }
-
-    /**
-     * Get the user's type label.
-     */
-    public function getUserTypeLabelAttribute(): string
-    {
-        return self::USER_TYPES[$this->user_type] ?? ucfirst($this->user_type);
-    }
-
-    /**
-     * Get upcoming assignments count.
-     */
-    public function getUpcomingAssignmentsCountAttribute(): int
+    public function getUpcomingAssignmentsAttribute()
     {
         return $this->assignments()
-            ->whereHas('tournament', function ($q) {
-                $q->where('start_date', '>=', now());
-            })
-            ->count();
+            ->upcoming()
+            ->with(['tournament.club', 'tournament.zone'])
+            ->orderBy('tournaments.start_date')
+            ->get();
     }
 
     /**
-     * Get this year's assignments count.
+     * Get statistics for referee
      */
-    public function getThisYearAssignmentsCountAttribute(): int
+    public function getRefereeStatisticsAttribute(): array
     {
-        return $this->assignments()
-            ->whereHas('tournament', function ($q) {
-                $q->whereYear('start_date', now()->year);
-            })
-            ->count();
+        if (!$this->isReferee()) {
+            return [];
+        }
+
+        return [
+            'total_availabilities' => $this->availabilities()->count(),
+            'total_assignments' => $this->assignments()->count(),
+            'confirmed_assignments' => $this->assignments()->confirmed()->count(),
+            'upcoming_assignments' => $this->assignments()->upcoming()->count(),
+            'completed_assignments' => $this->assignments()->whereHas('tournament', function ($q) {
+                $q->where('status', 'completed');
+            })->count(),
+            'current_year_assignments' => $this->assignments()
+                ->whereYear('assigned_at', now()->year)
+                ->count(),
+        ];
     }
 
     /**
-     * Get availability count for current year.
+     * Check if can be assigned to tournament
      */
-    public function getThisYearAvailabilitiesCountAttribute(): int
+    public function canBeAssignedToTournament(Tournament $tournament): bool
     {
-        return $this->availabilities()
-            ->whereHas('tournament', function ($q) {
-                $q->whereYear('start_date', now()->year);
-            })
-            ->count();
-    }
+        if (!$this->isReferee() || !$this->is_active) {
+            return false;
+        }
 
-    /**
-     * Update last login timestamp.
-     */
-    public function updateLastLogin(): void
-    {
-        $this->update(['last_login_at' => now()]);
+        // Check if already assigned
+        if ($this->assignments()->where('tournament_id', $tournament->id)->exists()) {
+            return false;
+        }
+
+        // Check level requirement
+        if (!$tournament->tournamentCategory->requiresRefereeLevel($this->level)) {
+            return false;
+        }
+
+        // Check zone for non-national tournaments
+        if (!$tournament->tournamentCategory->is_national && $this->zone_id !== $tournament->zone_id) {
+            return false;
+        }
+
+        return true;
     }
 }

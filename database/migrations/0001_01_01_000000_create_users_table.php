@@ -12,27 +12,20 @@ return new class extends Migration
     public function up(): void
     {
         // Create zones table first (needed for users foreign key)
-        Schema::create('zones', function (Blueprint $table) {
-            $table->id();
-            $table->string('name');
-            $table->string('code', 10)->unique();
-            $table->text('description')->nullable();
-            $table->string('region')->nullable();
-            $table->string('contact_person')->nullable();
-            $table->string('contact_email')->nullable();
-            $table->string('contact_phone')->nullable();
-            $table->string('address')->nullable();
-            $table->string('city')->nullable();
-            $table->string('postal_code', 10)->nullable();
-            $table->boolean('is_active')->default(true);
-            $table->boolean('is_national')->default(false);
-            $table->integer('sort_order')->default(0);
-            $table->json('settings')->nullable();
-            $table->timestamps();
-            $table->softDeletes();
+            Schema::create('zones', function (Blueprint $table) {
+                $table->id();
+                $table->string('name');
+                $table->text('description')->nullable();
+                $table->boolean('is_national')->default(false);
+                $table->string('header_document_path')->nullable();
+                $table->timestamp('header_updated_at')->nullable();
+                $table->unsignedBigInteger('header_updated_by')->nullable();
+                $table->timestamps();
 
-            $table->index(['is_active', 'sort_order']);
-        });
+                // Indexes
+                $table->index('is_national');
+                $table->index('name');
+            });
 
         // Create users table with all fields from the start
         Schema::create('users', function (Blueprint $table) {
