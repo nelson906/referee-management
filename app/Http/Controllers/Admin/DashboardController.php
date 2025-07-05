@@ -4,175 +4,162 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Tournament;
-use App\Models\Assignment;
 use App\Models\User;
-use App\Models\Zone;
+use App\Models\Assignment;
+use App\Models\Club;
+use Illuminate\View\View;
 use Carbon\Carbon;
-use Illuminate\Support\Facades\DB;
 
 class DashboardController extends Controller
 {
     /**
      * Display the admin dashboard.
      */
-    public function index()
+    public function index(): View
     {
         $user = auth()->user();
         $isNationalAdmin = $user->user_type === 'national_admin';
 
-        // Get zones accessible by user
-        $zones = $isNationalAdmin
-            ? Zone::with('clubs', 'referees')->get()
-            : Zone::where('id', $user->zone_id)->with('clubs', 'referees')->get();
+        // Get statistics based on user access
+        $stats = $this->getStatistics($user, $isNationalAdmin);
 
-        // Base queries
+        // Get alerts (unconfirmed assignments, tournaments needing referees, etc.)
+        $alerts = $this->getAlerts($user, $isNationalAdmin);
+
+        // Get tournaments that need referees
+        $tournamentsNeedingReferees = $this->getTournamentsNeedingReferees($user, $isNationalAdmin);
+
+        // Get recent assignments
+        $recentAssignments = $this->getRecentAssignments($user, $isNationalAdmin);
+
+        return view('admin.dashboard', compact(
+            'isNationalAdmin',
+            'stats',
+            'alerts',
+            'tournamentsNeedingReferees',
+            'recentAssignments'
+        ));
+    }
+
+    /**
+     * Get statistics for the dashboard.
+     */
+    private function getStatistics($user, $isNationalAdmin): array
+    {
+        // Base queries for tournaments and assignments
         $tournamentsQuery = Tournament::query();
         $assignmentsQuery = Assignment::query();
         $refereesQuery = User::where('user_type', 'referee');
+        $clubsQuery = Club::query();
 
-        // Filter by zone for zone admins
+        // Apply zone filtering for non-national admins
         if (!$isNationalAdmin && $user->user_type !== 'super_admin') {
             $tournamentsQuery->where('zone_id', $user->zone_id);
-            $assignmentsQuery->whereHas('tournament', function ($q) use ($user) {
+            $assignmentsQuery->whereHas('tournament', function($q) use ($user) {
                 $q->where('zone_id', $user->zone_id);
             });
             $refereesQuery->where('zone_id', $user->zone_id);
+            $clubsQuery->where('zone_id', $user->zone_id);
         }
 
-        // General Statistics
-        $stats = [
-            'total_tournaments' => (clone $tournamentsQuery)->count(),
-            'active_tournaments' => (clone $tournamentsQuery)->active()->count(),
-            'upcoming_tournaments' => (clone $tournamentsQuery)->upcoming()->count(),
-            'total_referees' => (clone $refereesQuery)->count(),
-            'active_referees' => (clone $refereesQuery)->where('is_active', true)->count(),
-            'total_assignments' => (clone $assignmentsQuery)->count(),
-            'pending_confirmations' => (clone $assignmentsQuery)->where('is_confirmed', false)->count(),
-            'zones_count' => $zones->count(),
+        return [
+            'total_tournaments' => $tournamentsQuery->count(),
+            'active_tournaments' => $tournamentsQuery->active()->count(),
+            'upcoming_tournaments' => $tournamentsQuery->upcoming()->count(),
+            'draft_tournaments' => $tournamentsQuery->where('status', 'draft')->count(),
+
+            'total_referees' => $refereesQuery->count(),
+            'active_referees' => $refereesQuery->where('is_active', true)->count(),
+            'inactive_referees' => $refereesQuery->where('is_active', false)->count(),
+
+            'total_assignments' => $assignmentsQuery->count(),
+            'unconfirmed_assignments' => $assignmentsQuery->where('is_confirmed', false)->count(),
+            'confirmed_assignments' => $assignmentsQuery->where('is_confirmed', true)->count(),
+            'current_year_assignments' => $assignmentsQuery->whereYear('created_at', now()->year)->count(),
+
+            'total_clubs' => $clubsQuery->count(),
+            'active_clubs' => $clubsQuery->where('is_active', true)->count(),
         ];
+    }
 
-        // Tournaments by status
-        $tournamentsByStatus = (clone $tournamentsQuery)
-            ->select('status', DB::raw('count(*) as total'))
-            ->groupBy('status')
-            ->pluck('total', 'status')
-            ->toArray();
-
-        // Upcoming tournaments needing referees
-        $tournamentsNeedingReferees = (clone $tournamentsQuery)
-            ->with(['club', 'tournamentCategory'])
-            ->whereIn('status', ['open', 'closed'])
-            ->whereRaw('(SELECT COUNT(*) FROM assignments WHERE tournament_id = tournaments.id) <
-                       (SELECT min_referees FROM tournament_categories WHERE id = tournaments.tournament_category_id)')
-            ->orderBy('start_date')
-            ->limit(10)
-            ->get();
-
-        // Recent assignments
-        $recentAssignments = (clone $assignmentsQuery)
-            ->with(['user', 'tournament.club'])
-            ->orderBy('assigned_at', 'desc')
-            ->limit(10)
-            ->get();
-
-        // Availability deadlines approaching
-        $deadlinesApproaching = (clone $tournamentsQuery)
-            ->with(['club', 'tournamentCategory'])
-            ->where('status', 'open')
-            ->whereBetween('availability_deadline', [Carbon::today(), Carbon::today()->addDays(7)])
-            ->orderBy('availability_deadline')
-            ->get();
-
-        // Referees by level (for current zone(s))
-        $refereesByLevel = (clone $refereesQuery)
-            ->where('is_active', true)
-            ->select('level', DB::raw('count(*) as total'))
-            ->groupBy('level')
-            ->pluck('total', 'level')
-            ->toArray();
-
-        // Monthly tournament trend (last 6 months)
-        $monthlyTrend = (clone $tournamentsQuery)
-            ->select(
-                DB::raw('DATE_FORMAT(start_date, "%Y-%m") as month'),
-                DB::raw('count(*) as total')
-            )
-            ->where('start_date', '>=', Carbon::now()->subMonths(6)->startOfMonth())
-            ->groupBy('month')
-            ->orderBy('month')
-            ->pluck('total', 'month')
-            ->toArray();
-
-        // Zone statistics (for national admin)
-        $zoneStats = [];
-        if ($isNationalAdmin) {
-            foreach ($zones as $zone) {
-                $zoneStats[$zone->name] = [
-                    'tournaments' => $zone->tournaments()->count(),
-                    'active_tournaments' => $zone->tournaments()->active()->count(),
-                    'referees' => $zone->referees()->where('is_active', true)->count(),
-                    'clubs' => $zone->clubs()->where('is_active', true)->count(),
-                ];
-            }
-        }
-
-        // Top referees by assignments (current year)
-        $topReferees = (clone $refereesQuery)
-            ->withCount(['assignments' => function ($query) {
-                $query->whereYear('assigned_at', Carbon::now()->year);
-            }])
-            ->where('is_active', true)
-            ->orderBy('assignments_count', 'desc')
-            ->limit(5)
-            ->get();
-
-        // Alerts and notifications
+    /**
+     * Get alerts for the dashboard.
+     */
+    private function getAlerts($user, $isNationalAdmin): array
+    {
         $alerts = [];
 
-        // Check for tournaments without enough referees starting soon
-        $tournamentsStartingSoon = (clone $tournamentsQuery)
-            ->whereIn('status', ['open', 'closed'])
-            ->whereBetween('start_date', [Carbon::today(), Carbon::today()->addDays(14)])
-            ->get();
-
-        foreach ($tournamentsStartingSoon as $tournament) {
-            if ($tournament->assignments()->count() < $tournament->required_referees) {
-                $alerts[] = [
-                    'type' => 'warning',
-                    'message' => "Il torneo '{$tournament->name}' inizia il {$tournament->start_date->format('d/m/Y')} ma ha solo {$tournament->assignments()->count()} arbitri su {$tournament->required_referees} richiesti.",
-                    'link' => route('admin.tournaments.show', $tournament),
-                ];
-            }
-        }
-
         // Check for unconfirmed assignments
-        $unconfirmedCount = (clone $assignmentsQuery)
-            ->where('is_confirmed', false)
-            ->whereHas('tournament', function ($q) {
-                $q->where('start_date', '>=', Carbon::today());
-            })
-            ->count();
+        $unconfirmedQuery = Assignment::where('is_confirmed', false);
+        if (!$isNationalAdmin && $user->user_type !== 'super_admin') {
+            $unconfirmedQuery->whereHas('tournament', function($q) use ($user) {
+                $q->where('zone_id', $user->zone_id);
+            });
+        }
+        $unconfirmedCount = $unconfirmedQuery->count();
 
         if ($unconfirmedCount > 0) {
             $alerts[] = [
-                'type' => 'info',
+                'type' => 'warning',
                 'message' => "Ci sono {$unconfirmedCount} assegnazioni non ancora confermate dagli arbitri.",
-                'link' => route('admin.assignments.index', ['status' => 'pending']),
+                'action_url' => route('admin.assignments.index', ['status' => 'unconfirmed']),
+                'action_text' => 'Visualizza'
             ];
         }
 
-        return view('admin.dashboard', compact(
-            'stats',
-            'tournamentsByStatus',
-            'tournamentsNeedingReferees',
-            'recentAssignments',
-            'deadlinesApproaching',
-            'refereesByLevel',
-            'monthlyTrend',
-            'zoneStats',
-            'topReferees',
-            'alerts',
-            'isNationalAdmin'
-        ));
+        // Check for tournaments needing referees
+        $tournamentsNeedingReferees = $this->getTournamentsNeedingReferees($user, $isNationalAdmin);
+        if ($tournamentsNeedingReferees->count() > 0) {
+            $alerts[] = [
+                'type' => 'info',
+                'message' => "Ci sono {$tournamentsNeedingReferees->count()} tornei che necessitano ancora di arbitri.",
+                'action_url' => route('admin.tournaments.index', ['status' => 'open']),
+                'action_text' => 'Visualizza'
+            ];
+        }
+
+        return $alerts;
+    }
+
+    /**
+     * Get tournaments that need referees.
+     */
+    private function getTournamentsNeedingReferees($user, $isNationalAdmin)
+    {
+        $query = Tournament::with(['club', 'tournamentCategory'])
+            ->whereIn('status', ['open', 'closed'])
+            ->where('start_date', '>=', Carbon::today());
+
+        // Apply zone filtering for non-national admins
+        if (!$isNationalAdmin && $user->user_type !== 'super_admin') {
+            $query->where('zone_id', $user->zone_id);
+        }
+
+        return $query->get()->filter(function ($tournament) {
+            $assignedCount = $tournament->assignments()->count();
+            $minRequired = $tournament->tournamentCategory->min_referees ?? 1;
+            return $assignedCount < $minRequired;
+        })->take(5);
+    }
+
+    /**
+     * Get recent assignments.
+     */
+    private function getRecentAssignments($user, $isNationalAdmin)
+    {
+        $query = Assignment::with([
+            'user:id,name,referee_code',
+            'tournament:id,name,start_date,club_id',
+            'tournament.club:id,name'
+        ])->orderBy('created_at', 'desc');
+
+        // Apply zone filtering for non-national admins
+        if (!$isNationalAdmin && $user->user_type !== 'super_admin') {
+            $query->whereHas('tournament', function($q) use ($user) {
+                $q->where('zone_id', $user->zone_id);
+            });
+        }
+
+        return $query->limit(5)->get();
     }
 }

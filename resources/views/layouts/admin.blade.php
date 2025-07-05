@@ -17,7 +17,7 @@
     <!-- Additional CSS -->
     @stack('styles')
 </head>
-<body class="font-sans antialiased bg-gray-100">
+<body class="font-sans antialiased bg-gray-100" x-data="{ open: false }">
     <div class="min-h-screen">
         <!-- Navigation -->
         <nav class="bg-gradient-to-r from-blue-600 to-blue-800 shadow-lg">
@@ -61,7 +61,7 @@
                             <a href="{{ route('admin.clubs.index') }}"
                                class="inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium leading-5 transition duration-150 ease-in-out
                                {{ request()->routeIs('admin.clubs.*') ? 'border-white text-white' : 'border-transparent text-blue-100 hover:text-white hover:border-blue-300' }}">
-                                Circoli
+                                Clubs
                             </a>
 
                             <a href="{{ route('admin.assignments.index') }}"
@@ -114,19 +114,14 @@
                     <div class="hidden sm:flex sm:items-center sm:ml-6">
                         <!-- Notifications -->
                         <div class="mr-4">
-                            <a href="{{ route('admin.notifications.index') }}"
-                               class="relative text-blue-100 hover:text-white transition duration-150 ease-in-out">
+                            <a href="#" class="relative text-blue-100 hover:text-white transition duration-150 ease-in-out">
                                 <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path>
                                 </svg>
-                                @php
-                                    $pendingNotifications = \App\Models\Notification::where('status', 'pending')->count();
-                                @endphp
-                                @if($pendingNotifications > 0)
-                                    <span class="absolute -top-1 -right-1 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white bg-red-600 rounded-full">
-                                        {{ $pendingNotifications }}
-                                    </span>
-                                @endif
+                                {{-- Notification badge --}}
+                                <span class="absolute -top-1 -right-1 inline-flex items-center justify-center px-2 py-1 text-xs font-bold leading-none text-white bg-red-600 rounded-full" style="display: none;">
+                                    3
+                                </span>
                             </a>
                         </div>
 
@@ -139,12 +134,9 @@
                                         ({{ auth()->user()->user_type == 'national_admin' ? 'CRC Admin' : 'Zone Admin' }})
                                     </span>
                                 </span>
-
-                                <!-- Dropdown -->
-                                <div class="relative" x-data="{ open: false }">
-                                    <button @click="open = !open"
-                                            class="flex items-center text-sm font-medium text-blue-100 hover:text-white focus:outline-none focus:text-white transition duration-150 ease-in-out">
-                                        <svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                                <div class="ml-3 relative" x-data="{ open: false }">
+                                    <button @click="open = !open" class="flex items-center text-sm text-white hover:text-blue-200 focus:outline-none transition duration-150 ease-in-out">
+                                        <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
                                             <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
                                         </svg>
                                     </button>
@@ -160,29 +152,12 @@
                                          class="absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5"
                                          style="display: none;">
                                         <div class="py-1">
-                                            <a href="{{ route('referee.dashboard') }}"
-                                               class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                                                Area Arbitro
-                                            </a>
-
-                                            @if(auth()->user()->user_type == 'super_admin')
-                                            <a href="{{ route('super-admin.dashboard') }}"
-                                               class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                                                Super Admin
-                                            </a>
-                                            @endif
-
+                                            <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Profilo</a>
+                                            <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Impostazioni</a>
                                             <div class="border-t border-gray-100"></div>
-
-                                            <a href="{{ route('referee.profile.edit') }}"
-                                               class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-                                                Profilo
-                                            </a>
-
                                             <form method="POST" action="{{ route('logout') }}">
                                                 @csrf
-                                                <button type="submit"
-                                                        class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                                <button type="submit" class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
                                                     Logout
                                                 </button>
                                             </form>
@@ -229,7 +204,7 @@
                     <a href="{{ route('admin.clubs.index') }}"
                        class="block pl-3 pr-4 py-2 border-l-4 text-base font-medium transition duration-150 ease-in-out
                        {{ request()->routeIs('admin.clubs.*') ? 'border-white text-white bg-blue-800' : 'border-transparent text-blue-100 hover:text-white hover:bg-blue-800 hover:border-blue-300' }}">
-                        Circoli
+                        Clubs
                     </a>
 
                     <a href="{{ route('admin.assignments.index') }}"
@@ -238,54 +213,36 @@
                         Assegnazioni
                     </a>
                 </div>
-
-                <!-- Mobile User Info -->
-                <div class="pt-4 pb-3 border-t border-blue-600">
-                    <div class="flex items-center px-4">
-                        <div>
-                            <div class="text-base font-medium text-white">{{ auth()->user()->name }}</div>
-                            <div class="text-sm font-medium text-blue-200">{{ auth()->user()->email }}</div>
-                        </div>
-                    </div>
-                    <div class="mt-3 space-y-1">
-                        <a href="{{ route('referee.dashboard') }}"
-                           class="block px-4 py-2 text-base font-medium text-blue-100 hover:text-white hover:bg-blue-800">
-                            Area Arbitro
-                        </a>
-
-                        <a href="{{ route('referee.profile.edit') }}"
-                           class="block px-4 py-2 text-base font-medium text-blue-100 hover:text-white hover:bg-blue-800">
-                            Profilo
-                        </a>
-
-                        <form method="POST" action="{{ route('logout') }}">
-                            @csrf
-                            <button type="submit"
-                                    class="block w-full text-left px-4 py-2 text-base font-medium text-blue-100 hover:text-white hover:bg-blue-800">
-                                Logout
-                            </button>
-                        </form>
-                    </div>
-                </div>
             </div>
         </nav>
 
-        <!-- Page Content -->
-        <main>
+        <!-- Main Content -->
+        <main class="pb-8">
+            <!-- Flash Messages -->
+            @if (session('success'))
+                <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mx-4 mt-4" role="alert">
+                    <span class="block sm:inline">{{ session('success') }}</span>
+                </div>
+            @endif
+
+            @if (session('error'))
+                <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mx-4 mt-4" role="alert">
+                    <span class="block sm:inline">{{ session('error') }}</span>
+                </div>
+            @endif
+
+            @if (session('warning'))
+                <div class="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded relative mx-4 mt-4" role="alert">
+                    <span class="block sm:inline">{{ session('warning') }}</span>
+                </div>
+            @endif
+
+            <!-- Page Content -->
             @yield('content')
         </main>
     </div>
 
-    <!-- Footer -->
-    <footer class="bg-white shadow-lg mt-auto">
-        <div class="max-w-7xl mx-auto py-4 px-4 sm:px-6 lg:px-8">
-            <div class="text-center text-sm text-gray-500">
-                © {{ date('Y') }} {{ config('app.name', 'Golf Referee System') }}. Sistema di gestione arbitri golf.
-            </div>
-        </div>
-    </footer>
-
-    <!-- Scripts -->
+    <!-- Additional Scripts -->
     @stack('scripts')
 </body>
 </html>

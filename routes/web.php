@@ -83,7 +83,7 @@ Route::middleware(['auth'])->group(function () {
             ->name('referees.availabilities');
 
         // club Management (for zone admins)
-        Route::resource('clubs', Admin\clubController::class);
+        Route::resource('clubs', Admin\ClubController::class);
 
         // Assignment Management
         Route::resource('assignments', Admin\AssignmentController::class, ['only' => ['index', 'show', 'update', 'destroy']]);
@@ -122,9 +122,45 @@ Route::middleware(['auth'])->group(function () {
     // =================================================================
     Route::prefix('reports')->name('reports.')->group(function () {
         Route::get('/', [Reports\ReportController::class, 'index'])->name('index');
-        Route::get('referees', [Reports\RefereeReportController::class, 'index'])->name('referees.index');
-        Route::get('tournaments', [Reports\TournamentReportController::class, 'index'])->name('tournaments.index');
+
+        // Referee Reports
+        Route::get('referee/{referee}', [Reports\RefereeReportController::class, 'show'])
+            ->name('referee.show')
+            ->middleware('can:view,referee');
+        Route::get('referee/{referee}/export', [Reports\RefereeReportController::class, 'export'])
+            ->name('referee.export')
+            ->middleware('can:view,referee');
+
+        // Zone Reports (admin only)
+        Route::middleware(['admin'])->group(function () {
+            Route::get('zone/{zone}', [Reports\ZoneReportController::class, 'show'])
+                ->name('zone.show');
+            Route::get('zone/{zone}/export', [Reports\ZoneReportController::class, 'export'])
+                ->name('zone.export');
+            Route::get('zone/{zone}/referees', [Reports\ZoneReportController::class, 'referees'])
+                ->name('zone.referees');
+            Route::get('zone/{zone}/tournaments', [Reports\ZoneReportController::class, 'tournaments'])
+                ->name('zone.tournaments');
+        });
+
+        // Tournament Reports
+        Route::get('tournament/{tournament}', [Reports\TournamentReportController::class, 'show'])
+            ->name('tournament.show')
+            ->middleware('can:view,tournament');
+        Route::get('tournament/{tournament}/export', [Reports\TournamentReportController::class, 'export'])
+            ->name('tournament.export')
+            ->middleware('can:view,tournament');
+
+        // Assignment Reports
         Route::get('assignments', [Reports\AssignmentReportController::class, 'index'])->name('assignments.index');
+
+        // Category Reports (super admin only)
+        Route::middleware(['superadmin'])->group(function () {
+            Route::get('category/{category}', [Reports\CategoryReportController::class, 'show'])
+                ->name('category.show');
+            Route::get('category/{category}/export', [Reports\CategoryReportController::class, 'export'])
+                ->name('category.export');
+        });
     });
 
     // =================================================================
