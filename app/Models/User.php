@@ -355,4 +355,29 @@ class User extends Authenticatable
 
         return true;
     }
+    /**
+     * Check if user has completed their profile.
+     * Add this method to your app/Models/User.php file
+     */
+    public function hasCompletedProfile(): bool
+    {
+        // Per gli admin, considerali sempre con profilo completo
+        if ($this->isAdmin()) {
+            return true;
+        }
+
+        // Per gli arbitri, verifica campi obbligatori
+        if ($this->isReferee()) {
+            return !empty($this->name) &&
+                   !empty($this->email) &&
+                   !empty($this->referee_code) &&
+                   !empty($this->level) &&
+                   !empty($this->zone_id) &&
+                   !empty($this->phone);
+        }
+
+        // Default: profilo completo se ha nome ed email
+        return !empty($this->name) && !empty($this->email);
+    }
+
 }

@@ -3,38 +3,39 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use Illuminate\Http\RedirectResponse;
 
 class DashboardController extends Controller
 {
     /**
-     * Redirect users to appropriate dashboard based on their role.
+     * Handle the incoming request.
      */
-    public function index(Request $request): RedirectResponse
+    public function index(Request $request)
     {
         $user = auth()->user();
 
-        if (!$user) {
-            return redirect()->route('login');
+        // Se l'utente non ha completato il profilo, reindirizza al profilo
+        if (!$user->hasCompletedProfile()) {
+            return redirect()->route('referee.profile.edit')
+                ->with('info', 'Completa il tuo profilo per continuare.');
         }
 
-        // Redirect based on user type
+        // Reindirizza basato sul tipo di utente
         switch ($user->user_type) {
             case 'super_admin':
                 return redirect()->route('super-admin.dashboard');
 
-            case 'admin':
             case 'national_admin':
+            case 'admin':
                 return redirect()->route('admin.dashboard');
 
             case 'referee':
                 return redirect()->route('referee.dashboard');
 
             default:
-                // Fallback for unknown user types
+                // Fallback per tipi di utente non riconosciuti
                 auth()->logout();
                 return redirect()->route('login')
-                    ->with('error', 'Tipo di utente non riconosciuto. Contatta l\'amministratore.');
+                    ->with('error', 'Tipo di utente non valido. Contatta l\'amministratore.');
         }
     }
 }
