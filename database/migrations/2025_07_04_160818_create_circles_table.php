@@ -13,7 +13,29 @@ return new class extends Migration
     {
         Schema::create('circles', function (Blueprint $table) {
             $table->id();
+            $table->string('name');
+            $table->string('code', 20)->unique()->nullable();
+            $table->foreignId('zone_id')->constrained('zones');
+            $table->string('address')->nullable();
+            $table->string('city');
+            $table->string('postal_code', 10)->nullable();
+            $table->string('province', 5)->nullable();
+            $table->string('region')->nullable();
+            $table->string('phone')->nullable();
+            $table->string('email')->nullable();
+            $table->string('website')->nullable();
+            $table->string('contact_person')->nullable();
+            $table->string('contact_phone')->nullable();
+            $table->string('contact_email')->nullable();
+            $table->boolean('is_active')->default(true);
+            $table->string('federation_code')->nullable();
+            $table->json('settings')->nullable();
+            $table->text('notes')->nullable();
             $table->timestamps();
+            $table->softDeletes();
+
+            $table->index(['zone_id', 'is_active']);
+            $table->index(['city', 'is_active']);
         });
     }
 

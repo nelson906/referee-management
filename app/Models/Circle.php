@@ -2,164 +2,83 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
-
-class Circle extends Model
+/**
+ * Circle Model - Alias for Club model to maintain backward compatibility
+ *
+ * This model acts as an alias for the Club model since the terminology
+ * changed from "circles" to "clubs" for golf course management.
+ */
+class Circle extends Club
 {
-    use HasFactory;
-
     /**
-     * The attributes that are mass assignable.
+     * The table associated with the model.
+     * Points to clubs table since we standardized on that name.
      *
-     * @var array<int, string>
+     * @var string
      */
-    protected $fillable = [
-        'name',
-        'code',
-        'city',
-        'province',
-        'email',
-        'phone',
-        'address',
-        'contact_person',
-        'zone_id',
-        'notes',
-        'is_active',
-    ];
-
-    /**
-     * The attributes that should be cast.
-     *
-     * @var array<string, string>
-     */
-    protected $casts = [
-        'is_active' => 'boolean',
-    ];
-
-    /**
-     * Get the zone that the circle belongs to.
-     */
-    public function zone(): BelongsTo
-    {
-        return $this->belongsTo(Zone::class);
-    }
+    protected $table = 'clubs';
 
     /**
      * Get the tournaments hosted by the circle.
      */
-    public function tournaments(): HasMany
+    public function tournaments()
     {
         return $this->hasMany(Tournament::class, 'circle_id');
     }
 
     /**
-     * Scope a query to only include active circles.
+     * Create a new Circle instance (which is actually a Club)
      */
-    public function scopeActive($query)
+    public static function create(array $attributes = [])
     {
-        return $query->where('is_active', true);
+        return parent::create($attributes);
     }
 
     /**
-     * Scope a query to only include circles from a specific zone.
+     * Get all circles (alias for clubs)
      */
-    public function scopeFromZone($query, $zoneId)
+    public static function all($columns = ['*'])
     {
-        return $query->where('zone_id', $zoneId);
+        return parent::all($columns);
     }
 
     /**
-     * Get the full address
+     * Find a circle by ID (alias for club)
      */
-    public function getFullAddressAttribute(): string
+    public static function find($id, $columns = ['*'])
     {
-        $parts = array_filter([
-            $this->address,
-            $this->city,
-            $this->province
-        ]);
-
-        return implode(', ', $parts);
+        return parent::find($id, $columns);
     }
 
     /**
-     * Get upcoming tournaments count
+     * Alias method for backward compatibility
      */
-    public function getUpcomingTournamentsCountAttribute(): int
+    public function getCircleNameAttribute()
     {
-        return $this->tournaments()
-            ->upcoming()
-            ->count();
+        return $this->name;
     }
 
     /**
-     * Get active tournaments count
+     * Alias method for backward compatibility
      */
-    public function getActiveTournamentsCountAttribute(): int
+    public function getCircleEmailAttribute()
     {
-        return $this->tournaments()
-            ->active()
-            ->count();
+        return $this->best_email;
     }
 
     /**
-     * Check if circle has any active tournaments
+     * Alias method for backward compatibility
      */
-    public function hasActiveTournaments(): bool
+    public function getCirclePhoneAttribute()
     {
-        return $this->tournaments()
-            ->active()
-            ->exists();
+        return $this->best_phone;
     }
 
     /**
-     * Get formatted contact info
+     * Alias method for backward compatibility
      */
-    public function getContactInfoAttribute(): array
+    public function getCircleAddressAttribute()
     {
-        return [
-            'person' => $this->contact_person,
-            'email' => $this->email,
-            'phone' => $this->phone,
-        ];
-    }
-
-    /**
-     * Search circles by name or code
-     */
-    public function scopeSearch($query, $search)
-    {
-        return $query->where(function ($q) use ($search) {
-            $q->where('name', 'like', "%{$search}%")
-              ->orWhere('code', 'like', "%{$search}%")
-              ->orWhere('city', 'like', "%{$search}%");
-        });
-    }
-
-    /**
-     * Order by name
-     */
-    public function scopeOrdered($query)
-    {
-        return $query->orderBy('name');
-    }
-
-    /**
-     * Get display name with code
-     */
-    public function getDisplayNameAttribute(): string
-    {
-        return "{$this->name} ({$this->code})";
-    }
-
-    /**
-     * Check if can be deleted
-     */
-    public function canBeDeleted(): bool
-    {
-        return !$this->tournaments()->exists();
+        return $this->full_address;
     }
 }

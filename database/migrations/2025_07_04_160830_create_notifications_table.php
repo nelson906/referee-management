@@ -13,25 +13,22 @@ return new class extends Migration
     {
         Schema::create('notifications', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('assignment_id')->constrained()->onDelete('cascade');
-            $table->string('recipient_type', 50); // 'referee', 'circle', 'institutional'
+            $table->foreignId('assignment_id')->constrained('assignments');
+            $table->enum('recipient_type', ['referee', 'circle', 'institutional']);
             $table->string('recipient_email');
             $table->string('subject');
             $table->text('body');
             $table->string('template_used')->nullable();
+            $table->enum('status', ['pending', 'sent', 'failed', 'cancelled'])->default('pending');
             $table->timestamp('sent_at')->nullable();
-            $table->string('status', 50)->default('pending'); // pending, sent, failed
-            $table->text('tracking_info')->nullable();
-            $table->json('attachments')->nullable();
-            $table->string('error_message')->nullable();
+            $table->text('error_message')->nullable();
             $table->integer('retry_count')->default(0);
+            $table->json('attachments')->nullable();
             $table->timestamps();
 
-            // Indexes
-            $table->index('assignment_id');
-            $table->index('status');
-            $table->index('sent_at');
-            $table->index(['recipient_type', 'recipient_email']);
+            $table->index(['assignment_id', 'recipient_type']);
+            $table->index(['status', 'created_at']);
+            $table->index(['recipient_email', 'status']);
         });
     }
 

@@ -98,30 +98,38 @@ class NotificationService
         $this->sendEmail($notification);
     }
 
-    /**
-     * Send notification to circle
+
+/**
+     * Send notification to circle/club
      */
     protected function sendCircleNotification(Assignment $assignment): void
     {
-        $circle = $assignment->tournament->club;
+        $club = $assignment->tournament->club;
 
-        if (!$circle->email) {
-            Log::warning('Circle has no email', ['circle_id' => $circle->id]);
+        if (!$club->best_email) {
+            Log::warning('Club has no email', ['club_id' => $club->id]);
             return;
         }
 
         // Get template
         $template = $this->getTemplate('circle', $assignment->tournament->zone_id);
 
-        // Prepare variables
+        // Prepare variables (use both club_ and circle_ for compatibility)
         $variables = [
-            'circle_name' => $circle->name,
+            'circle_name' => $club->name,
+            'club_name' => $club->name,
             'tournament_name' => $assignment->tournament->name,
             'tournament_dates' => $assignment->tournament->date_range,
             'referee_name' => $assignment->user->name,
             'referee_level' => ucfirst($assignment->user->level),
             'referee_code' => $assignment->user->referee_code,
-            'contact_person' => $circle->contact_person,
+            'contact_person' => $club->contact_person,
+            'circle_address' => $club->full_address,
+            'club_address' => $club->full_address,
+            'circle_phone' => $club->best_phone,
+            'club_phone' => $club->best_phone,
+            'circle_email' => $club->best_email,
+            'club_email' => $club->best_email,
         ];
 
         // Replace variables
@@ -130,15 +138,16 @@ class NotificationService
 
         // Generate club letter if needed
         $clubLetterPath = null;
-        if ($assignment->tournament->assignments()->count() === $assignment->tournament->required_referees) {
-            $clubLetterPath = $this->documentService->generateClubLetter($assignment->tournament);
+        $tournament = $assignment->tournament;
+        if ($tournament->assignments()->count() >= $tournament->tournamentCategory->min_referees) {
+            $clubLetterPath = $this->documentService->generateClubLetter($tournament);
         }
 
         // Create notification
         $notification = Notification::create([
             'assignment_id' => $assignment->id,
             'recipient_type' => 'circle',
-            'recipient_email' => $circle->email,
+            'recipient_email' => $club->best_email,
             'subject' => $subject,
             'body' => $body,
             'template_used' => $template->name ?? 'default',

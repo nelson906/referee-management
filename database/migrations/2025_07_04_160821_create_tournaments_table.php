@@ -13,7 +13,35 @@ return new class extends Migration
     {
         Schema::create('tournaments', function (Blueprint $table) {
             $table->id();
+            $table->string('name');
+            $table->date('start_date');
+            $table->date('end_date');
+            $table->date('availability_deadline');
+            $table->foreignId('circle_id')->constrained('circles');
+            $table->foreignId('tournament_category_id')->constrained('tournament_categories');
+            $table->foreignId('zone_id')->constrained('zones');
+            $table->text('notes')->nullable();
+            $table->enum('status', ['draft', 'open', 'closed', 'assigned', 'completed'])->default('draft');
+
+            // Document generation fields
+            $table->text('convocation_letter')->nullable();
+            $table->text('club_letter')->nullable();
+            $table->timestamp('letters_generated_at')->nullable();
+            $table->string('convocation_file_path')->nullable();
+            $table->string('convocation_file_name')->nullable();
+            $table->timestamp('convocation_generated_at')->nullable();
+            $table->string('club_letter_file_path')->nullable();
+            $table->string('club_letter_file_name')->nullable();
+            $table->timestamp('club_letter_generated_at')->nullable();
+            $table->foreignId('documents_last_updated_by')->nullable()->constrained('users');
+            $table->integer('document_version')->default(1);
+
             $table->timestamps();
+
+            $table->index(['zone_id', 'status']);
+            $table->index(['start_date', 'status']);
+            $table->index(['tournament_category_id', 'status']);
+            $table->index(['circle_id', 'status']);
         });
     }
 

@@ -21,16 +21,20 @@ class RefereeMiddleware
 
         $user = auth()->user();
 
-        // Check if user is active
-        if (!$user->is_active) {
-            auth()->logout();
-            return redirect()->route('login')
-                ->with('error', 'Il tuo account è stato disattivato. Contatta l\'amministratore.');
+        // Check if user is a referee
+        if ($user->user_type !== 'referee') {
+            abort(403, 'Accesso non autorizzato. Solo gli arbitri possono accedere a questa sezione.');
         }
 
-        // Check if user has referee role or is admin
-        if (!in_array($user->user_type, ['referee', 'admin', 'national_admin', 'super_admin'])) {
-            abort(403, 'Accesso non autorizzato.');
+        // Check if referee account is active
+        if (!$user->is_active) {
+            abort(403, 'Il tuo account arbitro non è attivo. Contatta l\'amministratore della tua zona.');
+        }
+
+        // Check if referee has completed profile
+        if (!$user->hasCompletedProfile()) {
+            return redirect()->route('referee.profile.edit')
+                ->with('warning', 'Devi completare il tuo profilo prima di poter accedere alle altre sezioni.');
         }
 
         return $next($request);

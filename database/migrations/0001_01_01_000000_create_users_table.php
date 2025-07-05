@@ -11,14 +11,51 @@ return new class extends Migration
      */
     public function up(): void
     {
+        // Create zones table first (needed for users foreign key)
+        Schema::create('zones', function (Blueprint $table) {
+            $table->id();
+            $table->string('name');
+            $table->string('code', 10)->unique();
+            $table->text('description')->nullable();
+            $table->string('region')->nullable();
+            $table->string('contact_person')->nullable();
+            $table->string('contact_email')->nullable();
+            $table->string('contact_phone')->nullable();
+            $table->string('address')->nullable();
+            $table->string('city')->nullable();
+            $table->string('postal_code', 10)->nullable();
+            $table->boolean('is_active')->default(true);
+            $table->boolean('is_national')->default(false);
+            $table->integer('sort_order')->default(0);
+            $table->json('settings')->nullable();
+            $table->timestamps();
+            $table->softDeletes();
+
+            $table->index(['is_active', 'sort_order']);
+        });
+
+        // Create users table with all fields from the start
         Schema::create('users', function (Blueprint $table) {
             $table->id();
             $table->string('name');
             $table->string('email')->unique();
+            $table->enum('user_type', ['super_admin', 'national_admin', 'admin', 'referee'])->default('referee');
+            $table->foreignId('zone_id')->nullable()->constrained('zones');
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
+            $table->string('phone')->nullable();
+            $table->string('city')->nullable();
+            $table->boolean('is_active')->default(true);
+            $table->timestamp('last_login_at')->nullable();
+            $table->json('preferences')->nullable();
             $table->rememberToken();
             $table->timestamps();
+            $table->softDeletes();
+
+            // Add indexes
+            $table->index(['user_type', 'zone_id']);
+            $table->index(['zone_id', 'is_active']);
+            $table->index(['user_type', 'is_active']);
         });
 
         Schema::create('password_reset_tokens', function (Blueprint $table) {
@@ -45,5 +82,6 @@ return new class extends Migration
         Schema::dropIfExists('users');
         Schema::dropIfExists('password_reset_tokens');
         Schema::dropIfExists('sessions');
+        Schema::dropIfExists('zones');
     }
 };
