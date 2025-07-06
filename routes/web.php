@@ -32,6 +32,7 @@ Route::middleware(['auth'])->group(function () {
     // Dashboard - redirect based on user type
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
+
     // =================================================================
     // SUPER ADMIN ROUTES
     // =================================================================
