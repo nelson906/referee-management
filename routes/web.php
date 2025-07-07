@@ -9,7 +9,7 @@ use App\Http\Controllers\Api;
 use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\DashboardController;
-
+use App\Http\Controllers\TournamentController;
 /*
 |--------------------------------------------------------------------------
 | Web Routes
@@ -31,6 +31,13 @@ Route::middleware(['auth'])->group(function () {
 
     // Dashboard - redirect based on user type
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+
+    // =================================================================
+    // PUBLIC TOURNAMENT ROUTES (visible to all authenticated users)
+    // =================================================================
+    Route::get('tournaments', [TournamentController::class, 'index'])->name('tournaments.index');
+    Route::get('tournaments/calendar', [TournamentController::class, 'calendar'])->name('tournaments.calendar');
+    Route::get('tournaments/{tournament}', [TournamentController::class, 'show'])->name('tournaments.show');
 
     // =================================================================
     // SUPER ADMIN ROUTES
@@ -93,22 +100,12 @@ Route::middleware(['auth'])->group(function () {
 
 Route::get('tournaments-calendar', [Admin\TournamentController::class, 'calendar'])  // ← AGGIUNGI QUESTA
     ->name('tournaments.calendar');
-        // Tournament Management
+        // Tournament Management (CRUD completo per admin)
         Route::resource('tournaments', Admin\TournamentController::class);
-        Route::post('tournaments/{tournament}/update-status', [Admin\TournamentController::class, 'updateStatus'])
-            ->name('tournaments.update-status');
-        Route::post('tournaments/{tournament}/duplicate', [Admin\TournamentController::class, 'duplicate'])
-            ->name('tournaments.duplicate');
-        Route::get('tournaments/{tournament}/assignments', [Admin\TournamentController::class, 'assignments'])
-            ->name('tournaments.assignments');
-        Route::post('tournaments/{tournament}/assign-referee', [Admin\TournamentController::class, 'assignReferee'])
-            ->name('tournaments.assign-referee');
-        Route::delete('tournaments/{tournament}/remove-referee/{referee}', [Admin\TournamentController::class, 'removeReferee'])
-            ->name('tournaments.remove-referee');
-        Route::get('tournaments/{tournament}/availabilities', [Admin\TournamentController::class, 'availabilities'])
-            ->name('tournaments.availabilities');
-Route::post('tournaments/{tournament}/close', [Admin\TournamentController::class, 'close'])
-    ->name('tournaments.close');
+        Route::post('tournaments/{tournament}/close', [Admin\TournamentController::class, 'close'])
+            ->name('tournaments.close');
+        Route::post('tournaments/{tournament}/reopen', [Admin\TournamentController::class, 'reopen'])
+            ->name('tournaments.reopen');
 
         // Referee Management
         Route::resource('referees', Admin\RefereeController::class);

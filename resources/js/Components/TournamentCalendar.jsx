@@ -4,6 +4,7 @@ import dayGridPlugin from '@fullcalendar/daygrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import itLocale from '@fullcalendar/core/locales/it';
 
+
 const TournamentCalendar = ({ initialTournaments, initialZones, initialClubs, initialTypes, initialUserRoles }) => {
     const [filteredTournaments, setFilteredTournaments] = useState(initialTournaments || []);
     const [selectedZone, setSelectedZone] = useState('all');
@@ -180,26 +181,26 @@ const TournamentCalendar = ({ initialTournaments, initialZones, initialClubs, in
         };
     });
 
-    // Handle edit tournament
+// Handle edit tournament - USA ROUTE ADMIN
     const handleEditTournament = (tournamentId, e) => {
         e.stopPropagation();
-        window.location.href = getCorrectPath(`/tournaments/${tournamentId}/edit`);
+        window.location.href = getCorrectPath(`/admin/tournaments/${tournamentId}/edit`);
     };
 
-    // Handle delete tournament (show confirmation)
+    // Handle delete tournament (show confirmation) - USA ROUTE ADMIN
     const handleDeleteClick = (tournamentId, e) => {
         e.stopPropagation();
         setTournamentToDelete(tournamentId);
         setShowDeleteConfirm(true);
     };
 
-    // Confirm and execute tournament deletion
+    // Confirm and execute tournament deletion - USA ROUTE ADMIN
     const confirmDelete = () => {
         if (!tournamentToDelete) return;
 
         const form = document.createElement('form');
         form.method = 'POST';
-        form.action = getCorrectPath(`/tournaments/${tournamentToDelete}`);
+        form.action = getCorrectPath(`/admin/tournaments/${tournamentToDelete}`);
 
         const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
         if (csrfToken) {

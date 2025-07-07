@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\Admin;
+namespace App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\TournamentRequest;
@@ -87,7 +87,11 @@ class TournamentController extends Controller
 public function calendar(Request $request)
 {
     $user = auth()->user();
-    $isNationalAdmin = $user->user_type === 'national_admin' || $user->user_type === 'super_admin';
+    $isNationalAdmin = $user->user_type === 'national_admin' || $user->user_type === 'super_admin' || $user->user_type === 'admin';
+
+        // ✅ CONTROLLO SEMPLICE PRIMA:
+    $tournamentCount = Tournament::count();
+    \Log::info("Total tournaments in DB: " . $tournamentCount);
 
     // Get tournaments for calendar
     $tournaments = Tournament::with(['tournamentCategory', 'zone', 'club', 'assignments.user'])
