@@ -203,4 +203,20 @@ class Zone extends Model
             })
             ->toArray();
     }
+
+    /**
+ * Scope per ottenere solo le zone attive
+ */
+public function scopeActive($query)
+{
+    return $query->where('is_active', true);
+}
+
+/**
+ * Scope per ordinare le zone per nome
+ */
+public function scopeOrdered($query)
+{
+    return $query->orderBy('name');
+}
 }

@@ -2,7 +2,7 @@
 
 <div class="flex items-center justify-end space-x-2">
     {{-- Visualizza --}}
-    <a href="{{ route('admin.tournaments.show', $tournament) }}"
+    <a href="{{ route('tournaments.show', $tournament) }}"
        class="text-indigo-600 hover:text-indigo-900"
        title="Visualizza">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

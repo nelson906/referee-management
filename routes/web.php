@@ -9,7 +9,7 @@ use App\Http\Controllers\Api;
 use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\DashboardController;
-use App\Http\Controllers\TournamentController;
+
 /*
 |--------------------------------------------------------------------------
 | Web Routes
@@ -35,9 +35,9 @@ Route::middleware(['auth'])->group(function () {
     // =================================================================
     // PUBLIC TOURNAMENT ROUTES (visible to all authenticated users)
     // =================================================================
-    Route::get('tournaments', [TournamentController::class, 'index'])->name('tournaments.index');
-    Route::get('tournaments/calendar', [TournamentController::class, 'calendar'])->name('tournaments.calendar');
-    Route::get('tournaments/{tournament}', [TournamentController::class, 'show'])->name('tournaments.show');
+    Route::get('tournaments', [Admin\TournamentController::class, 'publicIndex'])->name('tournaments.index');
+    Route::get('tournaments/calendar', [Admin\TournamentController::class, 'publicCalendar'])->name('tournaments.calendar');
+    Route::get('tournaments/{tournament}', [Admin\TournamentController::class, 'publicShow'])->name('tournaments.show');
 
     // =================================================================
     // SUPER ADMIN ROUTES
@@ -98,10 +98,14 @@ Route::middleware(['auth'])->group(function () {
         // Dashboard
         Route::get('/', [Admin\DashboardController::class, 'index'])->name('dashboard');
 
-Route::get('tournaments-calendar', [Admin\TournamentController::class, 'calendar'])  // ← AGGIUNGI QUESTA
-    ->name('tournaments.calendar');
         // Tournament Management (CRUD completo per admin)
-        Route::resource('tournaments', Admin\TournamentController::class);
+        Route::get('tournaments', [Admin\TournamentController::class, 'adminIndex'])->name('tournaments.admin-index');
+        Route::get('tournaments/calendar', [Admin\TournamentController::class, 'adminCalendar'])->name('tournaments.admin-calendar');
+        Route::get('tournaments/create', [Admin\TournamentController::class, 'create'])->name('tournaments.create');
+        Route::post('tournaments', [Admin\TournamentController::class, 'store'])->name('tournaments.store');
+        Route::get('tournaments/{tournament}/edit', [Admin\TournamentController::class, 'edit'])->name('tournaments.edit');
+        Route::put('tournaments/{tournament}', [Admin\TournamentController::class, 'update'])->name('tournaments.update');
+        Route::delete('tournaments/{tournament}', [Admin\TournamentController::class, 'destroy'])->name('tournaments.destroy');
         Route::post('tournaments/{tournament}/close', [Admin\TournamentController::class, 'close'])
             ->name('tournaments.close');
         Route::post('tournaments/{tournament}/reopen', [Admin\TournamentController::class, 'reopen'])
@@ -133,7 +137,7 @@ Route::get('tournaments-calendar', [Admin\TournamentController::class, 'calendar
         Route::prefix('assignments')->name('assignments.')->group(function () {
             Route::get('/', [Admin\AssignmentController::class, 'index'])->name('index');
             Route::get('/create', [Admin\AssignmentController::class, 'create'])->name('create');
-            Route::post('/', [Admin\AssignmentController::class, 'store'])->name('store');  // ← AGGIUNGI
+            Route::post('/', [Admin\AssignmentController::class, 'store'])->name('store');
             Route::get('/calendar', [Admin\AssignmentController::class, 'calendar'])->name('calendar');
             Route::post('/bulk-assign', [Admin\AssignmentController::class, 'bulkAssign'])->name('bulk-assign');
             Route::post('/{assignment}/accept', [Admin\AssignmentController::class, 'accept'])->name('accept');
@@ -179,6 +183,7 @@ Route::get('tournaments-calendar', [Admin\TournamentController::class, 'calendar
             Route::get('/calendar', [Referee\AvailabilityController::class, 'calendar'])->name('calendar');
             Route::post('/update', [Referee\AvailabilityController::class, 'update'])->name('update');
             Route::post('/bulk-update', [Referee\AvailabilityController::class, 'bulkUpdate'])->name('bulk-update');
+            Route::post('/toggle', [Referee\AvailabilityController::class, 'toggle'])->name('toggle');
         });
 
         // Tournament Applications
@@ -211,7 +216,7 @@ Route::get('tournaments-calendar', [Admin\TournamentController::class, 'calendar
         // Tournament Reports
         Route::prefix('tournaments')->name('tournament.')->group(function () {
             Route::get('/', [Reports\TournamentReportController::class, 'index'])->name('index');
-            Route::get('/{tournament}', [Reports\TournamentReportController::class, 'show'])->name('show');  // ← AGGIUNGI
+            Route::get('/{tournament}', [Reports\TournamentReportController::class, 'show'])->name('show');
             Route::get('/by-category', [Reports\TournamentReportController::class, 'byCategory'])->name('by-category');
             Route::get('/by-zone', [Reports\TournamentReportController::class, 'byZone'])->name('by-zone');
             Route::get('/by-period', [Reports\TournamentReportController::class, 'byPeriod'])->name('by-period');
@@ -221,7 +226,7 @@ Route::get('tournaments-calendar', [Admin\TournamentController::class, 'calendar
         // Referee Reports
         Route::prefix('referees')->name('referee.')->group(function () {
             Route::get('/', [Reports\RefereeReportController::class, 'index'])->name('index');
-            Route::get('/{referee}', [Reports\RefereeReportController::class, 'show'])->name('show');  // ← AGGIUNGI
+            Route::get('/{referee}', [Reports\RefereeReportController::class, 'show'])->name('show');
             Route::get('/performance', [Reports\RefereeReportController::class, 'performance'])->name('performance');
             Route::get('/availability', [Reports\RefereeReportController::class, 'availability'])->name('availability');
             Route::get('/workload', [Reports\RefereeReportController::class, 'workload'])->name('workload');
@@ -286,35 +291,11 @@ Route::get('tournaments-calendar', [Admin\TournamentController::class, 'calendar
             Route::get('/referees', [Api\StatsController::class, 'referees'])->name('referees');
         });
     });
-
-    // =================================================================
-    // NOTIFICATION ROUTES
-    // =================================================================
-    Route::prefix('notifications')->name('notifications.')->group(function () {
-        Route::get('/', [NotificationController::class, 'index'])->name('index');
-        Route::post('/{notification}/mark-read', [NotificationController::class, 'markAsRead'])->name('mark-read');
-        Route::post('/mark-all-read', [NotificationController::class, 'markAllAsRead'])->name('mark-all-read');
-        Route::delete('/{notification}', [NotificationController::class, 'destroy'])->name('destroy');
-    });
-
-    // =================================================================
-    // SEARCH ROUTES
-    // =================================================================
-    Route::get('/search', [SearchController::class, 'index'])->name('search.index');
-    Route::get('/search/tournaments', [SearchController::class, 'tournaments'])->name('search.tournaments');
-    Route::get('/search/referees', [SearchController::class, 'referees'])->name('search.referees');
-    Route::get('/search/clubs', [SearchController::class, 'clubs'])->name('search.clubs');
 });
 
 // =================================================================
 // PUBLIC ROUTES (No authentication required)
 // =================================================================
-
-// Public Tournament Calendar
-Route::get('/calendar', [PublicController::class, 'calendar'])->name('public.calendar');
-
-// Public Tournament List
-Route::get('/tournaments', [PublicController::class, 'tournaments'])->name('public.tournaments');
 
 // Health Check
 Route::get('/health', function () {

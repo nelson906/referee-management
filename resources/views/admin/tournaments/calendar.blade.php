@@ -11,7 +11,7 @@
             <p class="mt-2 text-gray-600">Visualizza e gestisci i tornei in formato calendario</p>
         </div>
         <div class="flex space-x-4">
-            <a href="{{ route('admin.tournaments.index') }}"
+            <a href="{{ route('admin.tournaments.admin-index') }}"
                class="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition duration-200 flex items-center">
                 <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>

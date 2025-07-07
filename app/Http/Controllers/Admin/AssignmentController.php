@@ -149,7 +149,7 @@ public function store(Request $request): RedirectResponse
     ]);
 
     return redirect()
-        ->route('admin.tournaments.show', $tournament)
+        ->route('tournaments.show', $tournament)
         ->with('success', "Arbitro {$referee->name} assegnato con successo al torneo {$tournament->name}.");
 }
 
