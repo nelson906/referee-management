@@ -1,0 +1,32 @@
+graph LR
+    subgraph "APPROCCIO TRADIZIONALE"
+        A1[RefereeController] --> A2[destroy method]
+        A3[TournamentController] --> A4[destroy method]
+        A5[ClubController] --> A6[destroy method]
+        
+        A7[referee/index.blade.php] --> A8[Action Buttons HTML]
+        A9[tournament/index.blade.php] --> A10[Action Buttons HTML]
+        A11[club/index.blade.php] --> A12[Action Buttons HTML]
+    end
+    
+    subgraph "APPROCCIO RIUTILIZZABILE"
+        B1[CrudActions Trait] --> B2[destroy method UNICO]
+        B3[RefereeController] -.->|uses| B1
+        B4[TournamentController] -.->|uses| B1
+        B5[ClubController] -.->|uses| B1
+        
+        B6[TableActionsComponent] --> B7[Action Buttons UNICO]
+        B8[referee/index.blade.php] -.->|usa| B6
+        B9[tournament/index.blade.php] -.->|usa| B6
+        B10[club/index.blade.php] -.->|usa| B6
+    end
+    
+    style A2 fill:#ffcccc
+    style A4 fill:#ffcccc
+    style A6 fill:#ffcccc
+    style A8 fill:#ffcccc
+    style A10 fill:#ffcccc
+    style A12 fill:#ffcccc
+    
+    style B2 fill:#ccffcc
+    style B7 fill:#ccffcc

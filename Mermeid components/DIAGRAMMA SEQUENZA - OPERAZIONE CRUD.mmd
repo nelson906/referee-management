@@ -1,0 +1,33 @@
+sequenceDiagram
+    participant U as User/Admin
+    participant V as Blade View
+    participant C as TableActionsComponent
+    participant R as Route
+    participant Ctrl as Controller
+    participant T as CrudActions Trait
+    participant M as Model
+    participant DB as Database
+    
+    U->>V: Click "Elimina"
+    V->>C: <x-table-actions>
+    C->>C: Render Delete Button
+    U->>C: Confirm Delete
+    C->>R: POST {prefix}.destroy
+    R->>Ctrl: Route to destroy()
+    Ctrl->>T: Call trait destroy()
+    T->>T: checkAccess(model)
+    T->>T: canBeDeleted(model)
+    alt Can Delete
+        T->>M: model.delete()
+        M->>DB: DELETE FROM table
+        DB-->>M: Success
+        M-->>T: Deleted
+        T->>T: getEntityName()
+        T-->>Ctrl: Success Response
+        Ctrl-->>V: Redirect with Success
+        V-->>U: Flash Message "Eliminato"
+    else Cannot Delete
+        T-->>Ctrl: Error Response
+        Ctrl-->>V: Redirect with Error
+        V-->>U: Flash Message "Errore"
+    end

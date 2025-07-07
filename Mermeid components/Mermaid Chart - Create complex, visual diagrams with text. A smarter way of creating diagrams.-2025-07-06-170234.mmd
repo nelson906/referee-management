@@ -1,0 +1,100 @@
+erDiagram
+    ZONES ||--o{ USERS : belongs_to
+    ZONES ||--o{ CLUBS : belongs_to
+    ZONES ||--o{ TOURNAMENTS : belongs_to
+    
+    USERS ||--o{ ASSIGNMENTS : has_many
+    USERS ||--o{ AVAILABILITIES : has_many
+    
+    CLUBS ||--o{ TOURNAMENTS : has_many
+    
+    TOURNAMENTS ||--o{ ASSIGNMENTS : has_many
+    TOURNAMENTS ||--o{ AVAILABILITIES : has_many
+    TOURNAMENTS }o--|| TOURNAMENT_CATEGORIES : belongs_to
+    
+    USERS {
+        id bigint PK
+        name varchar
+        email varchar UK
+        referee_code varchar UK
+        level enum
+        zone_id bigint FK
+        phone varchar
+        user_type enum
+        is_active boolean
+        created_at timestamp
+        updated_at timestamp
+    }
+    
+    ZONES {
+        id bigint PK
+        name varchar
+        description text
+        is_national boolean
+        created_at timestamp
+        updated_at timestamp
+    }
+    
+    CLUBS {
+        id bigint PK
+        name varchar
+        code varchar UK
+        zone_id bigint FK
+        city varchar
+        province varchar
+        email varchar
+        phone varchar
+        is_active boolean
+        created_at timestamp
+        updated_at timestamp
+    }
+    
+    TOURNAMENTS {
+        id bigint PK
+        name varchar
+        club_id bigint FK
+        zone_id bigint FK
+        tournament_category_id bigint FK
+        start_date date
+        end_date date
+        status enum
+        availability_deadline date
+        is_active boolean
+        created_at timestamp
+        updated_at timestamp
+    }
+    
+    TOURNAMENT_CATEGORIES {
+        id bigint PK
+        name varchar
+        code varchar UK
+        is_national boolean
+        min_referees int
+        max_referees int
+        required_level enum
+        is_active boolean
+        created_at timestamp
+        updated_at timestamp
+    }
+    
+    ASSIGNMENTS {
+        id bigint PK
+        user_id bigint FK
+        tournament_id bigint FK
+        role enum
+        is_confirmed boolean
+        assigned_by bigint FK
+        assigned_at timestamp
+        created_at timestamp
+        updated_at timestamp
+    }
+    
+    AVAILABILITIES {
+        id bigint PK
+        user_id bigint FK
+        tournament_id bigint FK
+        notes text
+        submitted_at timestamp
+        created_at timestamp
+        updated_at timestamp
+    }

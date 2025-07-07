@@ -1,0 +1,43 @@
+flowchart TD
+    A[Utente Admin Login] --> B{Seleziona Entità}
+    
+    B -->|Arbitri| C[Admin/RefereeController]
+    B -->|Tornei| D[Admin/TournamentController] 
+    B -->|Clubs| E[Admin/ClubController]
+    
+    C --> F[index - Lista Arbitri]
+    F --> G{Azione Scelta}
+    
+    G -->|Visualizza| H[show - Dettaglio]
+    G -->|Nuovo| I[create - Form Creazione]
+    G -->|Modifica| J[edit - Form Modifica]
+    G -->|Elimina| K[destroy - Cancellazione]
+    G -->|Toggle| L[toggleActive - Attiva/Disattiva]
+    
+    I --> M[store - Salvataggio]
+    M --> N[RefereeRequest Validation]
+    N -->|Valid| O[Salva in DB]
+    N -->|Invalid| P[Torna a Form con Errori]
+    
+    J --> Q[update - Aggiornamento]
+    Q --> R[RefereeRequest Validation]
+    R -->|Valid| S[Aggiorna DB]
+    R -->|Invalid| T[Torna a Form con Errori]
+    
+    K --> U{Può essere eliminato?}
+    U -->|Sì| V[Elimina da DB]
+    U -->|No| W[Errore - Ha Dipendenze]
+    
+    L --> X[Toggle is_active Field]
+    
+    O --> Y[Redirect con Successo]
+    S --> Y
+    V --> Y
+    X --> Y
+    P --> Z[Mostra Form con Errori]
+    T --> Z
+    W --> AA[Redirect con Errore]
+    
+    Y --> F
+    Z --> F
+    AA --> F

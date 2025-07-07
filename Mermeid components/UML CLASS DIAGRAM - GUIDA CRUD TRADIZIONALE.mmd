@@ -1,0 +1,73 @@
+classDiagram
+    class RefereeController {
+        +index(Request) View
+        +create() View
+        +store(RefereeRequest) RedirectResponse
+        +show(User) View
+        +edit(User) View
+        +update(RefereeRequest, User) RedirectResponse
+        +destroy(User) RedirectResponse
+        +toggleActive(User) RedirectResponse
+        -getAccessibleZones(User) Collection
+        -checkRefereeAccess(User) void
+        -checkZoneAccess(int) void
+    }
+    
+    class RefereeRequest {
+        +authorize() bool
+        +rules() array
+        +messages() array
+        +attributes() array
+    }
+    
+    class User {
+        +zone() BelongsTo
+        +assignments() HasMany
+        +availabilities() HasMany
+        +scopeActive(Builder) Builder
+        +scopeReferees(Builder) Builder
+        +isReferee() bool
+        +hasCompletedProfile() bool
+    }
+    
+    class Zone {
+        +users() HasMany
+        +clubs() HasMany
+        +tournaments() HasMany
+        +referees() HasMany
+        +admins() HasMany
+    }
+    
+    class RefereeIndexView {
+        +referees Collection
+        +zones Collection
+        +levels array
+        +filters array
+    }
+    
+    class RefereeCreateView {
+        +zones Collection
+        +levels array
+    }
+    
+    class RefereeEditView {
+        +referee User
+        +zones Collection
+        +levels array
+    }
+    
+    class RefereeShowView {
+        +referee User
+        +stats array
+    }
+    
+    RefereeController --> RefereeRequest : uses
+    RefereeController --> User : manages
+    RefereeController --> Zone : accesses
+    RefereeController --> RefereeIndexView : renders
+    RefereeController --> RefereeCreateView : renders
+    RefereeController --> RefereeEditView : renders
+    RefereeController --> RefereeShowView : renders
+    
+    User --> Zone : belongs_to
+    RefereeRequest --> User : validates

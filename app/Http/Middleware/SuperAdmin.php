@@ -6,7 +6,7 @@ use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
-class SuperAdminMiddleware
+class SuperAdmin
 {
     /**
      * Handle an incoming request.
@@ -19,8 +19,11 @@ class SuperAdminMiddleware
             return redirect()->route('login');
         }
 
-        if (auth()->user()->user_type !== 'super_admin') {
-            abort(403, 'Accesso non autorizzato. Solo i Super Admin possono accedere a questa sezione.');
+        $user = auth()->user();
+
+        // Check if user is super admin
+        if ($user->user_type !== 'super_admin') {
+            abort(403, 'Accesso negato. Solo i Super Admin possono accedere a questa sezione.');
         }
 
         return $next($request);

@@ -9,7 +9,6 @@ use App\Http\Controllers\Api;
 use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\DashboardController;
-use App\Http\Controllers\Reports\TournamentReportController;
 
 /*
 |--------------------------------------------------------------------------
@@ -33,7 +32,6 @@ Route::middleware(['auth'])->group(function () {
     // Dashboard - redirect based on user type
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
-
     // =================================================================
     // SUPER ADMIN ROUTES
     // =================================================================
@@ -56,147 +54,270 @@ Route::middleware(['auth'])->group(function () {
         // System Settings
         Route::get('settings', [SuperAdmin\SystemSettingsController::class, 'index'])->name('settings.index');
         Route::post('settings', [SuperAdmin\SystemSettingsController::class, 'update'])->name('settings.update');
+        Route::post('settings/clear-cache', [SuperAdmin\SystemSettingsController::class, 'clearCache'])->name('settings.clear-cache');
+        Route::post('settings/optimize', [SuperAdmin\SystemSettingsController::class, 'optimize'])->name('settings.optimize');
+
+        // User Management (Super Admin exclusive)
+        Route::prefix('users')->name('users.')->group(function () {
+            Route::get('/', [SuperAdmin\UserController::class, 'index'])->name('index');
+            Route::get('/create', [SuperAdmin\UserController::class, 'create'])->name('create');
+            Route::post('/', [SuperAdmin\UserController::class, 'store'])->name('store');
+            Route::get('/{user}', [SuperAdmin\UserController::class, 'show'])->name('show');
+            Route::get('/{user}/edit', [SuperAdmin\UserController::class, 'edit'])->name('edit');
+            Route::put('/{user}', [SuperAdmin\UserController::class, 'update'])->name('update');
+            Route::delete('/{user}', [SuperAdmin\UserController::class, 'destroy'])->name('destroy');
+            Route::post('/{user}/toggle-active', [SuperAdmin\UserController::class, 'toggleActive'])->name('toggle-active');
+            Route::post('/{user}/reset-password', [SuperAdmin\UserController::class, 'resetPassword'])->name('reset-password');
+        });
+
+        // Zone Management (Super Admin exclusive)
+        Route::resource('zones', SuperAdmin\ZoneController::class);
+        Route::post('zones/{zone}/toggle-active', [SuperAdmin\ZoneController::class, 'toggleActive'])->name('zones.toggle-active');
+
+        // System Logs and Monitoring
+        Route::prefix('system')->name('system.')->group(function () {
+            Route::get('logs', [SuperAdmin\SystemController::class, 'logs'])->name('logs');
+            Route::get('activity', [SuperAdmin\SystemController::class, 'activity'])->name('activity');
+            Route::get('performance', [SuperAdmin\SystemController::class, 'performance'])->name('performance');
+            Route::post('maintenance', [SuperAdmin\SystemController::class, 'toggleMaintenance'])->name('maintenance');
+        });
     });
 
     // =================================================================
-    // ADMIN ROUTES (Zone Admin & CRC Admin)
+    // ADMIN ROUTES (Zone Admin & CRC Admin) + Super Admin Access
     // =================================================================
-    Route::middleware(['admin'])->prefix('admin')->name('admin.')->group(function () {
+    Route::middleware(['admin_or_superadmin'])->prefix('admin')->name('admin.')->group(function () {
 
         // Dashboard
         Route::get('/', [Admin\DashboardController::class, 'index'])->name('dashboard');
 
         // Tournament Management
         Route::resource('tournaments', Admin\TournamentController::class);
-        Route::post('tournaments/{tournament}/close', [Admin\TournamentController::class, 'close'])
-            ->name('tournaments.close');
-        Route::post('tournaments/{tournament}/reopen', [Admin\TournamentController::class, 'reopen'])
-            ->name('tournaments.reopen');
+        Route::post('tournaments/{tournament}/update-status', [Admin\TournamentController::class, 'updateStatus'])
+            ->name('tournaments.update-status');
+        Route::post('tournaments/{tournament}/duplicate', [Admin\TournamentController::class, 'duplicate'])
+            ->name('tournaments.duplicate');
         Route::get('tournaments/{tournament}/assignments', [Admin\TournamentController::class, 'assignments'])
             ->name('tournaments.assignments');
-        Route::post('tournaments/{tournament}/assignments', [Admin\TournamentController::class, 'storeAssignments'])
-            ->name('tournaments.assignments.store');
-        Route::get('tournaments/{tournament}/availabilities', [Admin\TournamentController::class, 'availabilities'])
-            ->name('tournaments.availabilities');
-Route::post('tournaments/{tournament}/update-status', [Admin\TournamentController::class, 'updateStatus'])
-    ->name('tournaments.update-status');
+        Route::post('tournaments/{tournament}/assign-referee', [Admin\TournamentController::class, 'assignReferee'])
+            ->name('tournaments.assign-referee');
+        Route::delete('tournaments/{tournament}/remove-referee/{referee}', [Admin\TournamentController::class, 'removeReferee'])
+            ->name('tournaments.remove-referee');
 
         // Referee Management
         Route::resource('referees', Admin\RefereeController::class);
         Route::post('referees/{referee}/toggle-active', [Admin\RefereeController::class, 'toggleActive'])
             ->name('referees.toggle-active');
-        Route::get('referees/{referee}/availabilities', [Admin\RefereeController::class, 'availabilities'])
-            ->name('referees.availabilities');
-// Tournament Management
-Route::resource('tournaments', Admin\TournamentController::class);
-Route::post('tournaments/{tournament}/toggle-active', [Admin\TournamentController::class, 'toggleActive'])
-    ->name('tournaments.toggle-active');
-Route::get('reports/tournament/{tournament}', [TournamentReportController::class, 'show'])->name('reports.tournament.show');
+        Route::post('referees/{referee}/update-level', [Admin\RefereeController::class, 'updateLevel'])
+            ->name('referees.update-level');
+        Route::get('referees/{referee}/tournaments', [Admin\RefereeController::class, 'tournaments'])
+            ->name('referees.tournaments');
+        Route::post('referees/import', [Admin\RefereeController::class, 'import'])
+            ->name('referees.import');
+        Route::get('referees/export', [Admin\RefereeController::class, 'export'])
+            ->name('referees.export');
 
-        // club Management (for zone admins)
+        // Club Management
         Route::resource('clubs', Admin\ClubController::class);
         Route::post('clubs/{club}/toggle-active', [Admin\ClubController::class, 'toggleActive'])
             ->name('clubs.toggle-active');
-Route::patch('clubs/{club}/activate', [Admin\ClubController::class, 'activate'])->name('clubs.activate');
-Route::patch('clubs/{club}/deactivate', [Admin\ClubController::class, 'deactivate'])->name('clubs.deactivate');
+        Route::get('clubs/{club}/tournaments', [Admin\ClubController::class, 'tournaments'])
+            ->name('clubs.tournaments');
 
         // Assignment Management
-        Route::resource('assignments', Admin\AssignmentController::class);
-        Route::post('assignments/{assignment}/confirm', [Admin\AssignmentController::class, 'confirm'])
-            ->name('assignments.confirm');
+        Route::prefix('assignments')->name('assignments.')->group(function () {
+            Route::get('/', [Admin\AssignmentController::class, 'index'])->name('index');
+            Route::get('/calendar', [Admin\AssignmentController::class, 'calendar'])->name('calendar');
+            Route::post('/bulk-assign', [Admin\AssignmentController::class, 'bulkAssign'])->name('bulk-assign');
+            Route::post('/{assignment}/accept', [Admin\AssignmentController::class, 'accept'])->name('accept');
+            Route::post('/{assignment}/reject', [Admin\AssignmentController::class, 'reject'])->name('reject');
+            Route::delete('/{assignment}', [Admin\AssignmentController::class, 'destroy'])->name('destroy');
+        });
+
+        // Communication System
+        Route::prefix('communications')->name('communications.')->group(function () {
+            Route::get('/', [Admin\CommunicationController::class, 'index'])->name('index');
+            Route::get('/create', [Admin\CommunicationController::class, 'create'])->name('create');
+            Route::post('/', [Admin\CommunicationController::class, 'store'])->name('store');
+            Route::get('/{communication}', [Admin\CommunicationController::class, 'show'])->name('show');
+            Route::delete('/{communication}', [Admin\CommunicationController::class, 'destroy'])->name('destroy');
+        });
+
+        // Document Management
+        Route::prefix('documents')->name('documents.')->group(function () {
+            Route::get('/', [DocumentController::class, 'index'])->name('index');
+            Route::post('/upload', [DocumentController::class, 'upload'])->name('upload');
+            Route::get('/{document}/download', [DocumentController::class, 'download'])->name('download');
+            Route::delete('/{document}', [DocumentController::class, 'destroy'])->name('destroy');
+        });
     });
 
     // =================================================================
-    // REFEREE ROUTES
+    // REFEREE ROUTES + Admin/Super Admin Access
     // =================================================================
-    Route::middleware(['referee'])->prefix('referee')->name('referee.')->group(function () {
+    Route::middleware(['referee_or_admin'])->prefix('referee')->name('referee.')->group(function () {
 
         // Dashboard
         Route::get('/', [Referee\DashboardController::class, 'index'])->name('dashboard');
-        Route::get('/dashboard', [Referee\DashboardController::class, 'index']);
-
-        // Availability Management
-        Route::get('availability', [Referee\AvailabilityController::class, 'index'])->name('availability.index');
-        Route::post('availability/save', [Referee\AvailabilityController::class, 'save'])->name('availability.save');
-        Route::post('availability/toggle', [Referee\AvailabilityController::class, 'toggle'])->name('availability.toggle');
-        Route::get('availability/calendar', [Referee\AvailabilityController::class, 'calendar'])->name('availability.calendar');
 
         // Profile Management
-        Route::get('profile', [Referee\ProfileController::class, 'edit'])->name('profile.edit');
-        Route::put('profile', [Referee\ProfileController::class, 'update'])->name('profile.update');
-        Route::put('profile/password', [Referee\ProfileController::class, 'updatePassword'])->name('profile.update-password');
+        Route::get('/profile', [Referee\ProfileController::class, 'show'])->name('profile.show');
+        Route::get('/profile/edit', [Referee\ProfileController::class, 'edit'])->name('profile.edit');
+        Route::put('/profile', [Referee\ProfileController::class, 'update'])->name('profile.update');
 
-        // My Assignments
-        Route::get('assignments', [Referee\AssignmentController::class, 'index'])->name('assignments.index');
-        Route::get('assignments/{assignment}', [Referee\AssignmentController::class, 'show'])->name('assignments.show');
-        Route::post('assignments/{assignment}/confirm', [Referee\AssignmentController::class, 'confirm'])->name('assignments.confirm');
+        // Availability Management
+        Route::prefix('availability')->name('availability.')->group(function () {
+            Route::get('/', [Referee\AvailabilityController::class, 'index'])->name('index');
+            Route::get('/calendar', [Referee\AvailabilityController::class, 'calendar'])->name('calendar');
+            Route::post('/update', [Referee\AvailabilityController::class, 'update'])->name('update');
+            Route::post('/bulk-update', [Referee\AvailabilityController::class, 'bulkUpdate'])->name('bulk-update');
+        });
+
+        // Tournament Applications
+        Route::prefix('applications')->name('applications.')->group(function () {
+            Route::get('/', [Referee\ApplicationController::class, 'index'])->name('index');
+            Route::post('/{tournament}/apply', [Referee\ApplicationController::class, 'apply'])->name('apply');
+            Route::delete('/{tournament}/withdraw', [Referee\ApplicationController::class, 'withdraw'])->name('withdraw');
+        });
+
+        // Assignment History
+        Route::get('/assignments', [Referee\AssignmentController::class, 'index'])->name('assignments.index');
+        Route::get('/assignments/{assignment}', [Referee\AssignmentController::class, 'show'])->name('assignments.show');
+
+        // Documents and Certifications
+        Route::prefix('documents')->name('documents.')->group(function () {
+            Route::get('/', [Referee\DocumentController::class, 'index'])->name('index');
+            Route::post('/upload', [Referee\DocumentController::class, 'upload'])->name('upload');
+            Route::delete('/{document}', [Referee\DocumentController::class, 'destroy'])->name('destroy');
+        });
     });
 
     // =================================================================
-    // REPORTS ROUTES (accessible by appropriate roles)
+    // REPORTS ROUTES (All authenticated users with proper permissions)
     // =================================================================
-    Route::prefix('reports')->name('reports.')->group(function () {
-        Route::get('/', [Reports\ReportController::class, 'index'])->name('index');
+    Route::middleware(['admin_or_superadmin'])->prefix('reports')->name('reports.')->group(function () {
 
-        // Referee Reports
-        Route::get('referee/{referee}', [Reports\RefereeReportController::class, 'show'])
-            ->name('referee.show')
-            ->middleware('can:view,referee');
-        Route::get('referee/{referee}/export', [Reports\RefereeReportController::class, 'export'])
-            ->name('referee.export')
-            ->middleware('can:view,referee');
-
-        // Zone Reports (admin only)
-        Route::middleware(['admin'])->group(function () {
-            Route::get('zone/{zone}', [Reports\ZoneReportController::class, 'show'])
-                ->name('zone.show');
-            Route::get('zone/{zone}/export', [Reports\ZoneReportController::class, 'export'])
-                ->name('zone.export');
-            Route::get('zone/{zone}/referees', [Reports\ZoneReportController::class, 'referees'])
-                ->name('zone.referees');
-            Route::get('zone/{zone}/tournaments', [Reports\ZoneReportController::class, 'tournaments'])
-                ->name('zone.tournaments');
-        });
+        // Dashboard Analytics
+        Route::get('/', [Reports\DashboardController::class, 'index'])->name('dashboard');
 
         // Tournament Reports
-        Route::get('tournament/{tournament}', [Reports\TournamentReportController::class, 'show'])
-            ->name('tournament.show')
-            ->middleware('can:view,tournament');
-        Route::get('tournament/{tournament}/export', [Reports\TournamentReportController::class, 'export'])
-            ->name('tournament.export')
-            ->middleware('can:view,tournament');
+        Route::prefix('tournaments')->name('tournament.')->group(function () {
+            Route::get('/', [Reports\TournamentController::class, 'index'])->name('index');
+            Route::get('/by-category', [Reports\TournamentController::class, 'byCategory'])->name('by-category');
+            Route::get('/by-zone', [Reports\TournamentController::class, 'byZone'])->name('by-zone');
+            Route::get('/by-period', [Reports\TournamentController::class, 'byPeriod'])->name('by-period');
+            Route::get('/export', [Reports\TournamentController::class, 'export'])->name('export');
+        });
 
-        // Assignment Reports
-        Route::get('assignments', [Reports\AssignmentReportController::class, 'index'])->name('assignments.index');
+        // Referee Reports
+        Route::prefix('referees')->name('referee.')->group(function () {
+            Route::get('/', [Reports\RefereeController::class, 'index'])->name('index');
+            Route::get('/performance', [Reports\RefereeController::class, 'performance'])->name('performance');
+            Route::get('/availability', [Reports\RefereeController::class, 'availability'])->name('availability');
+            Route::get('/workload', [Reports\RefereeController::class, 'workload'])->name('workload');
+            Route::get('/export', [Reports\RefereeController::class, 'export'])->name('export');
+        });
 
-        // Category Reports (super admin only)
-        Route::middleware(['superadmin'])->group(function () {
-            Route::get('categories', [Reports\CategoryReportController::class, 'index'])
-                ->name('category.index');
-            Route::get('category/{category}', [Reports\CategoryReportController::class, 'show'])
-                ->name('category.show');
-            Route::get('category/{category}/export', [Reports\CategoryReportController::class, 'export'])
-                ->name('category.export');
+        // Category Reports
+        Route::prefix('categories')->name('category.')->group(function () {
+            Route::get('/', [Reports\CategoryController::class, 'index'])->name('index');
+            Route::get('/{category}', [Reports\CategoryController::class, 'show'])->name('show');
+            Route::get('/{category}/tournaments', [Reports\CategoryController::class, 'tournaments'])->name('tournaments');
+            Route::get('/export', [Reports\CategoryController::class, 'export'])->name('export');
+        });
+
+        // Zone Reports
+        Route::prefix('zones')->name('zone.')->group(function () {
+            Route::get('/', [Reports\ZoneController::class, 'index'])->name('index');
+            Route::get('/{zone}', [Reports\ZoneController::class, 'show'])->name('show');
+            Route::get('/{zone}/referees', [Reports\ZoneController::class, 'referees'])->name('referees');
+            Route::get('/{zone}/tournaments', [Reports\ZoneController::class, 'tournaments'])->name('tournaments');
+            Route::get('/export', [Reports\ZoneController::class, 'export'])->name('export');
+        });
+
+        // Advanced Analytics
+        Route::prefix('analytics')->name('analytics.')->group(function () {
+            Route::get('/trends', [Reports\AnalyticsController::class, 'trends'])->name('trends');
+            Route::get('/forecasting', [Reports\AnalyticsController::class, 'forecasting'])->name('forecasting');
+            Route::get('/efficiency', [Reports\AnalyticsController::class, 'efficiency'])->name('efficiency');
+            Route::get('/custom', [Reports\AnalyticsController::class, 'custom'])->name('custom');
         });
     });
 
     // =================================================================
-    // DOCUMENT ROUTES
+    // API ROUTES (Internal usage with proper authentication)
     // =================================================================
-    Route::prefix('documents')->name('documents.')->group(function () {
-        Route::get('download/{type}', [DocumentController::class, 'download'])->name('download');
-        Route::post('generate', [DocumentController::class, 'generate'])->name('generate');
+    Route::prefix('api')->name('api.')->group(function () {
+
+        // Tournament API
+        Route::prefix('tournaments')->name('tournaments.')->group(function () {
+            Route::get('/', [Api\TournamentController::class, 'index'])->name('index');
+            Route::get('/{tournament}', [Api\TournamentController::class, 'show'])->name('show');
+            Route::get('/{tournament}/referees', [Api\TournamentController::class, 'referees'])->name('referees');
+        });
+
+        // Referee API
+        Route::prefix('referees')->name('referees.')->group(function () {
+            Route::get('/', [Api\RefereeController::class, 'index'])->name('index');
+            Route::get('/{referee}', [Api\RefereeController::class, 'show'])->name('show');
+            Route::get('/{referee}/availability', [Api\RefereeController::class, 'availability'])->name('availability');
+        });
+
+        // Calendar API
+        Route::prefix('calendar')->name('calendar.')->group(function () {
+            Route::get('/events', [Api\CalendarController::class, 'events'])->name('events');
+            Route::get('/referee/{referee}/events', [Api\CalendarController::class, 'refereeEvents'])->name('referee-events');
+        });
+
+        // Statistics API
+        Route::prefix('stats')->name('stats.')->group(function () {
+            Route::get('/dashboard', [Api\StatsController::class, 'dashboard'])->name('dashboard');
+            Route::get('/tournaments', [Api\StatsController::class, 'tournaments'])->name('tournaments');
+            Route::get('/referees', [Api\StatsController::class, 'referees'])->name('referees');
+        });
     });
+
+    // =================================================================
+    // NOTIFICATION ROUTES
+    // =================================================================
+    Route::prefix('notifications')->name('notifications.')->group(function () {
+        Route::get('/', [NotificationController::class, 'index'])->name('index');
+        Route::post('/{notification}/mark-read', [NotificationController::class, 'markAsRead'])->name('mark-read');
+        Route::post('/mark-all-read', [NotificationController::class, 'markAllAsRead'])->name('mark-all-read');
+        Route::delete('/{notification}', [NotificationController::class, 'destroy'])->name('destroy');
+    });
+
+    // =================================================================
+    // SEARCH ROUTES
+    // =================================================================
+    Route::get('/search', [SearchController::class, 'index'])->name('search.index');
+    Route::get('/search/tournaments', [SearchController::class, 'tournaments'])->name('search.tournaments');
+    Route::get('/search/referees', [SearchController::class, 'referees'])->name('search.referees');
+    Route::get('/search/clubs', [SearchController::class, 'clubs'])->name('search.clubs');
 });
 
 // =================================================================
-// API ROUTES (for AJAX calls)
+// PUBLIC ROUTES (No authentication required)
 // =================================================================
-Route::middleware(['auth', 'api'])->prefix('api')->name('api.')->group(function () {
-    Route::get('calendar/events', [Api\CalendarController::class, 'index'])->name('calendar.events');
-    Route::get('tournaments/search', [Api\TournamentController::class, 'search'])->name('tournaments.search');
-    Route::get('referees/search', [Api\RefereeController::class, 'search'])->name('referees.search');
-});
 
-// Include auth routes
-require __DIR__ . '/auth.php';
+// Public Tournament Calendar
+Route::get('/calendar', [PublicController::class, 'calendar'])->name('public.calendar');
+
+// Public Tournament List
+Route::get('/tournaments', [PublicController::class, 'tournaments'])->name('public.tournaments');
+
+// Health Check
+Route::get('/health', function () {
+    return response()->json([
+        'status' => 'ok',
+        'timestamp' => now()->toISOString(),
+        'version' => config('app.version', '1.0.0')
+    ]);
+})->name('health');
+
+// =================================================================
+// FALLBACK ROUTE
+// =================================================================
+Route::fallback(function () {
+    return response()->view('errors.404', [], 404);
+});

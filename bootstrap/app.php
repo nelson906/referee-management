@@ -6,8 +6,8 @@ use Illuminate\Foundation\Configuration\Middleware;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
-        web: __DIR__.'/../routes/web.php',
-        commands: __DIR__.'/../routes/console.php',
+        web: __DIR__ . '/../routes/web.php',
+        commands: __DIR__ . '/../routes/console.php',
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
@@ -33,7 +33,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         // API middleware group
         $middleware->api(append: [
-            \Illuminate\Routing\Middleware\ThrottleRequests::class.':api',
+            \Illuminate\Routing\Middleware\ThrottleRequests::class . ':api',
             \Illuminate\Routing\Middleware\SubstituteBindings::class,
         ]);
 
@@ -52,9 +52,11 @@ return Application::configure(basePath: dirname(__DIR__))
             'verified' => \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class,
 
             // Custom middleware for golf referee system
-            'superadmin' => \App\Http\Middleware\SuperAdminMiddleware::class,
+            'superadmin' => \App\Http\Middleware\SuperAdmin::class,
             'admin' => \App\Http\Middleware\AdminMiddleware::class,
             'referee' => \App\Http\Middleware\RefereeMiddleware::class,
+            'admin_or_superadmin' => \App\Http\Middleware\AdminOrSuperAdmin::class,
+            'referee_or_admin' => \App\Http\Middleware\RefereeOrAdmin::class,
             'zone.access' => \App\Http\Middleware\ZoneAccessMiddleware::class,
             'zone.admin' => \App\Http\Middleware\ZoneAdminMiddleware::class,
         ]);

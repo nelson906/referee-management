@@ -1,0 +1,86 @@
+classDiagram
+    class CrudActions {
+        <<trait>>
+        +toggleActive(Model) RedirectResponse
+        +destroy(Model) RedirectResponse
+        #getEntityName(Model) string
+        #getIndexRoute() string
+        #getModelClass() string
+        #getDeleteErrorMessage(Model) string
+        #canBeDeleted(Model) bool
+        #checkAccess(Model) void
+    }
+    
+    class RefereeController {
+        +index(Request) View
+        +create() View
+        +store(RefereeRequest) RedirectResponse
+        +show(User) View
+        +edit(User) View
+        +update(RefereeRequest, User) RedirectResponse
+        #getEntityName(Model) string
+        #getIndexRoute() string
+        #canBeDeleted(Model) bool
+        #checkAccess(Model) void
+    }
+    
+    class TournamentController {
+        +index(Request) View
+        +create() View
+        +store(TournamentRequest) RedirectResponse
+        +show(Tournament) View
+        +edit(Tournament) View
+        +update(TournamentRequest, Tournament) RedirectResponse
+        #getEntityName(Model) string
+        #getIndexRoute() string
+        #canBeDeleted(Model) bool
+        #checkAccess(Model) void
+    }
+    
+    class ClubController {
+        +index(Request) View
+        +create() View
+        +store(ClubRequest) RedirectResponse
+        +show(Club) View
+        +edit(Club) View
+        +update(ClubRequest, Club) RedirectResponse
+        #getEntityName(Model) string
+        #getIndexRoute() string
+        #canBeDeleted(Model) bool
+        #checkAccess(Model) void
+    }
+    
+    class TableActionsComponent {
+        +model Model
+        +routePrefix string
+        +showView bool
+        +showEdit bool
+        +showDelete bool
+        +showToggle bool
+        +canDelete bool
+        +deleteConfirmMessage string
+        +extraActions array
+    }
+    
+    class StatusBadgeComponent {
+        +status bool
+        +activeText string
+        +inactiveText string
+        +activeClass string
+        +inactiveClass string
+    }
+    
+    class TableHeaderComponent {
+        +title string
+        +description string
+        +createRoute string
+        +createText string
+    }
+    
+    RefereeController ..|> CrudActions : uses
+    TournamentController ..|> CrudActions : uses
+    ClubController ..|> CrudActions : uses
+    
+    TableActionsComponent --> RefereeController : calls routes
+    TableActionsComponent --> TournamentController : calls routes
+    TableActionsComponent --> ClubController : calls routes
