@@ -1,34 +1,22 @@
-import './bootstrap';
-import Alpine from 'alpinejs';
+// In resources/js/app.js
+import './bootstrap.js';
+import Alpine from 'alpinejs'
 
-// Make Alpine available globally
-window.Alpine = Alpine;
+Alpine.start()
 
-// Start Alpine
-Alpine.start();
+// If you want Alpine's instance to be available globally
+window.Alpine = Alpine
 
-// Custom JavaScript for the Golf Referee System
-document.addEventListener('DOMContentLoaded', function() {
-    // Auto-hide flash messages after 5 seconds
-    const flashMessages = document.querySelectorAll('.alert-success, .alert-error, .alert-warning');
-    flashMessages.forEach(function(message) {
-        setTimeout(function() {
-            message.style.transition = 'opacity 0.5s';
-            message.style.opacity = '0';
-            setTimeout(function() {
-                message.remove();
-            }, 500);
-        }, 5000);
-    });
+import React from 'react';
+import { createRoot } from 'react-dom/client';
+import TournamentCalendar from './Components/TournamentCalendar.jsx';
 
-    // Confirm dialogs for delete actions
-    const deleteButtons = document.querySelectorAll('[data-confirm]');
-    deleteButtons.forEach(function(button) {
-        button.addEventListener('click', function(e) {
-            const message = button.getAttribute('data-confirm') || 'Sei sicuro di voler procedere?';
-            if (!confirm(message)) {
-                e.preventDefault();
-            }
-        });
-    });
+// Wait for the DOM to be fully loaded
+document.addEventListener('DOMContentLoaded', () => {
+    // Initialize the tournament calendar if the container exists
+    const calendarContainer = document.getElementById('tournament-calendar-root');
+    if (calendarContainer) {
+        const root = createRoot(calendarContainer);
+        root.render(React.createElement(TournamentCalendar));
+    }
 });

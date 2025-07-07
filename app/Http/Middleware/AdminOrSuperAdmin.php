@@ -22,7 +22,7 @@ class AdminOrSuperAdmin
         $user = auth()->user();
 
         // Allow super_admin, national_admin, and zone_admin
-        $allowedTypes = ['super_admin', 'national_admin', 'zone_admin'];
+        $allowedTypes = ['super_admin', 'national_admin', 'admin'];
 
         if (!in_array($user->user_type, $allowedTypes)) {
             abort(403, 'Accesso negato. Solo gli amministratori possono accedere a questa sezione.');

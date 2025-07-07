@@ -401,7 +401,105 @@ class TournamentController extends Controller
 
         return response()->json($clubs);
     }
+/**
+ * Show tournaments calendar view
+ */
+public function calendar(Request $request)
+{
+    $user = auth()->user();
+    $isNationalAdmin = $user->user_type === 'national_admin' || $user->user_type === 'super_admin';
 
+    // Get tournaments for calendar
+    $tournaments = Tournament::with(['tournamentCategory', 'zone', 'club', 'assignments.user'])
+        ->when(!$isNationalAdmin, function ($q) use ($user) {
+            $q->where('zone_id', $user->zone_id);
+        })
+        ->get();
+
+    // Get zones for filter
+    $zones = $isNationalAdmin
+        ? Zone::orderBy('name')->get()
+        : Zone::where('id', $user->zone_id)->get();
+
+    // Get clubs for filter
+    $clubs = Club::active()
+        ->when(!$isNationalAdmin, function ($q) use ($user) {
+            $q->where('zone_id', $user->zone_id);
+        })
+        ->orderBy('name')
+        ->get();
+
+    // Get tournament types
+    $types = TournamentCategory::active()->ordered()->get();
+
+    // User roles for permissions
+    $userRoles = [$user->user_type];
+    if ($user->user_type === 'admin') {
+        $userRoles[] = 'Admin';
+    } elseif ($user->user_type === 'super_admin') {
+        $userRoles[] = 'SuperAdmin';
+    } elseif ($user->user_type === 'national_admin') {
+        $userRoles[] = 'NationalAdmin';
+    }
+
+    // Format tournaments for calendar
+    $calendarTournaments = $tournaments->map(function ($tournament) {
+        return [
+            'id' => $tournament->id,
+            'name' => $tournament->name,
+            'start_date' => $tournament->start_date->format('Y-m-d'),
+            'end_date' => $tournament->end_date->format('Y-m-d'),
+            'status' => $tournament->status,
+            'club' => [
+                'id' => $tournament->club->id,
+                'name' => $tournament->club->name,
+                'zone_id' => $tournament->club->zone_id,
+            ],
+            'type' => [
+                'id' => $tournament->tournamentCategory->id,
+                'name' => $tournament->tournamentCategory->name,
+                'code' => $tournament->tournamentCategory->code,
+                'is_national' => $tournament->tournamentCategory->is_national,
+            ],
+            'assigned_referees' => $tournament->assignments->map(function ($assignment) {
+                return [
+                    'id' => $assignment->user->id,
+                    'name' => $assignment->user->name,
+                    'role' => $assignment->role ?? 'Arbitro',
+                ];
+            }),
+        ];
+    });
+
+    // Prepare data for React component
+    $calendarData = [
+        'tournaments' => $calendarTournaments,
+        'zones' => $zones->map(function ($zone) {
+            return [
+                'id' => $zone->id,
+                'name' => $zone->name,
+            ];
+        }),
+        'clubs' => $clubs->map(function ($club) {
+            return [
+                'id' => $club->id,
+                'name' => $club->name,
+                'zone_id' => $club->zone_id,
+            ];
+        }),
+        'types' => $types->map(function ($type) {
+            return [
+                'id' => $type->id,
+                'name' => $type->name,
+                'code' => $type->code,
+                'is_national' => $type->is_national,
+            ];
+        }),
+        'userRoles' => $userRoles,
+    ];
+
+    return view('admin.tournaments.calendar', compact('calendarData'));
+}
         /**
      * Configurazione per il trait
      */
