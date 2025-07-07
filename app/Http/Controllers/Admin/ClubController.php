@@ -8,9 +8,12 @@ use App\Models\Zone;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
+use App\Http\Traits\CrudActions;
 
 class ClubController extends Controller
 {
+        use CrudActions;
+
     /**
      * Display a listing of clubs.
      */
@@ -262,5 +265,29 @@ class ClubController extends Controller
         if ($user->user_type === 'admin' && $club->zone_id !== $user->zone_id) {
             abort(403, 'Non sei autorizzato ad accedere a questo club.');
         }
+    }
+    protected function getEntityName($model): string
+    {
+        return 'Club';
+    }
+
+    protected function getIndexRoute(): string
+    {
+        return 'admin.clubs.index';
+    }
+
+    protected function getDeleteErrorMessage($model): string
+    {
+        return 'Impossibile eliminare un club con tornei associati.';
+    }
+
+    protected function canBeDeleted($club): bool
+    {
+        return !$club->tournaments()->exists();
+    }
+
+    protected function checkAccess($club): void
+    {
+        $this->checkClubAccess($club);
     }
 }

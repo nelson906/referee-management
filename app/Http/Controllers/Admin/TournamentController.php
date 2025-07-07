@@ -10,10 +10,13 @@ use App\Models\club;
 use App\Models\Zone;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use App\Http\Traits\CrudActions;
 
 class TournamentController extends Controller
 {
-    /**
+       use CrudActions;
+
+       /**
      * Display a listing of tournaments.
      */
     public function index(Request $request)
@@ -398,4 +401,34 @@ class TournamentController extends Controller
 
         return response()->json($clubs);
     }
+
+        /**
+     * Configurazione per il trait
+     */
+    protected function getEntityName($model): string
+    {
+        return 'Torneo';
+    }
+
+    protected function getIndexRoute(): string
+    {
+        return 'admin.tournaments.index';
+    }
+
+    protected function getDeleteErrorMessage($model): string
+    {
+        return 'Impossibile eliminare un torneo con assegnazioni.';
+    }
+
+    protected function canBeDeleted($tournament): bool
+    {
+        return !$tournament->assignments()->exists() && $tournament->status === 'draft';
+    }
+
+    protected function checkAccess($tournament): void
+    {
+        $this->checkTournamentAccess($tournament);
+    }
 }
+
+

@@ -5,40 +5,27 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Assignment extends Model
 {
     use HasFactory;
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var array<int, string>
-     */
     protected $fillable = [
         'user_id',
         'tournament_id',
         'role',
         'is_confirmed',
         'assigned_at',
-        'assigned_by',
+        'assigned_by_id', // CORRETTO: usa assigned_by_id
         'notes',
     ];
 
-    /**
-     * The attributes that should be cast.
-     *
-     * @var array<string, string>
-     */
     protected $casts = [
         'is_confirmed' => 'boolean',
         'assigned_at' => 'datetime',
     ];
 
-    /**
-     * Assignment roles
-     */
+    // Assignment roles
     const ROLE_REFEREE = 'Arbitro';
     const ROLE_TOURNAMENT_DIRECTOR = 'Direttore di Torneo';
     const ROLE_OBSERVER = 'Osservatore';
@@ -70,15 +57,7 @@ class Assignment extends Model
      */
     public function assignedBy(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'assigned_by');
-    }
-
-    /**
-     * Get the notifications for the assignment.
-     */
-    public function notifications(): HasMany
-    {
-        return $this->hasMany(Notification::class);
+        return $this->belongsTo(User::class, 'assigned_by_id'); // Cambiato da 'assigned_by'
     }
 
     /**
@@ -98,14 +77,6 @@ class Assignment extends Model
     }
 
     /**
-     * Scope a query to only include assignments for a specific role.
-     */
-    public function scopeForRole($query, string $role)
-    {
-        return $query->where('role', $role);
-    }
-
-    /**
      * Scope a query to only include assignments for upcoming tournaments.
      */
     public function scopeUpcoming($query)
@@ -116,118 +87,44 @@ class Assignment extends Model
     }
 
     /**
-     * Scope a query to only include assignments for past tournaments.
+     * Check if assignment can be confirmed by the referee
      */
-    public function scopePast($query)
+    public function canBeConfirmed(): bool
     {
-        return $query->whereHas('tournament', function ($q) {
-            $q->past();
-        });
+        return !$this->is_confirmed &&
+               $this->tournament->status === 'assigned' &&
+               $this->tournament->start_date >= now();
     }
 
     /**
-     * Confirm the assignment
-     */
-    public function confirm(): void
-    {
-        $this->update(['is_confirmed' => true]);
-    }
-
-    /**
-     * Check if assignment has been notified
-     */
-    public function hasBeenNotified(): bool
-    {
-        return $this->notifications()->sent()->exists();
-    }
-
-    /**
-     * Get the latest notification
-     */
-    public function getLatestNotificationAttribute(): ?Notification
-    {
-        return $this->notifications()->latest()->first();
-    }
-
-    /**
-     * Get days until tournament
-     */
-    public function getDaysUntilTournamentAttribute(): int
-    {
-        return now()->diffInDays($this->tournament->start_date, false);
-    }
-
-    /**
-     * Check if needs confirmation reminder
-     */
-    public function needsConfirmationReminder(): bool
-    {
-        if ($this->is_confirmed) {
-            return false;
-        }
-
-        // Send reminder if tournament is within 7 days and not confirmed
-        return $this->days_until_tournament <= 7 && $this->days_until_tournament > 0;
-    }
-
-    /**
-     * Get role badge color
-     */
-    public function getRoleBadgeColorAttribute(): string
-    {
-        return match($this->role) {
-            self::ROLE_REFEREE => 'blue',
-            self::ROLE_TOURNAMENT_DIRECTOR => 'purple',
-            self::ROLE_OBSERVER => 'gray',
-            default => 'gray',
-        };
-    }
-
-    /**
-     * Get assignment status
-     */
-    public function getStatusAttribute(): string
-    {
-        if ($this->tournament->status === 'completed') {
-            return 'completed';
-        }
-
-        if ($this->is_confirmed) {
-            return 'confirmed';
-        }
-
-        if ($this->days_until_tournament < 0) {
-            return 'expired';
-        }
-
-        return 'pending';
-    }
-
-    /**
-     * Get status label
+     * Get status label for UI
      */
     public function getStatusLabelAttribute(): string
     {
-        return match($this->status) {
-            'completed' => 'Completato',
-            'confirmed' => 'Confermato',
-            'expired' => 'Scaduto',
-            'pending' => 'In attesa',
-            default => 'Sconosciuto',
-        };
+        if ($this->is_confirmed) {
+            return 'Confermato';
+        }
+
+        if ($this->tournament->start_date < now()) {
+            return 'Scaduto';
+        }
+
+        return 'In attesa di conferma';
     }
 
     /**
-     * Get status color
+     * Get status color for UI
      */
     public function getStatusColorAttribute(): string
     {
-        return match($this->status) {
-            'completed' => 'gray',
-            'confirmed' => 'green',
-            'expired' => 'red',
-            'pending' => 'yellow',
-            default => 'gray',
-        };
+        if ($this->is_confirmed) {
+            return 'green';
+        }
+
+        if ($this->tournament->start_date < now()) {
+            return 'gray';
+        }
+
+        return 'yellow';
     }
 }

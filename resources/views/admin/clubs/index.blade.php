@@ -131,23 +131,9 @@
                                     </span>
                                 </td>
 
-                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                    <div class="flex space-x-3">
-                                        <a href="{{ route('admin.clubs.show', $club) }}"
-                                           class="text-blue-600 hover:text-blue-900">Visualizza</a>
-                                        <a href="{{ route('admin.clubs.edit', $club) }}"
-                                           class="text-indigo-600 hover:text-indigo-900">Modifica</a>
-
-                                        <form method="POST" action="{{ route('admin.clubs.toggle-active', $club) }}" class="inline">
-                                            @csrf
-                                            <button type="submit"
-                                                    class="text-{{ $club->is_active ? 'red' : 'green' }}-600 hover:text-{{ $club->is_active ? 'red' : 'green' }}-900"
-                                                    onclick="return confirm('Sei sicuro di voler {{ $club->is_active ? 'disattivare' : 'attivare' }} questo club?')">
-                                                {{ $club->is_active ? 'Disattiva' : 'Attiva' }}
-                                            </button>
-                                        </form>
-                                    </div>
-                                </td>
+<td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+    <x-table-actions-club :club="$club" />
+</td>
                             </tr>
                         @endforeach
                     </tbody>

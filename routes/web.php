@@ -9,6 +9,7 @@ use App\Http\Controllers\Api;
 use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\Reports\TournamentReportController;
 
 /*
 |--------------------------------------------------------------------------
@@ -75,6 +76,10 @@ Route::middleware(['auth'])->group(function () {
             ->name('tournaments.assignments');
         Route::post('tournaments/{tournament}/assignments', [Admin\TournamentController::class, 'storeAssignments'])
             ->name('tournaments.assignments.store');
+        Route::get('tournaments/{tournament}/availabilities', [Admin\TournamentController::class, 'availabilities'])
+            ->name('tournaments.availabilities');
+Route::post('tournaments/{tournament}/update-status', [Admin\TournamentController::class, 'updateStatus'])
+    ->name('tournaments.update-status');
 
         // Referee Management
         Route::resource('referees', Admin\RefereeController::class);
@@ -82,12 +87,21 @@ Route::middleware(['auth'])->group(function () {
             ->name('referees.toggle-active');
         Route::get('referees/{referee}/availabilities', [Admin\RefereeController::class, 'availabilities'])
             ->name('referees.availabilities');
+// Tournament Management
+Route::resource('tournaments', Admin\TournamentController::class);
+Route::post('tournaments/{tournament}/toggle-active', [Admin\TournamentController::class, 'toggleActive'])
+    ->name('tournaments.toggle-active');
+Route::get('reports/tournament/{tournament}', [TournamentReportController::class, 'show'])->name('reports.tournament.show');
 
         // club Management (for zone admins)
         Route::resource('clubs', Admin\ClubController::class);
+        Route::post('clubs/{club}/toggle-active', [Admin\ClubController::class, 'toggleActive'])
+            ->name('clubs.toggle-active');
+Route::patch('clubs/{club}/activate', [Admin\ClubController::class, 'activate'])->name('clubs.activate');
+Route::patch('clubs/{club}/deactivate', [Admin\ClubController::class, 'deactivate'])->name('clubs.deactivate');
 
         // Assignment Management
-        Route::resource('assignments', Admin\AssignmentController::class, ['only' => ['index', 'show', 'update', 'destroy']]);
+        Route::resource('assignments', Admin\AssignmentController::class);
         Route::post('assignments/{assignment}/confirm', [Admin\AssignmentController::class, 'confirm'])
             ->name('assignments.confirm');
     });
@@ -157,6 +171,8 @@ Route::middleware(['auth'])->group(function () {
 
         // Category Reports (super admin only)
         Route::middleware(['superadmin'])->group(function () {
+            Route::get('categories', [Reports\CategoryReportController::class, 'index'])
+                ->name('category.index');
             Route::get('category/{category}', [Reports\CategoryReportController::class, 'show'])
                 ->name('category.show');
             Route::get('category/{category}/export', [Reports\CategoryReportController::class, 'export'])
@@ -183,4 +199,4 @@ Route::middleware(['auth', 'api'])->prefix('api')->name('api.')->group(function 
 });
 
 // Include auth routes
-require __DIR__.'/auth.php';
+require __DIR__ . '/auth.php';

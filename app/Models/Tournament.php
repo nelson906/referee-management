@@ -139,15 +139,16 @@ class Tournament extends Model
                     ->withTimestamps();
     }
 
-    /**
-     * Get assigned referees
-     */
-    public function assignedReferees()
-    {
-        return $this->belongsToMany(User::class, 'assignments')
-                    ->withPivot('role', 'is_confirmed', 'assigned_at', 'assigned_by', 'notes')
-                    ->withTimestamps();
-    }
+   /**
+ * Get assigned referees
+ */
+public function assignedReferees()
+{
+    return $this->belongsToMany(User::class, 'assignments')
+                ->withPivot('role', 'is_confirmed', 'assigned_at', 'assigned_by_id', 'notes')
+                ->withTimestamps();
+}
+
 
     /**
      * Scope a query to only include tournaments visible to a specific zone.
@@ -334,4 +335,5 @@ class Tournament extends Model
         $this->increment('document_version');
         $this->update(['documents_last_updated_by' => auth()->id()]);
     }
+
 }

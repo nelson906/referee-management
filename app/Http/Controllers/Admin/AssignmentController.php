@@ -52,10 +52,12 @@ class AssignmentController extends Controller
             }
         }
 
-        $assignments = $query
-            ->orderBy('tournaments.start_date', 'desc')
-            ->orderBy('assignments.created_at', 'desc')
-            ->paginate(20);
+$assignments = $query
+    ->join('tournaments', 'assignments.tournament_id', '=', 'tournaments.id')
+    ->select('assignments.*')  // IMPORTANTE: seleziona solo da assignments
+    ->orderBy('tournaments.start_date', 'desc')
+    ->orderBy('assignments.created_at', 'desc')
+    ->paginate(20);
 
         // Get data for filters
         $tournaments = Tournament::with('club')
@@ -112,46 +114,44 @@ class AssignmentController extends Controller
         return view('admin.assignments.create', compact('tournament', 'tournaments'));
     }
 
-    /**
-     * Store a newly created assignment.
-     */
-    public function store(Request $request): RedirectResponse
-    {
-        $request->validate([
-            'tournament_id' => 'required|exists:tournaments,id',
-            'user_id' => 'required|exists:users,id',
-            'role' => 'required|in:Arbitro,Direttore di Torneo,Osservatore',
-            'notes' => 'nullable|string|max:500',
-        ]);
+/**
+ * Store a newly created assignment.
+ */
+public function store(Request $request): RedirectResponse
+{
+    $request->validate([
+        'tournament_id' => 'required|exists:tournaments,id',
+        'user_id' => 'required|exists:users,id',
+        'role' => 'required|in:Arbitro,Direttore di Torneo,Osservatore',
+        'notes' => 'nullable|string|max:500',
+    ]);
 
-        $tournament = Tournament::findOrFail($request->tournament_id);
-        $this->checkTournamentAccess($tournament);
+    $tournament = Tournament::findOrFail($request->tournament_id);
+    $this->checkTournamentAccess($tournament);
 
-        $referee = User::findOrFail($request->user_id);
+    $referee = User::findOrFail($request->user_id);
 
-        // Check if referee can be assigned
-        if (!$tournament->canAssignReferee($referee)) {
-            return redirect()->back()
-                ->with('error', 'Impossibile assegnare questo arbitro al torneo.');
-        }
-
-        // Create assignment
-        $assignment = Assignment::create([
-            'tournament_id' => $tournament->id,
-            'user_id' => $referee->id,
-            'role' => $request->role,
-            'notes' => $request->notes,
-            'assigned_at' => now(),
-            'assigned_by' => auth()->id(),
-            'is_confirmed' => false,
-        ]);
-
-        // TODO: Send notification to referee
-
-        return redirect()
-            ->route('admin.assignments.index')
-            ->with('success', "Arbitro {$referee->name} assegnato con successo al torneo {$tournament->name}.");
+    // Check if referee can be assigned
+    if (!$tournament->canAssignReferee($referee)) {
+        return redirect()->back()
+            ->with('error', 'Impossibile assegnare questo arbitro al torneo.');
     }
+
+    // Create assignment - FIXED: usa assigned_by_id invece di assigned_by
+    $assignment = Assignment::create([
+        'tournament_id' => $tournament->id,
+        'user_id' => $referee->id,
+        'role' => $request->role,
+        'notes' => $request->notes,
+        'assigned_at' => now(),
+        'assigned_by_id' => auth()->id(), // CORRETTO: assigned_by_id
+        'is_confirmed' => false,
+    ]);
+
+    return redirect()
+        ->route('admin.tournaments.show', $tournament)
+        ->with('success', "Arbitro {$referee->name} assegnato con successo al torneo {$tournament->name}.");
+}
 
     /**
      * Display the specified assignment.
