@@ -86,7 +86,7 @@ Route::middleware(['auth'])->group(function () {
     // =================================================================
     // ADMIN ROUTES (Zone Admin & CRC Admin) + Super Admin Access
     // =================================================================
-    Route::middleware(['admin_or_superadmin'])->prefix('admin')->name('admin.')->group(function () {
+    Route::middleware(['zone.admin'])->prefix('admin')->name('admin.')->group(function () {
 
         // Dashboard
         Route::get('/', [Admin\DashboardController::class, 'index'])->name('dashboard');
@@ -202,7 +202,7 @@ Route::prefix('assignments')->name('assignments.')->group(function () {
     // =================================================================
     // REPORTS ROUTES (All authenticated users with proper permissions)
     // =================================================================
-    Route::middleware(['admin_or_superadmin'])->prefix('reports')->name('reports.')->group(function () {
+    Route::middleware(['zone.admin'])->prefix('reports')->name('reports.')->group(function () {
 
         // Dashboard Analytics
         Route::get('/', [Reports\DashboardController::class, 'index'])->name('dashboard');
