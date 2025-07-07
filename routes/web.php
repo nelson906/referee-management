@@ -91,6 +91,8 @@ Route::middleware(['auth'])->group(function () {
         // Dashboard
         Route::get('/', [Admin\DashboardController::class, 'index'])->name('dashboard');
 
+Route::get('tournaments-calendar', [Admin\TournamentController::class, 'calendar'])  // ← AGGIUNGI QUESTA
+    ->name('tournaments.calendar');
         // Tournament Management
         Route::resource('tournaments', Admin\TournamentController::class);
         Route::post('tournaments/{tournament}/update-status', [Admin\TournamentController::class, 'updateStatus'])
@@ -105,8 +107,8 @@ Route::middleware(['auth'])->group(function () {
             ->name('tournaments.remove-referee');
         Route::get('tournaments/{tournament}/availabilities', [Admin\TournamentController::class, 'availabilities'])
             ->name('tournaments.availabilities');
-Route::get('tournaments/calendar', [Admin\TournamentController::class, 'calendar'])
-    ->name('tournaments.calendar');
+Route::post('tournaments/{tournament}/close', [Admin\TournamentController::class, 'close'])
+    ->name('tournaments.close');
 
         // Referee Management
         Route::resource('referees', Admin\RefereeController::class);

@@ -2,10 +2,6 @@
 
 @section('title', 'Calendario Tornei')
 
-@push('styles')
-    <link rel="stylesheet" href="{{ asset('css/calendar.css') }}">
-@endpush
-
 @section('content')
 <div class="container mx-auto px-4 py-8">
     {{-- Header --}}
@@ -32,21 +28,6 @@
         </div>
     </div>
 
-    {{-- Alert Messages --}}
-    @if(session('success'))
-        <div class="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 mb-6" role="alert">
-            <p class="font-bold">Successo!</p>
-            <p>{{ session('success') }}</p>
-        </div>
-    @endif
-
-    @if(session('error'))
-        <div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6" role="alert">
-            <p class="font-bold">Errore!</p>
-            <p>{{ session('error') }}</p>
-        </div>
-    @endif
-
     {{-- Calendar Container --}}
     <div id="tournament-calendar-root" class="bg-white rounded-lg shadow">
         {{-- Fallback content while React loads --}}
@@ -65,7 +46,12 @@
 </script>
 @endsection
 
-@push('scripts')
-    {{-- Include React calendar component --}}
-    @vite(['resources/js/calendar.jsx'])
-@endpush
+@vite(['resources/js/calendar.jsx'])
+{{-- Pass data to JavaScript --}}
+<script>
+    window.calendarData = @json($calendarData);
+
+    // ✅ DEBUG TEMPORANEO - RIMUOVI DOPO:
+    console.log('Calendar Data:', window.calendarData);
+    console.log('Tournaments:', window.calendarData.tournaments);
+</script>
