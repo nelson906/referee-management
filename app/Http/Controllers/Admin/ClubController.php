@@ -12,7 +12,7 @@ use App\Http\Traits\CrudActions;
 
 class ClubController extends Controller
 {
-        use CrudActions;
+    use CrudActions;
 
     /**
      * Display a listing of clubs.
@@ -20,7 +20,7 @@ class ClubController extends Controller
     public function index(Request $request): View
     {
         $user = auth()->user();
-        $isNationalAdmin = $user->user_type === 'national_admin';
+        $isNationalAdmin = $user->user_type === 'national_admin' || $user->user_type === 'super_admin';
 
         $query = Club::with(['zone']);
 
@@ -34,8 +34,8 @@ class ClubController extends Controller
             $search = $request->search;
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('code', 'like', "%{$search}%")
-                  ->orWhere('city', 'like', "%{$search}%");
+                    ->orWhere('code', 'like', "%{$search}%")
+                    ->orWhere('city', 'like', "%{$search}%");
             });
         }
 
@@ -70,7 +70,7 @@ class ClubController extends Controller
     public function create(): View
     {
         $user = auth()->user();
-        $isNationalAdmin = $user->user_type === 'national_admin';
+        $isNationalAdmin = $user->user_type === 'national_admin' || $user->user_type === 'super_admin';
 
         $zones = $isNationalAdmin
             ? Zone::orderBy('name')->get()
@@ -147,7 +147,7 @@ class ClubController extends Controller
         $this->checkClubAccess($club);
 
         $user = auth()->user();
-        $isNationalAdmin = $user->user_type === 'national_admin';
+        $isNationalAdmin = $user->user_type === 'national_admin' || $user->user_type === 'super_admin';
 
         $zones = $isNationalAdmin
             ? Zone::orderBy('name')->get()
@@ -250,7 +250,14 @@ class ClubController extends Controller
 
         return response()->json($clubs);
     }
+    public function deactivate(Club $club)
+    {
+        $club->update(['is_active' => false]);
 
+        return redirect()
+            ->route('admin.clubs.index')
+            ->with('success', 'Club disattivato con successo.');
+    }
     /**
      * Check if user can access the club.
      */

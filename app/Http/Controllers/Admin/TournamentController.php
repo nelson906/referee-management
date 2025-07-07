@@ -22,7 +22,7 @@ class TournamentController extends Controller
     public function index(Request $request)
     {
         $user = auth()->user();
-        $isNationalAdmin = $user->user_type === 'national_admin';
+        $isNationalAdmin = $user->user_type === 'national_admin' || $user->user_type === 'super_admin';
 
         // Base query
         $query = Tournament::with(['tournamentCategory', 'zone', 'club', 'assignments']);
@@ -88,7 +88,7 @@ class TournamentController extends Controller
     public function create()
     {
         $user = auth()->user();
-        $isNationalAdmin = $user->user_type === 'national_admin';
+        $isNationalAdmin = $user->user_type === 'national_admin' || $user->user_type === 'super_admin';
 
         // Get categories available for user's zone
         $categories = TournamentCategory::active()
@@ -198,7 +198,7 @@ class TournamentController extends Controller
         }
 
         $user = auth()->user();
-        $isNationalAdmin = $user->user_type === 'national_admin';
+        $isNationalAdmin = $user->user_type === 'national_admin' || $user->user_type === 'super_admin';
 
         // Get categories
         $categories = TournamentCategory::active()

@@ -22,9 +22,9 @@ class AdminMiddleware
         $user = auth()->user();
 
         // Check if user is admin (zone admin or national admin)
-        if (!in_array($user->user_type, ['admin', 'national_admin'])) {
-            abort(403, 'Accesso non autorizzato. Solo gli amministratori possono accedere a questa sezione.');
-        }
+    if (!in_array($user->user_type, ['admin', 'national_admin', 'super_admin'])) {
+        abort(403, 'Accesso non autorizzato. Solo gli amministratori possono accedere a questa sezione.');
+    }
 
         // Additional check: ensure admin has access to their zone
         if ($user->user_type === 'admin' && !$user->zone_id) {

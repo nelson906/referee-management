@@ -17,7 +17,7 @@ class RefereeController extends Controller
     public function index(Request $request): View
     {
         $user = auth()->user();
-        $isNationalAdmin = $user->user_type === 'national_admin';
+        $isNationalAdmin = $user->user_type === 'national_admin' || $user->user_type === 'super_admin';
 
         $query = User::where('user_type', 'referee')
             ->with(['zone'])
@@ -74,6 +74,24 @@ class RefereeController extends Controller
 
         return view('admin.referees.index', compact('referees', 'zones', 'levels', 'isNationalAdmin'));
     }
+    /**
+     * Show the form for creating a new referee.
+     */
+    public function create()
+    {
+        $user = auth()->user();
+        $isNationalAdmin = $user->user_type === 'national_admin' || $user->user_type === 'super_admin';
+
+        // Get referee levels from User model
+        $levels = User::REFEREE_LEVELS;
+
+        // Get zones based on user permissions
+        $zones = $isNationalAdmin
+            ? Zone::orderBy('name')->get()
+            : Zone::where('id', $user->zone_id)->get();
+
+        return view('admin.referees.create', compact('levels', 'zones'));
+    }
 
     /**
      * Display the specified referee.
@@ -129,7 +147,7 @@ class RefereeController extends Controller
         $this->checkRefereeAccess($referee);
 
         $user = auth()->user();
-        $isNationalAdmin = $user->user_type === 'national_admin';
+        $isNationalAdmin = $user->user_type === 'national_admin' || $user->user_type === 'super_admin';
 
         $zones = $isNationalAdmin
             ? Zone::orderBy('name')->get()

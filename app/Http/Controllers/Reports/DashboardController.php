@@ -130,9 +130,9 @@ class DashboardController extends Controller
     private function getActivityTrends($startDate)
     {
         $userTrends = User::select(
-                DB::raw('DATE(created_at) as date'),
-                DB::raw('COUNT(*) as count')
-            )
+            DB::raw('DATE(created_at) as date'),
+            DB::raw('COUNT(*) as count')
+        )
             ->where('created_at', '>=', $startDate)
             ->groupBy('date')
             ->orderBy('date')
@@ -141,9 +141,9 @@ class DashboardController extends Controller
             ->pluck('count');
 
         $tournamentTrends = Tournament::select(
-                DB::raw('DATE(created_at) as date'),
-                DB::raw('COUNT(*) as count')
-            )
+            DB::raw('DATE(created_at) as date'),
+            DB::raw('COUNT(*) as count')
+        )
             ->where('created_at', '>=', $startDate)
             ->groupBy('date')
             ->orderBy('date')
@@ -152,9 +152,9 @@ class DashboardController extends Controller
             ->pluck('count');
 
         $assignmentTrends = TournamentAssignment::select(
-                DB::raw('DATE(created_at) as date'),
-                DB::raw('COUNT(*) as count')
-            )
+            DB::raw('DATE(created_at) as date'),
+            DB::raw('COUNT(*) as count')
+        )
             ->where('created_at', '>=', $startDate)
             ->groupBy('date')
             ->orderBy('date')
@@ -247,7 +247,7 @@ class DashboardController extends Controller
             $activities[] = [
                 'type' => 'tournament_created',
                 'title' => 'Nuovo torneo creato',
-                'description' => "{$tournament->name} ({$tournament->category->name ?? 'N/A'}) - {$tournament->zone->name ?? 'N/A'}",
+                'description' => $tournament->name . ' (' . ($tournament->tournamentCategory->name ?? 'N/A') . ') - ' . ($tournament->zone->name ?? 'N/A'),
                 'created_at' => $tournament->created_at,
                 'icon' => 'calendar',
                 'color' => 'green',
@@ -472,7 +472,7 @@ class DashboardController extends Controller
             'Content-Disposition' => "attachment; filename=\"{$filename}\"",
         ];
 
-        $callback = function() use ($data) {
+        $callback = function () use ($data) {
             $file = fopen('php://output', 'w');
 
             // CSV headers
