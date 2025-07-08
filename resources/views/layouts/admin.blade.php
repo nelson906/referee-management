@@ -38,38 +38,37 @@
                             @endif
                         </div>
 
-                        <!-- Navigation Links -->
-                        <div class="hidden space-x-8 sm:-my-px sm:ml-10 sm:flex">
-                            <a href="{{ route('admin.dashboard') }}"
-                               class="inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium leading-5 transition duration-150 ease-in-out
-                               {{ request()->routeIs('admin.dashboard') ? 'border-white text-white' : 'border-transparent text-blue-100 hover:text-white hover:border-blue-300' }}">
-                                Dashboard
-                            </a>
+<!-- Desktop Navigation Links -->
+<div class="hidden sm:ml-6 sm:flex sm:space-x-8">
+    <a href="{{ route('admin.dashboard') }}"
+       class="inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium
+       {{ request()->routeIs('admin.dashboard') ? 'border-white text-white' : 'border-transparent text-blue-100 hover:text-white hover:border-blue-300' }}">
+        Dashboard
+    </a>
 
-                            <a href="{{ route('admin.tournaments.admin-index') }}"
-                               class="inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium leading-5 transition duration-150 ease-in-out
-                               {{ request()->routeIs('admin.tournaments.*') ? 'border-white text-white' : 'border-transparent text-blue-100 hover:text-white hover:border-blue-300' }}">
-                                Tornei
-                            </a>
+    <a href="{{ route('admin.tournaments.index') }}"
+       class="inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium
+       {{ request()->routeIs('admin.tournaments.*') ? 'border-white text-white' : 'border-transparent text-blue-100 hover:text-white hover:border-blue-300' }}">
+        Tornei
+    </a>
 
-                            <a href="{{ route('admin.referees.index') }}"
-                               class="inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium leading-5 transition duration-150 ease-in-out
-                               {{ request()->routeIs('admin.referees.*') ? 'border-white text-white' : 'border-transparent text-blue-100 hover:text-white hover:border-blue-300' }}">
-                                Arbitri
-                            </a>
+    <a href="{{ route('admin.calendar.index') }}"
+       class="inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium
+       {{ request()->routeIs('admin.calendar.*') ? 'border-white text-white' : 'border-transparent text-blue-100 hover:text-white hover:border-blue-300' }}">
+        📅 Calendario
+    </a>
 
-                            <a href="{{ route('admin.clubs.index') }}"
-                               class="inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium leading-5 transition duration-150 ease-in-out
-                               {{ request()->routeIs('admin.clubs.*') ? 'border-white text-white' : 'border-transparent text-blue-100 hover:text-white hover:border-blue-300' }}">
-                                Clubs
-                            </a>
+    <a href="{{ route('admin.referees.index') }}"
+       class="inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium
+       {{ request()->routeIs('admin.referees.*') ? 'border-white text-white' : 'border-transparent text-blue-100 hover:text-white hover:border-blue-300' }}">
+        Arbitri
+    </a>
 
-                            <a href="{{ route('admin.assignments.index') }}"
-                               class="inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium leading-5 transition duration-150 ease-in-out
-                               {{ request()->routeIs('admin.assignments.*') ? 'border-white text-white' : 'border-transparent text-blue-100 hover:text-white hover:border-blue-300' }}">
-                                Assegnazioni
-                            </a>
-
+    <a href="{{ route('admin.clubs.index') }}"
+       class="inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium
+       {{ request()->routeIs('admin.clubs.*') ? 'border-white text-white' : 'border-transparent text-blue-100 hover:text-white hover:border-blue-300' }}">
+        Club
+    </a>
                             {{-- Dropdown Reports --}}
                             <div class="relative" x-data="{ open: false }">
                                 <button @click="open = !open"
@@ -180,41 +179,40 @@
                 </div>
             </div>
 
-            <!-- Mobile Navigation -->
-            <div :class="{'block': open, 'hidden': !open}" class="hidden sm:hidden bg-blue-700">
-                <div class="pt-2 pb-3 space-y-1">
-                    <a href="{{ route('admin.dashboard') }}"
-                       class="block pl-3 pr-4 py-2 border-l-4 text-base font-medium transition duration-150 ease-in-out
-                       {{ request()->routeIs('admin.dashboard') ? 'border-white text-white bg-blue-800' : 'border-transparent text-blue-100 hover:text-white hover:bg-blue-800 hover:border-blue-300' }}">
-                        Dashboard
-                    </a>
+{{-- Mobile Navigation --}}
+<div :class="{'block': open, 'hidden': !open}" class="hidden sm:hidden bg-blue-700">
+    <div class="pt-2 pb-3 space-y-1">
+        <a href="{{ route('admin.dashboard') }}"
+           class="block pl-3 pr-4 py-2 border-l-4 text-base font-medium
+           {{ request()->routeIs('admin.dashboard') ? 'border-white text-white bg-blue-800' : 'border-transparent text-blue-100 hover:text-white hover:bg-blue-800' }}">
+            Dashboard
+        </a>
 
-                    <a href="{{ route('admin.tournaments.admin-index') }}"
-                       class="block pl-3 pr-4 py-2 border-l-4 text-base font-medium transition duration-150 ease-in-out
-                       {{ request()->routeIs('admin.tournaments.*') ? 'border-white text-white bg-blue-800' : 'border-transparent text-blue-100 hover:text-white hover:bg-blue-800 hover:border-blue-300' }}">
-                        Tornei
-                    </a>
+        <a href="{{ route('admin.tournaments.index') }}"
+           class="block pl-3 pr-4 py-2 border-l-4 text-base font-medium
+           {{ request()->routeIs('admin.tournaments.*') ? 'border-white text-white bg-blue-800' : 'border-transparent text-blue-100 hover:text-white hover:bg-blue-800' }}">
+            Tornei
+        </a>
 
-                    <a href="{{ route('admin.referees.index') }}"
-                       class="block pl-3 pr-4 py-2 border-l-4 text-base font-medium transition duration-150 ease-in-out
-                       {{ request()->routeIs('admin.referees.*') ? 'border-white text-white bg-blue-800' : 'border-transparent text-blue-100 hover:text-white hover:bg-blue-800 hover:border-blue-300' }}">
-                        Arbitri
-                    </a>
+        <a href="{{ route('admin.calendar.index') }}"
+           class="block pl-3 pr-4 py-2 border-l-4 text-base font-medium
+           {{ request()->routeIs('admin.calendar.*') ? 'border-white text-white bg-blue-800' : 'border-transparent text-blue-100 hover:text-white hover:bg-blue-800' }}">
+            📅 Calendario
+        </a>
 
-                    <a href="{{ route('admin.clubs.index') }}"
-                       class="block pl-3 pr-4 py-2 border-l-4 text-base font-medium transition duration-150 ease-in-out
-                       {{ request()->routeIs('admin.clubs.*') ? 'border-white text-white bg-blue-800' : 'border-transparent text-blue-100 hover:text-white hover:bg-blue-800 hover:border-blue-300' }}">
-                        Clubs
-                    </a>
+        <a href="{{ route('admin.referees.index') }}"
+           class="block pl-3 pr-4 py-2 border-l-4 text-base font-medium
+           {{ request()->routeIs('admin.referees.*') ? 'border-white text-white bg-blue-800' : 'border-transparent text-blue-100 hover:text-white hover:bg-blue-800' }}">
+            Arbitri
+        </a>
 
-                    <a href="{{ route('admin.assignments.index') }}"
-                       class="block pl-3 pr-4 py-2 border-l-4 text-base font-medium transition duration-150 ease-in-out
-                       {{ request()->routeIs('admin.assignments.*') ? 'border-white text-white bg-blue-800' : 'border-transparent text-blue-100 hover:text-white hover:bg-blue-800 hover:border-blue-300' }}">
-                        Assegnazioni
-                    </a>
-                </div>
-            </div>
-        </nav>
+        <a href="{{ route('admin.clubs.index') }}"
+           class="block pl-3 pr-4 py-2 border-l-4 text-base font-medium
+           {{ request()->routeIs('admin.clubs.*') ? 'border-white text-white bg-blue-800' : 'border-transparent text-blue-100 hover:text-white hover:bg-blue-800' }}">
+            Club
+        </a>
+    </div>
+</div>        </nav>
 
         <!-- Main Content -->
         <main class="pb-8">

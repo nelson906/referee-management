@@ -239,49 +239,39 @@ $clubs = \App\Models\Club::active()
             ->with('success', 'Torneo creato con successo!');
     }
 
-    /**
-     * Display the specified tournament.
-     */
-    public function show(Tournament $tournament)
-    {
-        // Check access
-        $this->checkTournamentAccess($tournament);
+ /**
+ * Display the specified tournament for admin view
+ */
+public function show(Tournament $tournament)
+{
+    $user = auth()->user();
 
-        // Load relationships
-        $tournament->load([
-            'tournamentCategory',
-            'zone',
-            'club',
-            'availabilities.user',
-            'assignments.user',
-            'assignments.assignedBy'
-        ]);
-
-        // Get availability and assignment stats
-        $stats = [
-            'total_availabilities' => $tournament->availabilities()->count(),
-            'total_assignments' => $tournament->assignments()->count(),
-            'required_referees' => $tournament->required_referees,
-            'max_referees' => $tournament->max_referees,
-            'days_until_deadline' => $tournament->days_until_deadline,
-        ];
-
-        // Get referees by status
-        $availableReferees = $tournament->availableReferees()
-            ->whereNotIn('users.id', $tournament->assignments()->pluck('user_id'))
-            ->get();
-
-        $assignedReferees = $tournament->assignedReferees()
-            ->withPivot('is_confirmed')
-            ->get();
-
-        return view('admin.tournaments.show', compact(
-            'tournament',
-            'stats',
-            'availableReferees',
-            'assignedReferees'
-        ));
+    // Check permissions (zone admin can only see their zone tournaments)
+    if ($user->user_type === 'admin' && $user->zone_id !== $tournament->zone_id) {
+        abort(403, 'Non hai i permessi per visualizzare questo torneo.');
     }
+
+    // Load relationships
+    $tournament->load([
+        'tournamentCategory',
+        'zone',
+        'club',
+        'assignments.referee',
+        'availabilities.referee'
+    ]);
+
+    // Get statistics
+    $stats = [
+        'total_referees' => $tournament->availabilities()->count(),
+        'assigned_referees' => $tournament->assignments()->count(),
+        'required_referees' => $tournament->required_referees ?? $tournament->tournamentCategory->min_referees ?? 1,
+        'max_referees' => $tournament->max_referees ?? $tournament->tournamentCategory->max_referees ?? 4,
+        'days_until_deadline' => $tournament->days_until_deadline,
+        'is_editable' => method_exists($tournament, 'isEditable') ? $tournament->isEditable() : true,
+    ];
+
+    return view('admin.tournaments.show', compact('tournament', 'stats'));
+}
 
     /**
      * Show the form for editing the specified tournament.
@@ -536,11 +526,6 @@ $clubs = \App\Models\Club::active()
  * Display a listing of tournaments for admin management
  */
 
-// AGGIUNGI QUESTI METODI AL FILE: app/Http/Controllers/Admin/TournamentController.php
-
-/**
- * PUBLIC METHODS - Accessibili a tutti gli utenti autenticati (inclusi arbitri)
- */
 
 /**
  * Display a public listing of tournaments (for all authenticated users including referees)

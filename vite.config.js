@@ -9,6 +9,7 @@ export default defineConfig({
                 'resources/css/app.css',
                 'resources/js/app.js',
                 'resources/js/calendar.jsx', // ← Aggiungi questa riga
+                'resources/js/availability-calendar.jsx', // ← Aggiungi questa riga
                 'resources/css/calendar.css'  // ← E questa
             ],
             refresh: true,

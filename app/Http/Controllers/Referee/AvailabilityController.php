@@ -8,6 +8,8 @@ use App\Models\Availability;
 use App\Models\Zone;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
+use Illuminate\View\View;
+
 
 class AvailabilityController extends Controller
 {
@@ -51,11 +53,11 @@ class AvailabilityController extends Controller
             $endOfMonth = Carbon::parse($month)->endOfMonth();
             $query->where(function ($q) use ($startOfMonth, $endOfMonth) {
                 $q->whereBetween('start_date', [$startOfMonth, $endOfMonth])
-                  ->orWhereBetween('end_date', [$startOfMonth, $endOfMonth])
-                  ->orWhere(function ($q2) use ($startOfMonth, $endOfMonth) {
-                      $q2->where('start_date', '<=', $startOfMonth)
-                         ->where('end_date', '>=', $endOfMonth);
-                  });
+                    ->orWhereBetween('end_date', [$startOfMonth, $endOfMonth])
+                    ->orWhere(function ($q2) use ($startOfMonth, $endOfMonth) {
+                        $q2->where('start_date', '<=', $startOfMonth)
+                            ->where('end_date', '>=', $endOfMonth);
+                    });
             });
         }
 
@@ -75,7 +77,7 @@ class AvailabilityController extends Controller
             ->when(!$isNationalReferee, function ($q) use ($user) {
                 $q->where(function ($q2) use ($user) {
                     $q2->where('is_national', false)
-                       ->whereJsonContains('settings->visibility_zones', $user->zone_id);
+                        ->whereJsonContains('settings->visibility_zones', $user->zone_id);
                 })->orWhere('is_national', true);
             })
             ->ordered()
@@ -149,7 +151,6 @@ class AvailabilityController extends Controller
 
             return redirect()->route('referee.availability.index')
                 ->with('success', 'Disponibilità aggiornate con successo!');
-
         } catch (\Exception $e) {
             \DB::rollback();
 
@@ -212,57 +213,6 @@ class AvailabilityController extends Controller
         }
     }
 
-    /**
-     * Show availability calendar view
-     */
-    public function calendar(Request $request)
-    {
-        $user = auth()->user();
-        $isNationalReferee = in_array($user->level, ['nazionale', 'internazionale']);
-
-        // Get tournaments for calendar
-        $tournaments = Tournament::with(['tournamentCategory', 'zone', 'club'])
-            ->where('status', '!=', 'draft')
-            ->when(!$isNationalReferee, function ($q) use ($user) {
-                $q->where('zone_id', $user->zone_id);
-            })
-            ->get();
-
-        // Get user's availabilities
-        $userAvailabilities = $user->availabilities()
-            ->pluck('tournament_id')
-            ->toArray();
-
-        // Get user's assignments
-        $userAssignments = $user->assignments()
-            ->pluck('tournament_id')
-            ->toArray();
-
-        // Format for calendar
-        $calendarData = [
-            'tournaments' => $tournaments->map(function ($tournament) use ($userAvailabilities, $userAssignments) {
-                return [
-                    'id' => $tournament->id,
-                    'title' => $tournament->name,
-                    'start' => $tournament->start_date->format('Y-m-d'),
-                    'end' => $tournament->end_date->addDay()->format('Y-m-d'), // FullCalendar needs exclusive end
-                    'color' => $this->getEventColor($tournament, $userAvailabilities, $userAssignments),
-                    'extendedProps' => [
-                        'club' => $tournament->club->name,
-                        'zone' => $tournament->zone->name,
-                        'category' => $tournament->tournamentCategory->name,
-                        'status' => $tournament->status,
-                        'available' => in_array($tournament->id, $userAvailabilities),
-                        'assigned' => in_array($tournament->id, $userAssignments),
-                    ],
-                ];
-            }),
-            'zones' => $isNationalReferee ? Zone::orderBy('name')->get() : collect(),
-            'userRoles' => [$user->user_type],
-        ];
-
-        return view('referee.availability.calendar', compact('calendarData'));
-    }
 
     /**
      * Get event color based on status
@@ -283,4 +233,87 @@ class AvailabilityController extends Controller
 
         return '#6B7280'; // Gray - Closed/Other
     }
+    /**
+     * Referee Calendar - Focus: Disponibilità personali
+     * - Sono disponibile?
+     * - Sono assegnato?
+     * - Posso candidarmi?
+     */
+
+/**
+ * Show calendar view for referee
+ */
+public function calendar(Request $request): View
+{
+    $user = auth()->user();
+
+    try {
+        // Get tournaments relevant to referee
+        $tournaments = Tournament::with(['tournamentCategory', 'zone', 'club'])
+            ->where('zone_id', $user->zone_id)
+            ->get();
+
+        // Get referee's availabilities and assignments
+        $userAvailabilities = $user->availabilities()->pluck('tournament_id')->toArray();
+        $userAssignments = $user->assignments()->pluck('tournament_id')->toArray();
+
+        // Format for referee calendar
+        $calendarData = [
+            'tournaments' => $tournaments->map(function ($tournament) use ($userAvailabilities, $userAssignments) {
+                $isAvailable = in_array($tournament->id, $userAvailabilities);
+                $isAssigned = in_array($tournament->id, $userAssignments);
+
+                return [
+                    'id' => $tournament->id,
+                    'title' => $tournament->name ?? 'Torneo #' . $tournament->id,
+                    'start' => $tournament->start_date ? $tournament->start_date->format('Y-m-d') : now()->format('Y-m-d'),
+                    'end' => $tournament->end_date ? $tournament->end_date->addDay()->format('Y-m-d') : now()->addDay()->format('Y-m-d'),
+                    'color' => $this->getRefereeEventColor($tournament),
+                    'borderColor' => $this->getRefereeBorderColor($isAvailable, $isAssigned),
+                    'extendedProps' => [
+                        'club' => $tournament->club->name ?? 'N/A',
+                        'category' => $tournament->tournamentCategory->name ?? 'N/A',
+                        'status' => $tournament->status ?? 'unknown',
+                        'is_available' => $isAvailable,
+                        'is_assigned' => $isAssigned,
+                        'personal_status' => $this->getPersonalStatus($isAvailable, $isAssigned, $tournament),
+                    ],
+                ];
+            }),
+            'userType' => 'referee',
+        ];
+
+        return view('referee.availability.calendar', compact('calendarData'));
+
+    } catch (\Exception $e) {
+        $calendarData = [
+            'tournaments' => collect(),
+            'userType' => 'referee',
+            'error' => $e->getMessage()
+        ];
+
+        return view('referee.availability.calendar', compact('calendarData'));
+    }
+}
+
+private function getRefereeEventColor($tournament): string
+{
+    $colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7'];
+    return $colors[($tournament->id ?? 1) % count($colors)];
+}
+
+private function getRefereeBorderColor($isAvailable, $isAssigned): string
+{
+    if ($isAssigned) return '#10B981';
+    if ($isAvailable) return '#F59E0B';
+    return '#6B7280';
+}
+
+private function getPersonalStatus($isAvailable, $isAssigned, $tournament): string
+{
+    if ($isAssigned) return 'assigned';
+    if ($isAvailable) return 'available';
+    return 'can_apply';
+}
+
 }
