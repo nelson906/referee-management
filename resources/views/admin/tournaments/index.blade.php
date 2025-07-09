@@ -13,7 +13,7 @@
 
     {{-- Azioni aggiuntive opzionali --}}
     <x-slot name="additionalActions">
-<a href="{{ route('admin.tournaments.admin-calendar') }}" class="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700">
+<a href="{{ route('admin.tournaments.calendar') }}" class="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700">
     Calendario
 </a>
     </x-slot>
@@ -36,7 +36,7 @@
 
     {{-- Filters --}}
     <div class="bg-white shadow rounded-lg p-6 mb-6">
-        <form method="GET" action="{{ route('admin.tournaments.admin-index') }}" class="grid grid-cols-1 md:grid-cols-5 gap-4">
+        <form method="GET" action="{{ route('admin.tournaments.index') }}" class="grid grid-cols-1 md:grid-cols-5 gap-4">
             {{-- Search --}}
             <div>
                 <label for="search" class="block text-sm font-medium text-gray-700 mb-1">Cerca</label>
@@ -104,7 +104,7 @@
                 <button type="submit" class="flex-1 bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 transition duration-200">
                     Filtra
                 </button>
-                <a href="{{ route('admin.tournaments.admin-index') }}"
+                <a href="{{ route('admin.tournaments.index') }}"
                    class="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50 transition duration-200">
                     Reset
                 </a>

@@ -86,7 +86,7 @@
                             <span x-show="!sidebarOpen" class="absolute left-full ml-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">Tutti gli Arbitri</span>
                         </a>
 
-                        <a href="{{ route('admin.tournaments.admin-index') }}"
+                        <a href="{{ route('admin.tournaments.index') }}"
                            class="flex items-center space-x-3 p-3 rounded-lg transition duration-200 group
                            {{ request()->routeIs('admin.tournaments.*') ? 'bg-indigo-900' : 'hover:bg-indigo-700' }}"
                            title="Tutti i Tornei">

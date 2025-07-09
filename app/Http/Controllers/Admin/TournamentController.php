@@ -357,20 +357,20 @@ public function show(Tournament $tournament)
         // Check if can be deleted
         if ($tournament->assignments()->exists()) {
             return redirect()
-                ->route('admin.tournaments.admin-index')
+                ->route('admin.tournaments.index')
                 ->with('error', 'Impossibile eliminare un torneo con assegnazioni.');
         }
 
         if ($tournament->status !== 'draft') {
             return redirect()
-                ->route('admin.tournaments.admin-index')
+                ->route('admin.tournaments.index')
                 ->with('error', 'Solo i tornei in bozza possono essere eliminati.');
         }
 
         $tournament->delete();
 
         return redirect()
-            ->route('admin.tournaments.admin-index')
+            ->route('admin.tournaments.index')
             ->with('success', 'Torneo eliminato con successo!');
     }
 
