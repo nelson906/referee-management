@@ -1,6 +1,6 @@
-@extends('layouts.app')
+@extends('layouts.admin')
 
-@section('title', 'Calendario Tornei')
+@section('title', 'Calendario Amministrativo')
 
 @section('content')
 <div class="py-6">
@@ -9,13 +9,17 @@
         <div class="mb-6">
             <div class="flex justify-between items-center">
                 <div>
-                    <h1 class="text-2xl font-bold text-gray-900">Calendario Tornei</h1>
+                    <h1 class="text-2xl font-bold text-gray-900">Calendario Amministrativo</h1>
                     <p class="mt-1 text-sm text-gray-600">
-                        Visualizza i tornei in formato calendario
+                        Gestione tornei • Priorità • Scadenze • Stato completamento
                     </p>
                 </div>
                 <div class="flex space-x-3">
-                    <a href="{{ route('tournaments.index') }}"
+                    <a href="{{ route('admin.tournaments.create') }}"
+                       class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium">
+                        Nuovo Torneo
+                    </a>
+                    <a href="{{ route('admin.tournaments.index') }}"
                        class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-md text-sm font-medium">
                         Lista Tornei
                     </a>
@@ -23,14 +27,14 @@
             </div>
         </div>
 
-        {{-- Public Calendar Container --}}
-        <div id="public-calendar-root"></div>
+        {{-- Admin Calendar Container --}}
+        <div id="admin-calendar-root"></div>
     </div>
 </div>
 
 {{-- Pass data to JavaScript --}}
 <script>
-    window.publicCalendarData = @json($calendarData);
+    window.adminCalendarData = @json($calendarData);
 </script>
 @endsection
 
