@@ -154,10 +154,10 @@ const RefereeCalendar = ({ calendarData }) => {
 
             {/* Personal Modal */}
             {showModal && selectedEvent && (
-                <div className="fixed inset-0 z-50 overflow-y-auto">
+                <div className="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
                     <div className="flex items-center justify-center min-h-screen p-4">
-                        <div className="fixed inset-0 bg-gray-500 bg-opacity-75" onClick={closeModal}></div>
-                        <div className="bg-white rounded-lg shadow-xl max-w-lg w-full z-10">
+                        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={closeModal}></div>
+                        <div className="bg-white rounded-lg shadow-xl max-w-lg w-full z-10 relative">
                             <div className="p-6">
                                 <h3 className="text-lg font-medium text-gray-900 mb-4">
                                     {selectedEvent.title}

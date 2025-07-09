@@ -101,7 +101,7 @@ Route::middleware(['auth'])->group(function () {
 
         // Tournament Management - NOMI CORRETTI per convenzione Laravel
         Route::get('tournaments', [Admin\TournamentController::class, 'adminIndex'])->name('tournaments.index'); // ← FIX
-        Route::get('tournaments/calendar', [Admin\TournamentController::class, 'adminCalendar'])->name('tournaments.calendar'); // ← FIX
+        Route::get('tournaments/calendar', [Admin\TournamentController::class, 'calendar'])->name('tournaments.calendar'); // ← FIX
         Route::get('tournaments/create', [Admin\TournamentController::class, 'create'])->name('tournaments.create');
         Route::post('tournaments', [Admin\TournamentController::class, 'store'])->name('tournaments.store');
         Route::get('tournaments/{tournament}', [Admin\TournamentController::class, 'show'])->name('tournaments.show'); // ← AGGIUNGI
@@ -314,17 +314,17 @@ Route::middleware(['auth'])->group(function () {
     });
 });
 
-// =================================================================
-// PUBLIC ROUTES - Tournament Calendar
-// =================================================================
-Route::middleware(['auth'])->group(function () {
-    // PUBLIC TOURNAMENT ROUTES
-    Route::get('tournaments', [TournamentController::class, 'index'])->name('tournaments.index');
-    Route::get('tournaments/{tournament}', [TournamentController::class, 'show'])->name('tournaments.show');
+// // =================================================================
+// // PUBLIC ROUTES - Tournament Calendar
+// // =================================================================
+// Route::middleware(['auth'])->group(function () {
+//     // PUBLIC TOURNAMENT ROUTES
+//     Route::get('tournaments', [TournamentController::class, 'index'])->name('tournaments.index');
+//     Route::get('tournaments/{tournament}', [TournamentController::class, 'show'])->name('tournaments.show');
 
-    // PUBLIC CALENDAR - View Only Focus
-    Route::get('tournaments/calendar', [TournamentController::class, 'calendar'])->name('tournaments.calendar');
-});
+//     // PUBLIC CALENDAR - View Only Focus
+//     Route::get('tournaments/calendar', [TournamentController::class, 'calendar'])->name('tournaments.calendar');
+// });
 
 
 // =================================================================

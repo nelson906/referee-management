@@ -379,5 +379,47 @@ class User extends Authenticatable
         // Default: profilo completo se ha nome ed email
         return !empty($this->name) && !empty($this->email);
     }
+    /**
+     * Check if user has a specific role based on user_type
+     * Aggiungere questo metodo alla fine della classe User in app/Models/User.php
+     */
+    public function hasRole($role): bool
+    {
+        // Mapping dei ruoli al user_type per compatibilità
+        $roleMapping = [
+            'admin' => ['admin', 'national_admin', 'super_admin'],
+            'zone_admin' => ['admin'], // zone_admin è un alias per admin
+            'national_admin' => ['national_admin', 'super_admin'],
+            'super_admin' => ['super_admin'],
+            'referee' => ['referee'],
+            'administrator' => ['admin', 'national_admin', 'super_admin'],
+        ];
+
+        // Se il ruolo non è mappato, verifica direttamente con user_type
+        if (!isset($roleMapping[$role])) {
+            return $this->user_type === $role;
+        }
+
+        // Verifica se user_type è incluso nel mapping del ruolo
+        return in_array($this->user_type, $roleMapping[$role]);
+    }
+
+    /**
+     * Check if user has any of the specified roles
+     */
+    public function hasAnyRole($roles): bool
+    {
+        if (is_string($roles)) {
+            $roles = [$roles];
+        }
+
+        foreach ($roles as $role) {
+            if ($this->hasRole($role)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
 
 }

@@ -1,0 +1,118 @@
+graph TB
+    %% USER TYPES
+    subgraph "👥 User Types"
+        Admin[Zone Admin<br/>user_type: admin]
+        National[National Admin<br/>user_type: national_admin]
+        Referee[Referee<br/>user_type: referee]
+        Public[Public User<br/>authenticated]
+    end
+
+    %% MENU NAVIGATION
+    subgraph "🎯 Navigation Entry Points"
+        MenuCalendar["📅 Menu: Calendario<br/>layouts.admin"]
+        TournamentsList["📋 Tornei Index<br/>admin.tournaments.index"]
+        TournamentCalendarBtn["🗓️ Button: Calendario<br/>(in tournaments list)"]
+        RefereeMenu["👨‍⚖️ Referee Menu<br/>layouts.referee"]
+        PublicMenu["🌐 Public Menu<br/>layouts.app"]
+    end
+
+    %% ROUTES LAYER
+    subgraph "🛣️ Routes Layer"
+        Route1["admin.calendar.index<br/>GET /admin/calendar"]
+        Route2["admin.tournaments.calendar<br/>GET /admin/tournaments/calendar"]
+        Route3["referee.availability.calendar<br/>GET /referee/availability/calendar"]
+        Route4["tournaments.calendar<br/>GET /tournaments/calendar"]
+    end
+
+    %% CONTROLLERS LAYER
+    subgraph "🎮 Controllers Layer"
+        CalendarController["📅 Admin\\CalendarController<br/>method: index()"]
+        TournamentController["🏆 Admin\\TournamentController<br/>methods: calendar(), adminCalendar()"]
+        AvailabilityController["⚡ Referee\\AvailabilityController<br/>method: calendar()"]
+        PublicTournamentController["🌐 TournamentController<br/>method: calendar()"]
+    end
+
+    %% VIEWS LAYER
+    subgraph "👁️ Blade Views"
+        AdminCalendarView["admin/calendar.blade.php<br/>📅 Dedicated Calendar"]
+        TournamentCalendarView["admin/tournaments/calendar.blade.php<br/>🏆 Tournament Calendar"]
+        RefereeCalendarView["referee/availability/calendar.blade.php<br/>⚡ Referee Calendar"]
+        PublicCalendarView["tournaments/calendar.blade.php<br/>🌐 Public Calendar"]
+    end
+
+    %% REACT COMPONENTS
+    subgraph "⚛️ React Components"
+        AdminCalendarJSX["AdminCalendar.jsx<br/>🎯 Management Focus"]
+        PublicCalendarJSX["PublicCalendar.jsx<br/>🌐 View-Only Focus"]
+        RefereeCalendarJSX["RefereeCalendar.jsx<br/>👨‍⚖️ Personal Focus"]
+    end
+
+    %% DATA FLOW
+    subgraph "📊 Data Sources"
+        TournamentData["🏆 Tournament Model<br/>with relationships"]
+        AvailabilityData["⚡ Availability Model<br/>user availabilities"]
+        AssignmentData["📝 Assignment Model<br/>user assignments"]
+    end
+
+    %% NAVIGATION CONNECTIONS
+    MenuCalendar --> Route1
+    TournamentsList --> TournamentCalendarBtn
+    TournamentCalendarBtn --> Route2
+    RefereeMenu --> Route3
+    PublicMenu --> Route4
+
+    %% ROUTE TO CONTROLLER CONNECTIONS
+    Route1 --> CalendarController
+    Route2 --> TournamentController
+    Route3 --> AvailabilityController
+    Route4 --> PublicTournamentController
+
+    %% CONTROLLER TO VIEW CONNECTIONS
+    CalendarController --> AdminCalendarView
+    TournamentController --> TournamentCalendarView
+    AvailabilityController --> RefereeCalendarView
+    PublicTournamentController --> PublicCalendarView
+
+    %% VIEW TO REACT CONNECTIONS
+    AdminCalendarView --> AdminCalendarJSX
+    TournamentCalendarView --> AdminCalendarJSX
+    RefereeCalendarView --> RefereeCalendarJSX
+    PublicCalendarView --> PublicCalendarJSX
+
+    %% DATA CONNECTIONS
+    TournamentData --> CalendarController
+    TournamentData --> TournamentController
+    TournamentData --> AvailabilityController
+    TournamentData --> PublicTournamentController
+
+    AvailabilityData --> AvailabilityController
+    AssignmentData --> AvailabilityController
+
+    %% USER ACCESS
+    Admin --> MenuCalendar
+    Admin --> TournamentsList
+    National --> MenuCalendar
+    National --> TournamentsList
+    Referee --> RefereeMenu
+    Public --> PublicMenu
+
+    %% PROBLEM AREAS (highlighted in red)
+    classDef problem fill:#ffebee,stroke:#f44336,stroke-width:2px
+    TournamentCalendarBtn:::problem
+    Route2:::problem
+    TournamentCalendarView:::problem
+
+    %% WORKING AREAS (highlighted in green)
+    classDef working fill:#e8f5e8,stroke:#4caf50,stroke-width:2px
+    Route1:::working
+    CalendarController:::working
+    AdminCalendarView:::working
+
+    %% LEGEND
+    subgraph "🚨 Problema Identificato"
+        ProblemDesc["❌ DUPLICAZIONE CALENDAR ADMIN:<br/>• 2 route diverse per stesso utente<br/>• 2 controller diversi<br/>• 2 view diverse<br/>• Route legacy da tournaments.calendar"]
+    end
+
+    subgraph "✅ Funzionante"
+        WorkingDesc["✅ CALENDAR CORRETTO:<br/>• admin.calendar.index<br/>• Admin\\CalendarController<br/>• admin/calendar.blade.php"]
+    end

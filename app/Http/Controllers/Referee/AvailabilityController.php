@@ -218,86 +218,62 @@ class AvailabilityController extends Controller
 /**
  * Referee Calendar - Personal focus
  */
-public function calendar(Request $request): View
+public function calendar(Request $request)
 {
     $user = auth()->user();
+    $isNationalReferee = in_array($user->level ?? '', ['nazionale', 'internazionale']);
 
-    // Get tournaments relevant to referee (all tournaments in their zone)
+    // Get tournaments for calendar
     $tournaments = Tournament::with(['tournamentCategory', 'zone', 'club'])
-        ->where('zone_id', $user->zone_id)
+    ->whereIn('status', ['draft', 'open', 'closed', 'assigned']) // ← AGGIUNGI QUESTA
+        ->when(!$isNationalReferee, function ($q) use ($user) {
+            $q->where('zone_id', $user->zone_id);
+        })
         ->get();
 
-    // Get referee's personal data
+    // Get user's availabilities and assignments
     $userAvailabilities = $user->availabilities()->pluck('tournament_id')->toArray();
     $userAssignments = $user->assignments()->pluck('tournament_id')->toArray();
 
-    // Get filter data (zones not needed for referee, types can be useful)
-    $tournamentTypes = \App\Models\TournamentCategory::orderBy('name')->get();
+    // Format tournaments for calendar (STRUTTURA CORRETTA)
+    $calendarTournaments = $tournaments->map(function ($tournament) use ($userAvailabilities, $userAssignments) {
+        $isAvailable = in_array($tournament->id, $userAvailabilities);
+        $isAssigned = in_array($tournament->id, $userAssignments);
 
-    // === STANDARDIZED CALENDAR DATA ===
+        return [
+            'id' => $tournament->id,
+            'title' => $tournament->name,
+            'start' => $tournament->start_date->format('Y-m-d'),
+            'end' => $tournament->end_date->addDay()->format('Y-m-d'),
+            'color' => $isAssigned ? '#10B981' : ($isAvailable ? '#3B82F6' : '#F59E0B'),
+            'borderColor' => $isAssigned ? '#10B981' : ($isAvailable ? '#F59E0B' : '#6B7280'),
+            'extendedProps' => [
+                'club' => $tournament->club->name ?? 'N/A',
+                'zone' => $tournament->zone->name ?? 'N/A',
+                'category' => $tournament->tournamentCategory->name ?? 'N/A',
+                'status' => $tournament->status,
+                'deadline' => $tournament->availability_deadline?->format('d/m/Y') ?? 'N/A',
+         'days_until_deadline' => 0, // ← AGGIUNGI
+           'is_available' => $isAvailable,
+                'is_assigned' => $isAssigned,
+                'can_apply' => true, // placeholder
+                'personal_status' => $isAssigned ? 'assigned' : ($isAvailable ? 'available' : 'can_apply'),
+        'tournament_url' => route('tournaments.show', $tournament), // ← AGGIUNGI
+        ],
+        ];
+    });
+
+    // STRUTTURA DATI CORRETTA per RefereeCalendar.jsx
     $calendarData = [
-        // Core tournament data
-        'tournaments' => $tournaments->map(function ($tournament) use ($userAvailabilities, $userAssignments) {
-            $isAvailable = in_array($tournament->id, $userAvailabilities);
-            $isAssigned = in_array($tournament->id, $userAssignments);
-            $canApply = method_exists($tournament, 'isOpenForAvailability') ? $tournament->isOpenForAvailability() : true;
-            $personalStatus = $this->getPersonalStatus($isAvailable, $isAssigned, $tournament);
-
-            return [
-                'id' => $tournament->id,
-                'title' => $tournament->name,
-                'start' => $tournament->start_date->format('Y-m-d'),
-                'end' => $tournament->end_date->addDay()->format('Y-m-d'),
-                'color' => $this->getEventColor($tournament),
-                'borderColor' => $this->getRefereeBorderColor($isAvailable, $isAssigned),
-                'extendedProps' => [
-                    // Basic info
-                    'club' => $tournament->club->name ?? 'N/A',
-                    'zone' => $tournament->zone->name ?? 'N/A',
-                    'zone_id' => $tournament->zone_id,
-                    'category' => $tournament->tournamentCategory->name ?? 'N/A',
-                    'status' => $tournament->status,
-                    'tournament_url' => route('tournaments.show', $tournament),
-
-                    // Dates & deadlines
-                    'deadline' => $tournament->availability_deadline?->format('d/m/Y') ?? 'N/A',
-                    'days_until_deadline' => $tournament->days_until_deadline ?? 0,
-
-                    // Type info
-                    'type_id' => $tournament->tournament_category_id,
-                    'type' => $tournament->tournamentCategory,
-
-                    // Admin-specific (not applicable)
-                    'availabilities_count' => 0,
-                    'assignments_count' => 0,
-                    'required_referees' => 0,
-                    'max_referees' => 0,
-                    'management_priority' => 'none',
-
-                    // === REFEREE-SPECIFIC DATA ===
-                    'is_available' => $isAvailable,
-                    'is_assigned' => $isAssigned,
-                    'can_apply' => $canApply,
-                    'personal_status' => $personalStatus,
-                ],
-            ];
-        }),
-
-        // Context data
+        'tournaments' => $calendarTournaments,
         'userType' => 'referee',
-        'userRoles' => [$user->user_type],
-        'canModify' => true, // Can modify own availability
-
-        // Filter data
-        'zones' => collect(), // Not needed for referee (only own zone)
-        'types' => $tournamentTypes,
-        'clubs' => collect(), // Not needed for referee calendar
-
-        // === USER-SPECIFIC DATA ===
+        'userRoles' => ['referee'],
+        'canModify' => true,
+        'zones' => collect(),
+        'types' => collect(),
+        'clubs' => collect(),
         'availabilities' => $userAvailabilities,
         'assignments' => $userAssignments,
-
-        // Metadata
         'totalTournaments' => $tournaments->count(),
         'lastUpdated' => now()->toISOString(),
     ];
