@@ -9,6 +9,7 @@ use App\Http\Controllers\Api;
 use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\TournamentController;
 
 /*
 |--------------------------------------------------------------------------
@@ -205,12 +206,18 @@ Route::middleware(['auth'])->group(function () {
             Route::delete('/{document}', [Referee\DocumentController::class, 'destroy'])->name('destroy');
         });
         // Referee Availability
-        Route::get('availability', [Referee\AvailabilityController::class, 'index'])->name('availability.index');
-        Route::post('availability/save', [Referee\AvailabilityController::class, 'save'])->name('availability.save');
-        Route::post('availability/toggle', [Referee\AvailabilityController::class, 'toggle'])->name('availability.toggle');
+    Route::prefix('availability')->name('availability.')->group(function () {
+        Route::get('/', [Referee\AvailabilityController::class, 'index'])->name('index');
 
-        // Referee Calendar - Personal focus
-        Route::get('availability/calendar', [Referee\AvailabilityController::class, 'calendar'])->name('availability.calendar');
+        // CALENDAR AVAILABILITY - Personal Focus
+        Route::get('/calendar', [Referee\AvailabilityController::class, 'calendar'])->name('calendar');
+
+        Route::post('/update', [Referee\AvailabilityController::class, 'update'])->name('update');
+        Route::post('/bulk-update', [Referee\AvailabilityController::class, 'bulkUpdate'])->name('bulk-update');
+
+        // TOGGLE AVAILABILITY (for future implementation)
+        Route::post('/toggle', [Referee\AvailabilityController::class, 'toggle'])->name('toggle');
+    });
     });
 
     // =================================================================
@@ -308,6 +315,19 @@ Route::middleware(['auth'])->group(function () {
 });
 
 // =================================================================
+// PUBLIC ROUTES - Tournament Calendar
+// =================================================================
+Route::middleware(['auth'])->group(function () {
+    // PUBLIC TOURNAMENT ROUTES
+    Route::get('tournaments', [TournamentController::class, 'index'])->name('tournaments.index');
+    Route::get('tournaments/{tournament}', [TournamentController::class, 'show'])->name('tournaments.show');
+
+    // PUBLIC CALENDAR - View Only Focus
+    Route::get('tournaments/calendar', [TournamentController::class, 'calendar'])->name('tournaments.calendar');
+});
+
+
+// =================================================================
 // PUBLIC ROUTES (No authentication required)
 // =================================================================
 
@@ -319,6 +339,19 @@ Route::get('/health', function () {
         'version' => config('app.version', '1.0.0')
     ]);
 })->name('health');
+
+// =================================================================
+// API ROUTES - Calendar Data (for future AJAX)
+// =================================================================
+Route::middleware(['auth'])->prefix('api')->name('api.')->group(function () {
+    // Calendar Events API (for real-time updates)
+    Route::get('calendar/admin', [Api\CalendarController::class, 'adminEvents'])->name('calendar.admin');
+    Route::get('calendar/referee', [Api\CalendarController::class, 'refereeEvents'])->name('calendar.referee');
+    Route::get('calendar/public', [Api\CalendarController::class, 'publicEvents'])->name('calendar.public');
+
+    // Toggle availability API (for AJAX toggle)
+    Route::post('availability/toggle', [Api\AvailabilityController::class, 'toggle'])->name('availability.toggle');
+});
 
 // =================================================================
 // FALLBACK ROUTE

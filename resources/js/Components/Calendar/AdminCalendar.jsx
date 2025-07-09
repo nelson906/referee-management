@@ -34,6 +34,40 @@ const AdminCalendar = ({ calendarData }) => {
         setSelectedEvent(null);
     };
 
+    // Handle edit tournament
+    const handleEditTournament = (tournamentId, e) => {
+        e.stopPropagation();
+        window.location.href = `/admin/tournaments/${tournamentId}/edit`;
+    };
+
+    // Handle delete tournament
+    const handleDeleteTournament = (tournamentId, e) => {
+        e.stopPropagation();
+        if (confirm('Sei sicuro di voler eliminare questo torneo? Questa azione è irreversibile.')) {
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = `/admin/tournaments/${tournamentId}`;
+
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+            if (csrfToken) {
+                const csrfInput = document.createElement('input');
+                csrfInput.type = 'hidden';
+                csrfInput.name = '_token';
+                csrfInput.value = csrfToken;
+                form.appendChild(csrfInput);
+            }
+
+            const methodInput = document.createElement('input');
+            methodInput.type = 'hidden';
+            methodInput.name = '_method';
+            methodInput.value = 'DELETE';
+            form.appendChild(methodInput);
+
+            document.body.appendChild(form);
+            form.submit();
+        }
+    };
+
     const getPriorityBadge = (priority) => {
         const badges = {
             'urgent': 'bg-red-100 text-red-800',
@@ -168,18 +202,77 @@ const AdminCalendar = ({ calendarData }) => {
                             const props = info.event.extendedProps;
                             info.el.title = `${info.event.title} - ${props.club} (${props.management_priority})`;
                         }}
+                        eventContent={(eventInfo) => {
+                            // Show admin controls on hover
+                            const isFirstDay = eventInfo.isStart;
+                            const status = eventInfo.event.extendedProps.status;
+
+                            return (
+                                <div className="fc-event-container relative group">
+                                    <div className="fc-event-title font-medium flex items-center">
+                                        {eventInfo.event.title}
+                                        {isFirstDay && status && (
+                                            <span className="ml-1 text-xs rounded-full px-1 py-0.5 inline-block"
+                                                style={{
+                                                    backgroundColor: eventInfo.event.extendedProps.statusBorder || '#6B7280',
+                                                    color: '#fff',
+                                                    fontSize: '0.6rem'
+                                                }}>
+                                                {status}
+                                            </span>
+                                        )}
+                                    </div>
+                                    <div className="fc-event-text text-xs truncate">
+                                        {eventInfo.event.extendedProps.club || "Club N/A"}
+                                    </div>
+
+                                    {/* Display tournament category if first day */}
+                                    {isFirstDay && eventInfo.event.extendedProps.category && (
+                                        <div className="fc-event-category text-xs">
+                                            <span className="font-medium">
+                                                {eventInfo.event.extendedProps.category}
+                                            </span>
+                                        </div>
+                                    )}
+
+                                    {/* Admin controls - show on hover */}
+                                    {isFirstDay && (
+                                        <div className="event-controls opacity-0 group-hover:opacity-100 absolute top-0 right-0 bg-white bg-opacity-90 rounded-bl-md p-1 shadow transition-opacity duration-200 z-10">
+                                            <button
+                                                onClick={(e) => handleEditTournament(eventInfo.event.id, e)}
+                                                className="text-blue-600 hover:text-blue-800 mr-2 focus:outline-none"
+                                                title="Modifica torneo"
+                                            >
+                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                                </svg>
+                                            </button>
+                                            <button
+                                                onClick={(e) => handleDeleteTournament(eventInfo.event.id, e)}
+                                                className="text-red-600 hover:text-red-800 focus:outline-none"
+                                                title="Elimina torneo"
+                                            >
+                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                </svg>
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        }}
                     />
                 </div>
             </div>
 
             {/* Management Modal */}
             {showModal && selectedEvent && (
-                <div className="fixed inset-0 z-50 overflow-y-auto">
+                <div className="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
                     <div className="flex items-center justify-center min-h-screen p-4">
-                        <div className="fixed inset-0 bg-gray-500 bg-opacity-75" onClick={closeModal}></div>
-                        <div className="bg-white rounded-lg shadow-xl max-w-lg w-full z-10">
+                        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={closeModal}></div>
+                        <div className="bg-white rounded-lg shadow-xl max-w-lg w-full z-10 relative">
                             <div className="p-6">
-                                <h3 className="text-lg font-medium text-gray-900 mb-4">
+                                <h3 className="text-lg font-medium text-gray-900 mb-4" id="modal-title">
                                     {selectedEvent.title}
                                 </h3>
 
@@ -219,7 +312,7 @@ const AdminCalendar = ({ calendarData }) => {
                                     <div className="border-t pt-4 text-sm">
                                         <span className="font-medium">Scadenza disponibilità:</span> {selectedEvent.extendedProps.deadline || 'N/A'}
                                         <span className="ml-2 text-xs">
-                                            ({selectedEvent.extendedProps.days_until_deadline < 0 ? 'Scaduta!' : selectedEvent.extendedProps.days_until_deadline + ' giorni'})
+                                            ({(selectedEvent.extendedProps.days_until_deadline || 0) < 0 ? 'Scaduta!' : (selectedEvent.extendedProps.days_until_deadline || 0) + ' giorni'})
                                         </span>
                                     </div>
                                 </div>
@@ -231,11 +324,17 @@ const AdminCalendar = ({ calendarData }) => {
                                     >
                                         Chiudi
                                     </button>
-                                    <a
-                                        href={selectedEvent.extendedProps.tournament_url}
+                                    <button
+                                        onClick={() => handleEditTournament(selectedEvent.id)}
                                         className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
                                     >
-                                        Gestisci Torneo
+                                        Modifica Torneo
+                                    </button>
+                                    <a
+                                        href={selectedEvent.extendedProps.tournament_url}
+                                        className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700"
+                                    >
+                                        Visualizza Dettagli
                                     </a>
                                 </div>
                             </div>

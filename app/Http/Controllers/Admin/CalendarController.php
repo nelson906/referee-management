@@ -25,7 +25,7 @@ class CalendarController extends Controller
 
             // Validate user permissions
             if (!in_array($user->user_type, ['admin', 'national_admin', 'super_admin'])) {
-                Log::warning('Unauthorized calendar access attempt', [
+                \Log::warning('Unauthorized calendar access attempt', [
                     'user_id' => $user->id,
                     'user_type' => $user->user_type,
                     'ip' => $request->ip()
@@ -36,7 +36,7 @@ class CalendarController extends Controller
 
             // Validate zone for non-national admins
             if (!$isNationalAdmin && !$user->zone_id) {
-                Log::error('Admin user without zone_id trying to access calendar', [
+                \Log::error('Admin user without zone_id trying to access calendar', [
                     'user_id' => $user->id,
                     'user_type' => $user->user_type
                 ]);
@@ -58,8 +58,8 @@ class CalendarController extends Controller
             // Build calendar data
             $calendarData = $this->buildCalendarData($tournaments, $zones, $tournamentTypes, $user);
 
-            // Log successful access
-            Log::info('Admin calendar accessed successfully', [
+            // \Log successful access
+            \Log::info('Admin calendar accessed successfully', [
                 'user_id' => $user->id,
                 'tournaments_count' => $tournaments->count(),
                 'is_national_admin' => $isNationalAdmin
@@ -68,8 +68,8 @@ class CalendarController extends Controller
             return view('admin.calendar', compact('calendarData', 'isNationalAdmin'));
 
         } catch (Exception $e) {
-            // Log the error
-            Log::error('Admin calendar error', [
+            // \Log the error
+            \Log::error('Admin calendar error', [
                 'user_id' => auth()->id(),
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
@@ -105,20 +105,20 @@ class CalendarController extends Controller
             // Validate relationships
             foreach ($tournaments as $tournament) {
                 if (!$tournament->tournamentCategory) {
-                    Log::warning('Tournament missing category', ['tournament_id' => $tournament->id]);
+                    \Log::warning('Tournament missing category', ['tournament_id' => $tournament->id]);
                 }
                 if (!$tournament->zone) {
-                    Log::warning('Tournament missing zone', ['tournament_id' => $tournament->id]);
+                    \Log::warning('Tournament missing zone', ['tournament_id' => $tournament->id]);
                 }
                 if (!$tournament->club) {
-                    Log::warning('Tournament missing club', ['tournament_id' => $tournament->id]);
+                    \Log::warning('Tournament missing club', ['tournament_id' => $tournament->id]);
                 }
             }
 
             return $tournaments;
 
         } catch (Exception $e) {
-            Log::error('Error fetching tournaments for admin calendar', [
+            \Log::error('Error fetching tournaments for admin calendar', [
                 'user_id' => $user->id,
                 'error' => $e->getMessage()
             ]);
@@ -136,7 +136,7 @@ class CalendarController extends Controller
         try {
             return $isNationalAdmin ? Zone::orderBy('name')->get() : collect();
         } catch (Exception $e) {
-            Log::error('Error fetching zones for admin calendar', ['error' => $e->getMessage()]);
+            \Log::error('Error fetching zones for admin calendar', ['error' => $e->getMessage()]);
             return collect();
         }
     }
@@ -149,7 +149,7 @@ class CalendarController extends Controller
         try {
             return TournamentCategory::orderBy('name')->get();
         } catch (Exception $e) {
-            Log::error('Error fetching tournament types for admin calendar', ['error' => $e->getMessage()]);
+            \Log::error('Error fetching tournament types for admin calendar', ['error' => $e->getMessage()]);
             return collect();
         }
     }
@@ -176,7 +176,7 @@ class CalendarController extends Controller
                 'lastUpdated' => now()->toISOString(),
             ];
         } catch (Exception $e) {
-            Log::error('Error building calendar data', ['error' => $e->getMessage()]);
+            \Log::error('Error building calendar data', ['error' => $e->getMessage()]);
             return $this->getEmptyCalendarData('error');
         }
     }
@@ -224,7 +224,7 @@ class CalendarController extends Controller
             ];
 
         } catch (Exception $e) {
-            Log::error('Error formatting tournament', [
+            \Log::error('Error formatting tournament', [
                 'tournament_id' => $tournament->id ?? 'unknown',
                 'error' => $e->getMessage()
             ]);

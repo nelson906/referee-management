@@ -214,27 +214,6 @@ class AvailabilityController extends Controller
     }
 
 
-    /**
-     * Get event color based on status
-     */
-    private function getEventColor($tournament, $userAvailabilities, $userAssignments)
-    {
-        if (in_array($tournament->id, $userAssignments)) {
-            return '#10B981'; // Green - Assigned
-        }
-
-        if (in_array($tournament->id, $userAvailabilities)) {
-            return '#3B82F6'; // Blue - Available
-        }
-
-        if ($tournament->isOpenForAvailability()) {
-            return '#F59E0B'; // Amber - Open
-        }
-
-        return '#6B7280'; // Gray - Closed/Other
-    }
-<?php
-// Add this method to your existing Referee\AvailabilityController
 
 /**
  * Referee Calendar - Personal focus

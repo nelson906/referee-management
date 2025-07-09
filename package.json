@@ -7,9 +7,9 @@
         "dev": "vite"
     },
     "devDependencies": {
-                "@vitejs/plugin-react": "^4.0.0",
-"@tailwindcss/forms": "^0.5.2",
+        "@tailwindcss/forms": "^0.5.2",
         "@tailwindcss/vite": "^4.0.0",
+        "@vitejs/plugin-react": "^4.6.0",
         "alpinejs": "^3.14.9",
         "autoprefixer": "^10.4.2",
         "axios": "^1.8.2",
@@ -24,7 +24,6 @@
         "@fullcalendar/interaction": "^6.1.18",
         "@fullcalendar/list": "^6.1.18",
         "@fullcalendar/react": "^6.1.18",
-        "@vitejs/plugin-react": "^4.6.0",
         "react": "^19.1.0",
         "react-dom": "^19.1.0"
     }
