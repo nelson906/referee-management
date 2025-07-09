@@ -179,10 +179,14 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/profile/edit', [Referee\ProfileController::class, 'edit'])->name('profile.edit');
         Route::put('/profile', [Referee\ProfileController::class, 'update'])->name('profile.update');
 
-        // Availability Management
+// Availability Management - SEZIONE UNIFICATA E CORRETTA
         Route::prefix('availability')->name('availability.')->group(function () {
+            // Views
             Route::get('/', [Referee\AvailabilityController::class, 'index'])->name('index');
             Route::get('/calendar', [Referee\AvailabilityController::class, 'calendar'])->name('calendar');
+
+            // Actions
+            Route::post('/save', [Referee\AvailabilityController::class, 'save'])->name('save'); // ← AGGIUNTA MANCANTE
             Route::post('/update', [Referee\AvailabilityController::class, 'update'])->name('update');
             Route::post('/bulk-update', [Referee\AvailabilityController::class, 'bulkUpdate'])->name('bulk-update');
             Route::post('/toggle', [Referee\AvailabilityController::class, 'toggle'])->name('toggle');
@@ -205,19 +209,6 @@ Route::middleware(['auth'])->group(function () {
             Route::post('/upload', [Referee\DocumentController::class, 'upload'])->name('upload');
             Route::delete('/{document}', [Referee\DocumentController::class, 'destroy'])->name('destroy');
         });
-        // Referee Availability
-    Route::prefix('availability')->name('availability.')->group(function () {
-        Route::get('/', [Referee\AvailabilityController::class, 'index'])->name('index');
-
-        // CALENDAR AVAILABILITY - Personal Focus
-        Route::get('/calendar', [Referee\AvailabilityController::class, 'calendar'])->name('calendar');
-
-        Route::post('/update', [Referee\AvailabilityController::class, 'update'])->name('update');
-        Route::post('/bulk-update', [Referee\AvailabilityController::class, 'bulkUpdate'])->name('bulk-update');
-
-        // TOGGLE AVAILABILITY (for future implementation)
-        Route::post('/toggle', [Referee\AvailabilityController::class, 'toggle'])->name('toggle');
-    });
     });
 
     // =================================================================

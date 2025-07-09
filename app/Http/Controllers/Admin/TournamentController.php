@@ -86,13 +86,11 @@ class TournamentController extends Controller
      */
     public function calendar(Request $request)
     {
-          \Log::info('🔧 TournamentController::calendar() called'); // ← AGGIUNGI QUESTA
-  $user = auth()->user();
+        $user = auth()->user();
         $isNationalAdmin = $user->user_type === 'national_admin' || $user->user_type === 'super_admin' || $user->user_type === 'admin';
 
         // ✅ CONTROLLO SEMPLICE PRIMA:
         $tournamentCount = Tournament::count();
-        \Log::info("Total tournaments in DB: " . $tournamentCount);
 
         // Get tournaments for calendar
         $tournaments = Tournament::with(['tournamentCategory', 'zone', 'club', 'assignments.user'])
@@ -126,31 +124,31 @@ class TournamentController extends Controller
         }
 
         // Format tournaments for calendar
-$calendarTournaments = $tournaments->map(function ($tournament) {
-    return [
-        'id' => $tournament->id,
-        'title' => $tournament->name,                              // ← AGGIUNGI title
-        'start' => $tournament->start_date->format('Y-m-d'),       // ← CORRETTO
-        'end' => $tournament->end_date->addDay()->format('Y-m-d'), // ← CORRETTO + 1 giorno
-        'color' => '#3b82f6', // Default color
-        'borderColor' => '#1e40af',
-        'extendedProps' => [
-            'club' => $tournament->club->name ?? 'N/A',
-            'zone' => $tournament->zone->name ?? 'N/A',
-            'zone_id' => $tournament->zone_id,
-            'category' => $tournament->tournamentCategory->name ?? 'N/A',
-            'status' => $tournament->status,
-            'tournament_url' => route('admin.tournaments.show', $tournament),
-            'deadline' => $tournament->availability_deadline?->format('d/m/Y') ?? 'N/A',
-            'type_id' => $tournament->tournament_category_id,
-            'availabilities_count' => $tournament->availabilities()->count(),
-            'assignments_count' => $tournament->assignments()->count(),
-            'required_referees' => $tournament->required_referees ?? 1,
-            'max_referees' => $tournament->max_referees ?? 4,
-            'management_priority' => 'open',
-        ],
-    ];
-});
+        $calendarTournaments = $tournaments->map(function ($tournament) {
+            return [
+                'id' => $tournament->id,
+                'title' => $tournament->name,                              // ← AGGIUNGI title
+                'start' => $tournament->start_date->format('Y-m-d'),       // ← CORRETTO
+                'end' => $tournament->end_date->addDay()->format('Y-m-d'), // ← CORRETTO + 1 giorno
+                'color' => '#3b82f6', // Default color
+                'borderColor' => '#1e40af',
+                'extendedProps' => [
+                    'club' => $tournament->club->name ?? 'N/A',
+                    'zone' => $tournament->zone->name ?? 'N/A',
+                    'zone_id' => $tournament->zone_id,
+                    'category' => $tournament->tournamentCategory->name ?? 'N/A',
+                    'status' => $tournament->status,
+                    'tournament_url' => route('admin.tournaments.show', $tournament),
+                    'deadline' => $tournament->availability_deadline?->format('d/m/Y') ?? 'N/A',
+                    'type_id' => $tournament->tournament_category_id,
+                    'availabilities_count' => $tournament->availabilities()->count(),
+                    'assignments_count' => $tournament->assignments()->count(),
+                    'required_referees' => $tournament->required_referees ?? 1,
+                    'max_referees' => $tournament->max_referees ?? 4,
+                    'management_priority' => 'open',
+                ],
+            ];
+        });
         // Prepare data for React component
         $calendarData = [
             'tournaments' => $calendarTournaments,
@@ -176,15 +174,9 @@ $calendarTournaments = $tournaments->map(function ($tournament) {
                 ];
             }),
             'userRoles' => $userRoles,
-    'userType' => 'admin', // ← AGGIUNGI QUESTA RIGA
-    'canModify' => true,   // ← AGGIUNGI QUESTA RIGA
+            'userType' => 'admin', // ← AGGIUNGI QUESTA RIGA
+            'canModify' => true,   // ← AGGIUNGI QUESTA RIGA
         ];
-\Log::info('🔧 Calendar data being passed to view:', [
-    'userType' => $calendarData['userType'] ?? 'MISSING',
-    'tournaments_count' => count($calendarData['tournaments'] ?? []),
-    'has_userRoles' => isset($calendarData['userRoles']),
-    'all_keys' => array_keys($calendarData)
-]);
 
         return view('admin.tournaments.calendar', compact('calendarData'));
     }
@@ -526,7 +518,6 @@ $calendarTournaments = $tournaments->map(function ($tournament) {
     {
         $this->checkTournamentAccess($tournament);
     }
-    // Aggiungi questo metodo nel file App\Http\Controllers\Admin\TournamentController.php
 
     /**
      * Display a listing of tournaments for admin management

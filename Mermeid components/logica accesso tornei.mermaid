@@ -1,0 +1,79 @@
+flowchart TD
+    START[Referee accede ai tornei]
+
+    CHECK_LEVEL{Livello Referee?}
+
+    ZONE_REF[Aspirante/Primo/Regionale]
+    NAT_REF[Nazionale/Internazionale]
+
+    ZONE_TOURNAMENTS[Tornei zona propria<br/>tournament.zone_id = user.zone_id]
+
+    NAT_TOURNAMENTS[Tornei zona propria<br/>+<br/>Tornei nazionali ovunque<br/>category.is_national = true]
+
+    AVAILABLE_TOURNAMENTS[Lista tornei disponibili<br/>status = 'open'<br/>availability_deadline >= oggi]
+
+    UI_SELECTION{Tipo UI?}
+
+    LIST_VIEW[Vista Lista<br/>Checkbox per selezione<br/>Form con submit finale]
+
+    CALENDAR_VIEW[Vista Calendario<br/>Modal con toggle<br/>AJAX immediato]
+
+    SAVE_AVAILABILITY[Salva in tabella<br/>availabilities]
+
+    FUTURE_ASSIGNMENT[Futuro: Zone/CRC<br/>creano assignments<br/>con ruoli specifici]
+
+    FUTURE_COMMUNICATION[Futuro:<br/>Comunicazioni automatiche]
+
+    subgraph "IMPLEMENTAZIONE CONTROLLER"
+        IMPL1[1. Aggiorna AvailabilityController:<br/>- Logica filtro per livello<br/>- Metodo toggle AJAX<br/>- Validazione accessi]
+
+        IMPL2[2. Aggiorna calendar method:<br/>- Dati per modal interattivo<br/>- Stato disponibilità correnti]
+    end
+
+    subgraph "IMPLEMENTAZIONE UI"
+        IMPL3[3. Modal Calendario:<br/>- Toggle button/checkbox<br/>- Chiamata AJAX<br/>- Feedback visivo]
+
+        IMPL4[4. Layout calendario:<br/>- Soluzione 4 collassabile<br/>- Compattezza layout]
+    end
+
+    subgraph "REGOLE BUSINESS"
+        RULE1[Solo tornei aperti<br/>con deadline valida]
+        RULE2[Zonali: solo sua zona<br/>Nazionali: zona + nazionali]
+        RULE3[Disponibilità modificabile<br/>fino a deadline]
+    end
+
+    START --> CHECK_LEVEL
+
+    CHECK_LEVEL -->|Zonale| ZONE_REF
+    CHECK_LEVEL -->|Nazionale| NAT_REF
+
+    ZONE_REF --> ZONE_TOURNAMENTS
+    NAT_REF --> NAT_TOURNAMENTS
+
+    ZONE_TOURNAMENTS --> AVAILABLE_TOURNAMENTS
+    NAT_TOURNAMENTS --> AVAILABLE_TOURNAMENTS
+
+    AVAILABLE_TOURNAMENTS --> UI_SELECTION
+
+    UI_SELECTION -->|Lista| LIST_VIEW
+    UI_SELECTION -->|Calendario| CALENDAR_VIEW
+
+    LIST_VIEW --> SAVE_AVAILABILITY
+    CALENDAR_VIEW --> SAVE_AVAILABILITY
+
+    SAVE_AVAILABILITY --> FUTURE_ASSIGNMENT
+    FUTURE_ASSIGNMENT --> FUTURE_COMMUNICATION
+
+    RULE1 --> AVAILABLE_TOURNAMENTS
+    RULE2 --> AVAILABLE_TOURNAMENTS
+    RULE3 --> SAVE_AVAILABILITY
+
+    classDef controller fill:#e3f2fd
+    classDef ui fill:#f1f8e9
+    classDef rule fill:#fff3e0
+    classDef process fill:#fce4ec
+
+    class IMPL1,IMPL2 controller
+    class IMPL3,IMPL4 ui
+    class RULE1,RULE2,RULE3 rule
+    class SAVE_AVAILABILITY,FUTURE_ASSIGNMENT,FUTURE_COMMUNICATION process

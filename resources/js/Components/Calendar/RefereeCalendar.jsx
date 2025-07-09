@@ -7,6 +7,7 @@ import itLocale from '@fullcalendar/core/locales/it';
 const RefereeCalendar = ({ calendarData }) => {
     const [selectedEvent, setSelectedEvent] = useState(null);
     const [showModal, setShowModal] = useState(false);
+    const [showLegend, setShowLegend] = useState(false); // ← Nuovo stato
 
     const handleEventClick = (info) => {
         setSelectedEvent(info.event);
@@ -58,74 +59,90 @@ const RefereeCalendar = ({ calendarData }) => {
 
     return (
         <div className="referee-calendar">
-            {/* Personal Legend */}
-            <div className="mb-6 bg-white rounded-lg shadow p-4">
-                <h3 className="text-sm font-medium text-gray-700 mb-3">Legenda Personale</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-                    <div>
-                        <h4 className="font-medium text-gray-600 mb-2">Colori (Categoria Torneo):</h4>
-                        <div className="space-y-1">
-                            <div className="flex items-center">
-                                <div className="w-4 h-4 rounded mr-2" style={{backgroundColor: '#FF6B6B'}}></div>
-                                <span>Categoria A</span>
-                            </div>
-                            <div className="flex items-center">
-                                <div className="w-4 h-4 rounded mr-2" style={{backgroundColor: '#4ECDC4'}}></div>
-                                <span>Categoria B</span>
-                            </div>
-                            <div className="flex items-center">
-                                <div className="w-4 h-4 rounded mr-2" style={{backgroundColor: '#45B7D1'}}></div>
-                                <span>Categoria C</span>
-                            </div>
-                        </div>
-                    </div>
-                    <div>
-                        <h4 className="font-medium text-gray-600 mb-2">Bordi (Il Mio Status):</h4>
-                        <div className="space-y-1">
-                            <div className="flex items-center">
-                                <div className="w-4 h-4 rounded mr-2 border-2" style={{borderColor: '#10B981', backgroundColor: '#f0f0f0'}}></div>
-                                <span>Assegnato</span>
-                            </div>
-                            <div className="flex items-center">
-                                <div className="w-4 h-4 rounded mr-2 border-2" style={{borderColor: '#F59E0B', backgroundColor: '#f0f0f0'}}></div>
-                                <span>Disponibile</span>
-                            </div>
-                            <div className="flex items-center">
-                                <div className="w-4 h-4 rounded mr-2 border-2" style={{borderColor: '#3B82F6', backgroundColor: '#f0f0f0'}}></div>
-                                <span>Posso candidarmi</span>
-                            </div>
-                            <div className="flex items-center">
-                                <div className="w-4 h-4 rounded mr-2 border-2" style={{borderColor: '#6B7280', backgroundColor: '#f0f0f0'}}></div>
-                                <span>Chiuso</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
+            {/* Legenda collassabile */}
+            <div className="mb-4 bg-white rounded-lg shadow">
+                <button
+                    onClick={() => setShowLegend(!showLegend)}
+                    className="w-full p-3 text-left flex items-center justify-between hover:bg-gray-50"
+                >
+                    <h3 className="text-sm font-medium text-gray-700">
+                        Legenda e Statistiche
+                    </h3>
+                    <svg
+                        className={`w-5 h-5 text-gray-500 transform transition-transform ${showLegend ? 'rotate-180' : ''}`}
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                    >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                </button>
 
-            {/* Personal Stats */}
-            <div className="mb-6 bg-white rounded-lg shadow p-4">
-                <h3 className="text-sm font-medium text-gray-700 mb-3">Le Mie Statistiche</h3>
-                <div className="grid grid-cols-3 gap-4 text-center">
-                    <div className="bg-green-50 p-3 rounded">
-                        <div className="font-medium text-lg text-green-600">
-                            {calendarData.assignments?.length || 0}
+                {showLegend && (
+                    <div className="px-4 pb-4 border-t border-gray-100">
+                        {/* Statistiche compatte inline */}
+                        <div className="mb-4 pt-3">
+                            <div className="flex justify-center space-x-8 text-center">
+                                <div>
+                                    <div className="font-medium text-lg text-green-600">
+                                        {calendarData.assignments?.length || 0}
+                                    </div>
+                                    <div className="text-green-600 text-xs">Assegnazioni</div>
+                                </div>
+                                <div>
+                                    <div className="font-medium text-lg text-blue-600">
+                                        {calendarData.availabilities?.length || 0}
+                                    </div>
+                                    <div className="text-blue-600 text-xs">Disponibilità</div>
+                                </div>
+                                <div>
+                                    <div className="font-medium text-lg text-gray-600">
+                                        {calendarData.tournaments?.length || 0}
+                                    </div>
+                                    <div className="text-gray-600 text-xs">Tornei Zona</div>
+                                </div>
+                            </div>
                         </div>
-                        <div className="text-green-600 text-sm">Assegnazioni</div>
-                    </div>
-                    <div className="bg-blue-50 p-3 rounded">
-                        <div className="font-medium text-lg text-blue-600">
-                            {calendarData.availabilities?.length || 0}
+
+                        {/* Legenda inline */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                            <div>
+                                <h4 className="font-medium text-gray-600 mb-2">Colori (Categoria):</h4>
+                                <div className="flex flex-wrap gap-3">
+                                    <div className="flex items-center">
+                                        <div className="w-3 h-3 rounded mr-1" style={{backgroundColor: '#FF6B6B'}}></div>
+                                        <span>Cat. A</span>
+                                    </div>
+                                    <div className="flex items-center">
+                                        <div className="w-3 h-3 rounded mr-1" style={{backgroundColor: '#4ECDC4'}}></div>
+                                        <span>Cat. B</span>
+                                    </div>
+                                    <div className="flex items-center">
+                                        <div className="w-3 h-3 rounded mr-1" style={{backgroundColor: '#45B7D1'}}></div>
+                                        <span>Cat. C</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div>
+                                <h4 className="font-medium text-gray-600 mb-2">Bordi (Status):</h4>
+                                <div className="flex flex-wrap gap-3">
+                                    <div className="flex items-center">
+                                        <div className="w-3 h-3 rounded mr-1 border-2" style={{borderColor: '#10B981', backgroundColor: '#f0f0f0'}}></div>
+                                        <span>Assegnato</span>
+                                    </div>
+                                    <div className="flex items-center">
+                                        <div className="w-3 h-3 rounded mr-1 border-2" style={{borderColor: '#F59E0B', backgroundColor: '#f0f0f0'}}></div>
+                                        <span>Disponibile</span>
+                                    </div>
+                                    <div className="flex items-center">
+                                        <div className="w-3 h-3 rounded mr-1 border-2" style={{borderColor: '#3B82F6', backgroundColor: '#f0f0f0'}}></div>
+                                        <span>Candidabile</span>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                        <div className="text-blue-600 text-sm">Disponibilità</div>
                     </div>
-                    <div className="bg-gray-50 p-3 rounded">
-                        <div className="font-medium text-lg text-gray-600">
-                            {calendarData.tournaments?.length || 0}
-                        </div>
-                        <div className="text-gray-600 text-sm">Tornei Zona</div>
-                    </div>
-                </div>
+                )}
             </div>
 
             {/* Calendar */}

@@ -1,0 +1,100 @@
+graph TB
+    subgraph "UTENTI E RUOLI"
+        SA[Super Admin]
+        CRC[CRC Admin]
+        ZA[Zone Admin]
+        REF[Referee]
+    end
+
+    subgraph "LIVELLI ARBITRO"
+        ASP[Aspirante]
+        PL[Primo Livello]
+        REG[Regionale]
+        NAZ[Nazionale]
+        INT[Internazionale]
+    end
+
+    subgraph "TIPOLOGIE GARE"
+        GZ[Gare Zonali<br/>is_national = false]
+        GN[Gare Nazionali<br/>is_national = true]
+    end
+
+    subgraph "DATABASE TABLES"
+        TC[tournament_categories<br/>- is_national<br/>- required_referee_level]
+        T[tournaments<br/>- zone_id<br/>- tournament_category_id<br/>- status]
+        A[availabilities<br/>- user_id<br/>- tournament_id<br/>- notes<br/>- submitted_at]
+        AS[assignments<br/>- user_id<br/>- tournament_id<br/>- role \arbitro/osservatore<br/>- is_confirmed]
+        IE[institutional_emails<br/>da sviluppare]
+    end
+
+    subgraph "VISIBILITÀ GARE"
+        ASPPL["Aspirante/Primo Livello/Regionale<br/>→ Solo zona propria"]
+        NAZINT["Nazionale/Internazionale<br/>→ Zona propria + Gare nazionali"]
+    end
+
+    subgraph "FLUSSO PROCESSO"
+        F1[1. Referee dichiara<br/>DISPONIBILITÀ]
+        F2[2. Zone/CRC vedono<br/>disponibilità di competenza]
+        F3[3. Zone/CRC fanno<br/>ASSEGNAZIONI con ruoli]
+        F4[4. Comunicazioni automatiche<br/>da sviluppare]
+    end
+
+    subgraph "UI COMPONENTS"
+        LIST[Lista Tornei<br/>con Checkbox]
+        CAL[Modal Calendario<br/>con Toggle]
+        MONTH[Visione Mensile<br/>con Scorrimento]
+    end
+
+    subgraph "RESPONSABILITÀ ASSEGNAZIONI"
+        ZONE_RESP[Zone Admin<br/>→ Gare Zonali della sua zona]
+        CRC_RESP[CRC Admin<br/>→ Gare Nazionali ovunque]
+    end
+
+    %% Relazioni Utenti-Livelli
+    REF --> ASP
+    REF --> PL
+    REF --> REG
+    REF --> NAZ
+    REF --> INT
+
+    %% Relazioni Visibilità
+    ASP --> ASPPL
+    PL --> ASPPL
+    REG --> ASPPL
+    NAZ --> NAZINT
+    INT --> NAZINT
+
+    %% Relazioni Gare
+    GZ --> ZONE_RESP
+    GN --> CRC_RESP
+
+    %% Flusso processo
+    F1 --> F2 --> F3 --> F4
+
+    %% Tabelle
+    TC --> T
+    T --> A
+    A --> AS
+
+    %% SuperAdmin
+    SA --> TC
+    SA --> IE
+
+    %% UI
+    REF --> LIST
+    REF --> CAL
+    LIST --> A
+    CAL --> A
+
+    %% Styling
+    classDef userRole fill:#e1f5fe
+    classDef refLevel fill:#f3e5f5
+    classDef gareType fill:#e8f5e8
+    classDef dbTable fill:#fff3e0
+    classDef uiComp fill:#fce4ec
+
+    class SA,CRC,ZA,REF userRole
+    class ASP,PL,REG,NAZ,INT refLevel
+    class GZ,GN gareType
+    class TC,T,A,AS,IE dbTable
+    class LIST,CAL,MONTH uiComp
