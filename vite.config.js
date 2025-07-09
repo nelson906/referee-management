@@ -16,4 +16,9 @@ export default defineConfig({
         }),
         react(), // ← Assicurati che ci sia il plugin React
     ],
+    resolve: {
+        alias: {
+            '@': '/resources/js',
+        },
+    },
 });

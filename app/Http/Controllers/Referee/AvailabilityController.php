@@ -241,78 +241,100 @@ class AvailabilityController extends Controller
      */
 
 /**
- * Show calendar view for referee
+ * Referee Calendar - Personal focus
  */
 public function calendar(Request $request): View
 {
     $user = auth()->user();
 
-    try {
-        // Get tournaments relevant to referee
-        $tournaments = Tournament::with(['tournamentCategory', 'zone', 'club'])
-            ->where('zone_id', $user->zone_id)
-            ->get();
+    // Get tournaments relevant to referee
+    $tournaments = Tournament::with(['tournamentCategory', 'zone', 'club'])
+        ->where('zone_id', $user->zone_id)
+        ->get();
 
-        // Get referee's availabilities and assignments
-        $userAvailabilities = $user->availabilities()->pluck('tournament_id')->toArray();
-        $userAssignments = $user->assignments()->pluck('tournament_id')->toArray();
+    // Get referee's availabilities and assignments
+    $userAvailabilities = $user->availabilities()->pluck('tournament_id')->toArray();
+    $userAssignments = $user->assignments()->pluck('tournament_id')->toArray();
 
-        // Format for referee calendar
-        $calendarData = [
-            'tournaments' => $tournaments->map(function ($tournament) use ($userAvailabilities, $userAssignments) {
-                $isAvailable = in_array($tournament->id, $userAvailabilities);
-                $isAssigned = in_array($tournament->id, $userAssignments);
+    // Format for referee calendar - focus on personal data
+    $calendarData = [
+        'tournaments' => $tournaments->map(function ($tournament) use ($userAvailabilities, $userAssignments) {
+            $isAvailable = in_array($tournament->id, $userAvailabilities);
+            $isAssigned = in_array($tournament->id, $userAssignments);
 
-                return [
-                    'id' => $tournament->id,
-                    'title' => $tournament->name ?? 'Torneo #' . $tournament->id,
-                    'start' => $tournament->start_date ? $tournament->start_date->format('Y-m-d') : now()->format('Y-m-d'),
-                    'end' => $tournament->end_date ? $tournament->end_date->addDay()->format('Y-m-d') : now()->addDay()->format('Y-m-d'),
-                    'color' => $this->getRefereeEventColor($tournament),
-                    'borderColor' => $this->getRefereeBorderColor($isAvailable, $isAssigned),
-                    'extendedProps' => [
-                        'club' => $tournament->club->name ?? 'N/A',
-                        'category' => $tournament->tournamentCategory->name ?? 'N/A',
-                        'status' => $tournament->status ?? 'unknown',
-                        'is_available' => $isAvailable,
-                        'is_assigned' => $isAssigned,
-                        'personal_status' => $this->getPersonalStatus($isAvailable, $isAssigned, $tournament),
-                    ],
-                ];
-            }),
-            'userType' => 'referee',
-        ];
+            return [
+                'id' => $tournament->id,
+                'title' => $tournament->name,
+                'start' => $tournament->start_date->format('Y-m-d'),
+                'end' => $tournament->end_date->addDay()->format('Y-m-d'),
+                'color' => $this->getRefereeEventColor($tournament),
+                'borderColor' => $this->getRefereeBorderColor($isAvailable, $isAssigned),
+                'extendedProps' => [
+                    'club' => $tournament->club->name ?? 'N/A',
+                    'category' => $tournament->tournamentCategory->name ?? 'N/A',
+                    'status' => $tournament->status,
+                    'deadline' => $tournament->availability_deadline?->format('d/m/Y') ?? 'N/A',
+                    'days_until_deadline' => $tournament->days_until_deadline ?? 0,
+                    'can_apply' => method_exists($tournament, 'isOpenForAvailability') ? $tournament->isOpenForAvailability() : true,
+                    'is_available' => $isAvailable,
+                    'is_assigned' => $isAssigned,
+                    'tournament_url' => route('tournaments.show', $tournament),
+                    'personal_status' => $this->getPersonalStatus($isAvailable, $isAssigned, $tournament),
+                ],
+            ];
+        }),
+        'userType' => 'referee',
+        'availabilities' => $userAvailabilities,
+        'assignments' => $userAssignments,
+    ];
 
-        return view('referee.availability.calendar', compact('calendarData'));
-
-    } catch (\Exception $e) {
-        $calendarData = [
-            'tournaments' => collect(),
-            'userType' => 'referee',
-            'error' => $e->getMessage()
-        ];
-
-        return view('referee.availability.calendar', compact('calendarData'));
-    }
+    return view('referee.availability.calendar', compact('calendarData'));
 }
 
+/**
+ * Referee color logic - based on category
+ */
 private function getRefereeEventColor($tournament): string
 {
-    $colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7'];
-    return $colors[($tournament->id ?? 1) % count($colors)];
+    // TODO: Replace with your actual category color logic
+    return match($tournament->tournamentCategory->name ?? 'default') {
+        'Categoria A' => '#FF6B6B',
+        'Categoria B' => '#4ECDC4',
+        'Categoria C' => '#45B7D1',
+        'Categoria D' => '#96CEB4',
+        default => '#3B82F6'
+    };
 }
 
+/**
+ * Referee border logic - based on personal status
+ */
 private function getRefereeBorderColor($isAvailable, $isAssigned): string
 {
-    if ($isAssigned) return '#10B981';
-    if ($isAvailable) return '#F59E0B';
-    return '#6B7280';
+    if ($isAssigned) {
+        return '#10B981'; // Green - Assigned
+    }
+
+    if ($isAvailable) {
+        return '#F59E0B'; // Orange - Available but not assigned
+    }
+
+    return '#6B7280'; // Gray - Not available
 }
 
+/**
+ * Get personal status for referee
+ */
 private function getPersonalStatus($isAvailable, $isAssigned, $tournament): string
 {
-    if ($isAssigned) return 'assigned';
-    if ($isAvailable) return 'available';
+    if ($isAssigned) {
+        return 'assigned';
+    }
+
+    if ($isAvailable) {
+        return 'available';
+    }
+
     return 'can_apply';
 }
 

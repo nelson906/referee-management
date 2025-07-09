@@ -11,10 +11,7 @@ use Illuminate\View\View;
 class CalendarController extends Controller
 {
     /**
-     * Admin Calendar - Focus: Gestione amministrativa
-     * - Chi manca?
-     * - Scadenze
-     * - Stato completamento
+     * Admin Calendar - Management focus
      */
     public function index(Request $request): View
     {
@@ -64,15 +61,11 @@ class CalendarController extends Controller
     }
 
     /**
-     * Admin color logic - based on YOUR original tournament category colors
-     * TODO: Replace with your actual category color logic
+     * Admin color logic - based on tournament category
      */
     private function getAdminEventColor($tournament): string
     {
-        // TODO: Implement YOUR original category-based colors
-        // return $tournament->tournamentCategory->color ?? '#3B82F6';
-
-        // Temporary - replace with your logic:
+        // TODO: Replace with your actual category color logic
         return match($tournament->tournamentCategory->name ?? 'default') {
             'Categoria A' => '#FF6B6B',
             'Categoria B' => '#4ECDC4',
@@ -83,7 +76,7 @@ class CalendarController extends Controller
     }
 
     /**
-     * Admin border logic - based on management status
+     * Admin border logic - based on status
      */
     private function getAdminBorderColor($tournament): string
     {
@@ -97,7 +90,7 @@ class CalendarController extends Controller
     }
 
     /**
-     * Calculate management priority for admin focus
+     * Calculate management priority
      */
     private function getManagementPriority($tournament): string
     {
