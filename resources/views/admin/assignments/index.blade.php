@@ -5,11 +5,25 @@
 @section('content')
 <div class="container mx-auto px-4 py-8">
     {{-- Header --}}
-    <x-table-header
+    {{-- <x-table-header
         title="Gestione Assegnazioni"
         description="Gestisci le assegnazioni degli arbitri ai tornei"
         :create-route="route('admin.assignments.create')"
-        create-text="Nuova Assegnazione" />
+        create-text="Nuova Assegnazione"
+        /> --}}
+<div class="mb-6 flex justify-between items-center">
+    <h1 class="text-2xl font-bold text-gray-900">Gestione Assegnazioni</h1>
+    <div class="flex space-x-3">
+        <a href="{{ route('admin.assignments.create') }}"
+           class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700">
+            👤 Assegna Singolo Arbitro
+        </a>
+        <a href="{{ route('admin.tournaments.index') }}"
+           class="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700">
+            🏌️ Assegna per Torneo
+        </a>
+    </div>
+</div>
 
     {{-- Alert Messages --}}
     @if(session('success'))

@@ -198,10 +198,23 @@
                             {{ $tournament->status_label }}
                         </span>
                     </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        {{-- USO DEL NUOVO COMPONENTE --}}
-                        <x-table-actions-tournament :tournament="$tournament" />
-                    </td>
+<td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+    <div class="flex space-x-2">
+        <a href="{{ route('admin.tournaments.show', $tournament) }}"
+           class="text-indigo-600 hover:text-indigo-900">Visualizza</a>
+
+        <a href="{{ route('admin.assignments.assign-referees', $tournament) }}"
+           class="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700">
+            👥 Assegna Comitato
+        </a>
+
+        @if($tournament->assignments()->count() > 0)
+            <span class="bg-green-100 text-green-800 px-2 py-1 rounded text-xs">
+                {{ $tournament->assignments()->count() }} assegnati
+            </span>
+        @endif
+    </div>
+</td>
                 </tr>
                 @empty
                 <tr>
