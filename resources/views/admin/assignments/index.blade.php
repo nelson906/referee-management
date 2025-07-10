@@ -5,27 +5,19 @@
 @section('content')
 <div class="container mx-auto px-4 py-8">
     {{-- Header --}}
-    {{-- <x-table-header
-        title="Gestione Assegnazioni"
-        description="Gestisci le assegnazioni degli arbitri ai tornei"
-        :create-route="route('admin.assignments.create')"
-        create-text="Nuova Assegnazione"
-        /> --}}
-<div class="mb-6 flex justify-between items-center">
-    <h1 class="text-2xl font-bold text-gray-900">Gestione Assegnazioni</h1>
-    <div class="flex space-x-3">
-        <a href="{{ route('admin.assignments.create') }}"
-           class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700">
-            👤 Assegna Singolo Arbitro
-        </a>
-        <a href="{{ route('admin.tournaments.index') }}"
-           class="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700">
-            🏌️ Assegna per Torneo
-        </a>
-    </div>
-</div>
+<x-table-header
+    title="Gestione Assegnazioni"
+    description="Gestisci le assegnazioni degli arbitri ai tornei"
+    :create-route="route('admin.assignments.create')"
+    create-text="👤 Assegna Singolo Arbitro"
+    create-color="blue"
+    :secondary-route="route('admin.tournaments.index')"
+    secondary-text="🏌️ Assegna per Torneo"
+    secondary-color="green"
+/>
 
-    {{-- Alert Messages --}}
+
+{{-- Alert Messages --}}
     @if(session('success'))
         <div class="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 mb-6" role="alert">
             <p class="font-bold">Successo!</p>
@@ -70,14 +62,14 @@
             </div>
 
             {{-- Status Filter --}}
-            <div>
+            {{-- <div>
                 <label for="status" class="block text-sm font-medium text-gray-700 mb-1">Stato</label>
                 <select name="status" id="status" class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
                     <option value="">Tutti gli stati</option>
                     <option value="confirmed" {{ request('status') == 'confirmed' ? 'selected' : '' }}>Confermato</option>
                     <option value="unconfirmed" {{ request('status') == 'unconfirmed' ? 'selected' : '' }}>Da confermare</option>
                 </select>
-            </div>
+            </div> --}}
 
             {{-- Submit Button --}}
             <div class="flex items-end space-x-2">

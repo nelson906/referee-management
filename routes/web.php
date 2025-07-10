@@ -91,7 +91,7 @@ Route::middleware(['auth'])->group(function () {
         });
     });
 
-// =================================================================
+    // =================================================================
     // ADMIN ROUTES (Zone Admin & CRC Admin) + Super Admin Access
     // =================================================================
     Route::middleware(['admin_or_superadmin'])->prefix('admin')->name('admin.')->group(function () {
@@ -134,25 +134,24 @@ Route::middleware(['auth'])->group(function () {
             ->name('clubs.deactivate');
 
         // Assignment Management
-// Assignment Management
-Route::prefix('assignments')->name('assignments.')->group(function () {
-    Route::get('/', [Admin\AssignmentController::class, 'index'])->name('index');
-    Route::get('/create', [Admin\AssignmentController::class, 'create'])->name('create');
-    Route::post('/', [Admin\AssignmentController::class, 'store'])->name('store');
-    Route::get('/calendar', [Admin\AssignmentController::class, 'calendar'])->name('calendar');
+        Route::prefix('assignments')->name('assignments.')->group(function () {
+            Route::get('/', [Admin\AssignmentController::class, 'index'])->name('index');
+            Route::get('/create', [Admin\AssignmentController::class, 'create'])->name('create');
+            Route::post('/', [Admin\AssignmentController::class, 'store'])->name('store');
+            Route::get('/calendar', [Admin\AssignmentController::class, 'calendar'])->name('calendar');
 
-    // AGGIUNGI QUESTA ROUTE MANCANTE
-    Route::get('/{assignment}', [Admin\AssignmentController::class, 'show'])->name('show');
+            // AGGIUNGI QUESTA ROUTE MANCANTE
+            Route::get('/{assignment}', [Admin\AssignmentController::class, 'show'])->name('show');
 
-    // Route per assegnazione flessibile
-    Route::get('/{tournament}/assign', [Admin\AssignmentController::class, 'assignReferees'])->name('assign-referees');
-    Route::post('/bulk-assign', [Admin\AssignmentController::class, 'bulkAssign'])->name('bulk-assign');
+            // Route per assegnazione flessibile
+            Route::get('/{tournament}/assign', [Admin\AssignmentController::class, 'assignReferees'])->name('assign-referees');
+            Route::post('/bulk-assign', [Admin\AssignmentController::class, 'bulkAssign'])->name('bulk-assign');
 
-    Route::post('/{assignment}/accept', [Admin\AssignmentController::class, 'accept'])->name('accept');
-    Route::post('/{assignment}/reject', [Admin\AssignmentController::class, 'reject'])->name('reject');
-    Route::delete('/{assignment}', [Admin\AssignmentController::class, 'destroy'])->name('destroy');
-    Route::post('/{assignment}/confirm', [Admin\AssignmentController::class, 'confirm'])->name('confirm');
-});
+            Route::post('/{assignment}/accept', [Admin\AssignmentController::class, 'accept'])->name('accept');
+            Route::post('/{assignment}/reject', [Admin\AssignmentController::class, 'reject'])->name('reject');
+            Route::delete('/{assignment}', [Admin\AssignmentController::class, 'destroy'])->name('destroy');
+            Route::post('/{assignment}/confirm', [Admin\AssignmentController::class, 'confirm'])->name('confirm');
+        });
 
         // Communication System
         Route::prefix('communications')->name('communications.')->group(function () {
@@ -186,11 +185,11 @@ Route::prefix('assignments')->name('assignments.')->group(function () {
         Route::get('/profile', [Referee\ProfileController::class, 'show'])->name('profile.show');
         // Route::get('/profile/edit', [Referee\ProfileController::class, 'edit'])->name('profile.edit');
         Route::put('/profile', [Referee\ProfileController::class, 'update'])->name('profile.update');
-Route::get('profile', [Referee\ProfileController::class, 'edit'])->name('profile.edit');
-Route::put('profile', [Referee\ProfileController::class, 'update'])->name('profile.update');
-Route::put('profile/password', [Referee\ProfileController::class, 'updatePassword'])->name('profile.update-password');
+        Route::get('profile', [Referee\ProfileController::class, 'edit'])->name('profile.edit');
+        Route::put('profile', [Referee\ProfileController::class, 'update'])->name('profile.update');
+        Route::put('profile/password', [Referee\ProfileController::class, 'updatePassword'])->name('profile.update-password');
 
-// Availability Management - SEZIONE UNIFICATA E CORRETTA
+        // Availability Management - SEZIONE UNIFICATA E CORRETTA
         Route::prefix('availability')->name('availability.')->group(function () {
             // Views
             Route::get('/', [Referee\AvailabilityController::class, 'index'])->name('index');
