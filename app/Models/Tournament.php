@@ -256,7 +256,7 @@ public function assignedReferees()
         }
 
         // Check referee level
-        if (!$this->tournamentCategory->requiresRefereeLevel($referee->level)) {
+        if (!$this->tournamentCategory->requiresRefereeLevel($referee->referee->level)) {
             return false;
         }
 

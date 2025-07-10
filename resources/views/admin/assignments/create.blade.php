@@ -42,6 +42,45 @@
             <p>{{ session('error') }}</p>
         </div>
     @endif
+{{-- Arbitri già assegnati a questo torneo --}}
+@if($tournament && $tournament->assignments()->count() > 0)
+<div class="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
+    <h3 class="text-lg font-medium text-green-900 mb-3">
+        👥 Comitato di Gara Assegnato ({{ $tournament->assignments()->count() }})
+    </h3>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+        @foreach($tournament->assignments()->with('user.referee')->get() as $assignment)
+        <div class="bg-white p-3 rounded border border-green-200 flex justify-between items-center">
+            <div>
+                <p class="font-medium text-gray-900">{{ $assignment->user->name }}</p>
+                <p class="text-sm text-gray-600">
+                    {{ $assignment->user->referee->referee_code ?? 'N/A' }} -
+                    {{ $assignment->user->referee->level_label ?? 'N/A' }}
+                </p>
+                <p class="text-sm font-medium text-green-600">{{ $assignment->role }}</p>
+            </div>
+            <form method="POST" action="{{ route('admin.assignments.destroy', $assignment) }}" class="inline">
+                @csrf
+                @method('DELETE')
+                <button type="submit"
+                        onclick="return confirm('Rimuovere {{ $assignment->user->name }} dal comitato?')"
+                        class="text-red-600 hover:text-red-800 text-sm px-2 py-1 rounded border border-red-200">
+                    Rimuovi
+                </button>
+            </form>
+        </div>
+        @endforeach
+    </div>
+
+    {{-- Pulsante per completare assegnazioni --}}
+    <div class="mt-4 pt-3 border-t border-green-200">
+        <a href="{{ route('admin.assignments.index') }}"
+           class="bg-green-600 text-white px-6 py-2 rounded-md hover:bg-green-700 font-medium">
+            ✅ Comitato Completo - Torna alla Lista
+        </a>
+    </div>
+</div>
+@endif
 
     {{-- Assignment Form --}}
     <div class="bg-white shadow rounded-lg p-6">
@@ -65,12 +104,16 @@
                         </div>
                     </div>
                 @else
-<select name="tournament_id" id="tournament_id" class="..." required>
+<select name="tournament_id" id="tournament_id"
+        class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
+        required>
     <option value="">Seleziona un torneo</option>
-    <option value="123">Test Torneo - 01/01/2025</option>
     @foreach($tournaments as $tournament)
         <option value="{{ $tournament->id }}">
             {{ $tournament->name }} - {{ $tournament->start_date->format('d/m/Y') }}
+            @if($tournament->club)
+                ({{ $tournament->club->code ?? $tournament->club->name }})
+            @endif
         </option>
     @endforeach
 </select>
@@ -81,19 +124,43 @@
             </div>
 
             {{-- Referee Selection --}}
-            <div>
-                <label for="user_id" class="block text-sm font-medium text-gray-700 mb-2">
-                    Arbitro *
-                </label>
-                <select name="user_id" id="user_id"
-                        class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                        required>
-                    <option value="">Prima seleziona un torneo</option>
-                </select>
-                @error('user_id')
-                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                @enderror
-            </div>
+<div>
+    <label for="user_id" class="block text-sm font-medium text-gray-700">Arbitro *</label>
+    <select name="user_id" id="user_id"
+            class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
+            required>
+        <option value="">Seleziona un arbitro</option>
+
+        @if($availableReferees->count() > 0)
+            <optgroup label="📅 HANNO DATO DISPONIBILITÀ ({{ $availableReferees->count() }})">
+                @foreach($availableReferees as $referee)
+                    <option value="{{ $referee->id }}" style="color: green; font-weight: bold;">
+                        ✅ {{ $referee->name }}
+                        @if($referee->referee)
+                            ({{ $referee->referee->referee_code }}) - {{ $referee->referee->level_label }}
+                        @endif
+                    </option>
+                @endforeach
+            </optgroup>
+        @endif
+
+        @if($otherReferees->count() > 0)
+            <optgroup label="👥 ALTRI ARBITRI DELLA ZONA ({{ $otherReferees->count() }})">
+                @foreach($otherReferees as $referee)
+                    <option value="{{ $referee->id }}" style="color: #666;">
+                        {{ $referee->name }}
+                        @if($referee->referee)
+                            ({{ $referee->referee->referee_code }}) - {{ $referee->referee->level_label }}
+                        @endif
+                    </option>
+                @endforeach
+            </optgroup>
+        @endif
+    </select>
+    @error('user_id')
+        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+    @enderror
+</div>
 
             {{-- Role --}}
             <div>
@@ -147,44 +214,18 @@ document.addEventListener('DOMContentLoaded', function() {
     const tournamentSelect = document.getElementById('tournament_id');
     const refereeSelect = document.getElementById('user_id');
 
-    // Load referees when tournament changes
     if (tournamentSelect && refereeSelect) {
         tournamentSelect.addEventListener('change', function() {
-            const tournamentId = this.value;
-
-            // Clear referee options
-            refereeSelect.innerHTML = '<option value="">Caricamento...</option>';
-
-            if (tournamentId) {
-                // Load available referees for this tournament
-                fetch(`/admin/tournaments/${tournamentId}/available-referees`)
-                    .then(response => response.json())
-                    .then(data => {
-                        refereeSelect.innerHTML = '<option value="">Seleziona un arbitro</option>';
-
-                        data.forEach(referee => {
-                            const option = document.createElement('option');
-                            option.value = referee.id;
-                            option.textContent = `${referee.name} (${referee.referee_code}) - ${referee.level}`;
-                            refereeSelect.appendChild(option);
-                        });
-                    })
-                    .catch(error => {
-                        console.error('Error:', error);
-                        refereeSelect.innerHTML = '<option value="">Errore nel caricamento</option>';
-                    });
-            } else {
-                refereeSelect.innerHTML = '<option value="">Prima seleziona un torneo</option>';
+            if (this.value) {
+                // Ricarica la pagina con il torneo selezionato per aggiornare arbitri
+                const url = new URL(window.location);
+                url.searchParams.set('tournament_id', this.value);
+                window.location.href = url.toString();
             }
         });
     }
-
-    // If tournament is pre-selected, load referees
-    @if($tournament)
-        const event = new Event('change');
-        tournamentSelect.dispatchEvent(event);
-    @endif
 });
 </script>
 @endpush
+
 @endsection

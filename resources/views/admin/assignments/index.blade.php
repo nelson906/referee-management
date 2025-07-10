@@ -140,10 +140,9 @@
                         @endif
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-center">
-                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full
-                            bg-{{ $assignment->status_color }}-100 text-{{ $assignment->status_color }}-800">
-                            {{ $assignment->status_label }}
-                        </span>
+<span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-green-100 text-green-800">
+    ✅ Assegnato
+</span>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <div class="flex items-center justify-end space-x-2">

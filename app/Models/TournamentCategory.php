@@ -153,6 +153,10 @@ class TournamentCategory extends Model
      */
     public function requiresRefereeLevel(string $level): bool
     {
+        // Se level è null, considera come aspirante
+        if ($level === null) {
+            $level = 'aspirante';
+        }
         $levels = array_keys(self::REFEREE_LEVELS);
         $requiredIndex = array_search($this->required_referee_level, $levels);
         $checkIndex = array_search($level, $levels);
