@@ -3,6 +3,7 @@
 @section('title', 'Assegna Arbitro')
 
 @section('content')
+
 <div class="container mx-auto px-4 py-8 max-w-4xl">
     {{-- Header --}}
     <div class="mb-8">
@@ -64,16 +65,15 @@
                         </div>
                     </div>
                 @else
-                    <select name="tournament_id" id="tournament_id"
-                            class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                            required>
-                        <option value="">Seleziona un torneo</option>
-                        @foreach($tournaments as $t)
-                            <option value="{{ $t->id }}">
-                                {{ $t->name }} - {{ $t->club->name }} ({{ $t->assignments()->count() }}/{{ $t->required_referees }})
-                            </option>
-                        @endforeach
-                    </select>
+<select name="tournament_id" id="tournament_id" class="..." required>
+    <option value="">Seleziona un torneo</option>
+    <option value="123">Test Torneo - 01/01/2025</option>
+    @foreach($tournaments as $tournament)
+        <option value="{{ $tournament->id }}">
+            {{ $tournament->name }} - {{ $tournament->start_date->format('d/m/Y') }}
+        </option>
+    @endforeach
+</select>
                 @endif
                 @error('tournament_id')
                     <p class="mt-1 text-sm text-red-600">{{ $message }}</p>

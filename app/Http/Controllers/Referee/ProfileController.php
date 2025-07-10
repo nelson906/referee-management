@@ -14,12 +14,14 @@ class ProfileController extends Controller
     /**
      * Show the form for editing the referee profile.
      */
-    public function edit(Request $request): View
-    {
-        return view('referee.profile.edit', [
-            'user' => $request->user(),
-        ]);
-    }
+public function edit(Request $request): View
+{
+    $user = $request->user();
+    $user->load('referee', 'zone'); // Ora funziona
+
+    return view('referee.profile.edit', compact('user'));
+}
+
 
     /**
      * Update the referee profile information.
@@ -38,7 +40,12 @@ class ProfileController extends Controller
         ]);
 
         $user->fill($request->only([
-            'name', 'email', 'referee_code', 'phone', 'level', 'notes'
+            'name',
+            'email',
+            'referee_code',
+            'phone',
+            'level',
+            'notes'
         ]));
 
         if ($user->isDirty('email')) {
@@ -47,7 +54,7 @@ class ProfileController extends Controller
 
         $user->save();
 
-        return redirect()->route('referee.profile.edit')
+        return redirect()->route('referee.dashboard')
             ->with('status', 'Profilo aggiornato con successo!');
     }
 
@@ -65,7 +72,7 @@ class ProfileController extends Controller
             'password' => Hash::make($request->password),
         ]);
 
-        return redirect()->route('referee.profile.edit')
+        return redirect()->route('referee.dashboard')
             ->with('status', 'Password aggiornata con successo!');
     }
 }

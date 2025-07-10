@@ -369,11 +369,11 @@ class User extends Authenticatable
         // Per gli arbitri, verifica campi obbligatori
         if ($this->isReferee()) {
             return !empty($this->name) &&
-                   !empty($this->email) &&
-                   !empty($this->referee_code) &&
-                   !empty($this->level) &&
-                   !empty($this->zone_id) &&
-                   !empty($this->phone);
+                !empty($this->email) &&
+                !empty($this->referee_code) &&
+                !empty($this->level) &&
+                !empty($this->zone_id) &&
+                !empty($this->phone);
         }
 
         // Default: profilo completo se ha nome ed email
@@ -421,5 +421,11 @@ class User extends Authenticatable
 
         return false;
     }
-
+    /**
+     * Get the referee profile.
+     */
+    public function referee(): HasOne
+    {
+        return $this->hasOne(Referee::class);
+    }
 }

@@ -41,15 +41,15 @@
                         @enderror
                     </div>
 
-                    <!-- Codice Arbitro -->
-                    <div>
-                        <label for="referee_code" class="block text-sm font-medium text-gray-700">Codice Arbitro *</label>
-                        <input type="text" name="referee_code" id="referee_code" value="{{ old('referee_code', $user->referee_code) }}"
-                               class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500" required>
-                        @error('referee_code')
-                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                        @enderror
-                    </div>
+<!-- Codice Arbitro - READONLY -->
+<div>
+    <label for="referee_code" class="block text-sm font-medium text-gray-700">Codice Arbitro</label>
+    <input type="text"
+           value="{{ $user->referee->referee_code ?? 'N/A' }}"
+           class="mt-1 block w-full border-gray-300 rounded-md shadow-sm bg-gray-100"
+           readonly>
+    <p class="text-xs text-gray-500 mt-1">Il codice arbitro viene assegnato dall'amministrazione</p>
+</div>
 
                     <!-- Telefono -->
                     <div>
@@ -61,21 +61,14 @@
                         @enderror
                     </div>
 
-                    <!-- Livello -->
-                    <div>
-                        <label for="level" class="block text-sm font-medium text-gray-700">Livello *</label>
-                        <select name="level" id="level" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500" required>
-                            <option value="">Seleziona livello</option>
-                            <option value="aspirante" {{ old('level', $user->level) == 'aspirante' ? 'selected' : '' }}>Aspirante</option>
-                            <option value="primo_livello" {{ old('level', $user->level) == 'primo_livello' ? 'selected' : '' }}>Primo Livello</option>
-                            <option value="regionale" {{ old('level', $user->level) == 'regionale' ? 'selected' : '' }}>Regionale</option>
-                            <option value="nazionale" {{ old('level', $user->level) == 'nazionale' ? 'selected' : '' }}>Nazionale</option>
-                            <option value="internazionale" {{ old('level', $user->level) == 'internazionale' ? 'selected' : '' }}>Internazionale</option>
-                        </select>
-                        @error('level')
-                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                        @enderror
-                    </div>
+<!-- Livello - SOLO VISUALIZZAZIONE -->
+<div>
+    <label class="block text-sm font-medium text-gray-700">Livello Attuale</label>
+    <div class="mt-1 p-3 bg-gray-50 border border-gray-300 rounded-md">
+        <span class="font-medium">{{ $user->referee->level_label ?? 'Non definito' }}</span>
+        <p class="text-xs text-gray-500 mt-1">Il livello può essere modificato solo dagli amministratori</p>
+    </div>
+</div>
                 </div>
 
                 <!-- Note -->

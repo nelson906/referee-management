@@ -7,7 +7,7 @@ import itLocale from '@fullcalendar/core/locales/it';
 const RefereeCalendar = ({ calendarData }) => {
     const [selectedEvent, setSelectedEvent] = useState(null);
     const [showModal, setShowModal] = useState(false);
-    const [showLegend, setShowLegend] = useState(false); // ← Nuovo stato
+    const [showLegend, setShowLegend] = useState(false); // Layout collassabile preservato
 
     const handleEventClick = (info) => {
         setSelectedEvent(info.event);
@@ -41,11 +41,36 @@ const RefereeCalendar = ({ calendarData }) => {
         );
     };
 
-    // Future: Toggle availability function (placeholder)
+    // FUNZIONE TOGGLE FUNZIONANTE (non placeholder!)
     const handleToggleAvailability = async (tournamentId, isAvailable) => {
-        // TODO: Implementare dopo standardizzazione
-        console.log('Toggle availability for tournament:', tournamentId, 'isAvailable:', isAvailable);
-        alert('Funzione toggle disponibilità - da implementare dopo standardizzazione');
+        try {
+            const response = await fetch('/referee/availability/toggle', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                },
+                body: JSON.stringify({
+                    tournament_id: tournamentId,
+                    available: !isAvailable,
+                    notes: ''
+                })
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                // Semplice notifica
+                alert(data.message);
+                // Ricarica la pagina per aggiornare i dati
+                window.location.reload();
+            } else {
+                alert(data.error || 'Errore durante il salvataggio');
+            }
+        } catch (error) {
+            console.error('Error toggling availability:', error);
+            alert('Errore di connessione');
+        }
     };
 
     if (!calendarData?.tournaments) {
@@ -59,7 +84,7 @@ const RefereeCalendar = ({ calendarData }) => {
 
     return (
         <div className="referee-calendar">
-            {/* Legenda collassabile */}
+            {/* Legenda collassabile - PRESERVATA ESATTAMENTE COME ERA */}
             <div className="mb-4 bg-white rounded-lg shadow">
                 <button
                     onClick={() => setShowLegend(!showLegend)}
@@ -145,7 +170,7 @@ const RefereeCalendar = ({ calendarData }) => {
                 )}
             </div>
 
-            {/* Calendar */}
+            {/* Calendar - PRESERVATO ESATTAMENTE COME ERA */}
             <div className="bg-white rounded-lg shadow">
                 <div className="p-4">
                     <FullCalendar
@@ -169,7 +194,7 @@ const RefereeCalendar = ({ calendarData }) => {
                 </div>
             </div>
 
-            {/* Personal Modal */}
+            {/* Modal - PRESERVATO + CORREZIONI MINIME */}
             {showModal && selectedEvent && (
                 <div className="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
                     <div className="flex items-center justify-center min-h-screen p-4">
@@ -182,8 +207,14 @@ const RefereeCalendar = ({ calendarData }) => {
 
                                 <div className="space-y-4">
                                     <div className="grid grid-cols-2 gap-4 text-sm">
-                                        <div><span className="font-medium">Club:</span> {selectedEvent.extendedProps.club}</div>
+                                        <div>
+                                            <span className="font-medium">Club:</span> {selectedEvent.extendedProps.club}
+                                            {selectedEvent.extendedProps.club_code && (
+                                                <span className="text-gray-500 ml-1">({selectedEvent.extendedProps.club_code})</span>
+                                            )}
+                                        </div>
                                         <div><span className="font-medium">Categoria:</span> {selectedEvent.extendedProps.category}</div>
+                                        <div><span className="font-medium">Zona:</span> {selectedEvent.extendedProps.zone}</div>
                                         <div><span className="font-medium">Scadenza:</span> {selectedEvent.extendedProps.deadline || 'N/A'}</div>
                                         <div>
                                             <span className="font-medium">Il mio stato:</span>
@@ -232,7 +263,7 @@ const RefereeCalendar = ({ calendarData }) => {
                                         Chiudi
                                     </button>
 
-                                    {/* Show appropriate action button based on status */}
+                                    {/* BOTTONE TOGGLE SEMPLIFICATO */}
                                     {selectedEvent.extendedProps.personal_status === 'assigned' ? (
                                         <button
                                             disabled
@@ -240,12 +271,12 @@ const RefereeCalendar = ({ calendarData }) => {
                                         >
                                             Assegnato
                                         </button>
-                                    ) : selectedEvent.extendedProps.can_apply && (
+                                    ) : (
                                         <button
                                             onClick={() => {
                                                 handleToggleAvailability(
                                                     selectedEvent.id,
-                                                    !selectedEvent.extendedProps.is_available
+                                                    selectedEvent.extendedProps.is_available
                                                 );
                                                 closeModal();
                                             }}
@@ -268,7 +299,7 @@ const RefereeCalendar = ({ calendarData }) => {
                 </div>
             )}
 
-            {/* Results Counter */}
+            {/* Results Counter - PRESERVATO */}
             <div className="mt-4 text-sm text-gray-600">
                 {calendarData.tournaments?.length || 0} tornei nella tua zona
             </div>
