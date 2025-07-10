@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Models\Referee;
 use App\Models\Zone;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
@@ -33,8 +34,8 @@ class RefereeController extends Controller
             $search = $request->search;
             $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%")
-                  ->orWhere('referee_code', 'like', "%{$search}%");
+                    ->orWhere('email', 'like', "%{$search}%")
+                    ->orWhere('referee_code', 'like', "%{$search}%");
             });
         }
 
@@ -64,16 +65,16 @@ class RefereeController extends Controller
             ? Zone::orderBy('name')->get()
             : Zone::where('id', $user->zone_id)->get();
 
-        $levels = [
-            'aspirante' => 'Aspirante',
-            'primo_livello' => 'Primo Livello',
-            'regionale' => 'Regionale',
-            'nazionale' => 'Nazionale',
+$levels = [
+    'aspirante' => 'Aspirante',
+    'primo_livello' => 'Primo Livello',
+    'regionale' => 'Regionale',
+    'nazionale' => 'Nazionale',
             'internazionale' => 'Internazionale',
-        ];
+];
 
         return view('admin.referees.index', compact('referees', 'zones', 'levels', 'isNationalAdmin'));
-    }
+}
     /**
      * Show the form for creating a new referee.
      */
@@ -92,7 +93,71 @@ class RefereeController extends Controller
 
         return view('admin.referees.create', compact('levels', 'zones'));
     }
+    /**
+     * Store a newly created referee in storage.
+     */
+    public function store(Request $request)
+    {
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|unique:users,email',
+            'phone' => 'nullable|string|max:20',
+            'level' => 'required|string',
+            'zone_id' => 'required|exists:zones,id',
+            'notes' => 'nullable|string',
+            'is_active' => 'boolean'
+        ]);
 
+        try {
+            \DB::beginTransaction();
+
+            // 1. Crea l'utente
+            $user = User::create([
+                'name' => $request->name,
+                'email' => $request->email,
+                'password' => bcrypt('password123'), // Password temporanea
+                'user_type' => 'referee',
+                'zone_id' => $request->zone_id,
+                'phone' => $request->phone,
+                'is_active' => $request->boolean('is_active', true),
+                'email_verified_at' => now(),
+            ]);
+
+            // 2. Genera codice arbitro automaticamente
+            $refereeCode = 'REF' . str_pad($user->id, 4, '0', STR_PAD_LEFT);
+
+            // 3. Crea il referee collegato
+            $referee = Referee::create([
+                'user_id' => $user->id,
+                'zone_id' => $request->zone_id,
+                'referee_code' => $refereeCode,
+                'level' => $request->level,
+                'category' => 'misto', // Default
+                'certified_date' => now(),
+                'bio' => 'Nuovo arbitro creato dall\'amministrazione',
+                'experience_years' => 0,
+                'specializations' => json_encode(['stroke_play']),
+                'languages' => json_encode(['it']),
+                'notes' => $request->notes,
+                'profile_completed_at' => now(), // Forza completamento
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            \DB::commit();
+
+            return redirect()
+                ->route('admin.referees.index')
+                ->with('success', "Arbitro {$user->name} creato con successo! Codice: {$refereeCode}");
+        } catch (\Exception $e) {
+            \DB::rollback();
+
+            return redirect()
+                ->back()
+                ->withInput()
+                ->with('error', 'Errore durante la creazione dell\'arbitro: ' . $e->getMessage());
+        }
+    }
     /**
      * Display the specified referee.
      */
@@ -138,67 +203,83 @@ class RefereeController extends Controller
     /**
      * Show the form for editing the specified referee.
      */
-    public function edit(User $referee): View
-    {
-        if (!$referee->isReferee()) {
-            abort(404, 'Arbitro non trovato.');
-        }
+public function edit($id)
+{
+    // $id è l'ID dell'User, non del Referee
+    $user = User::where('user_type', 'referee')->findOrFail($id);
+    $referee = $user->referee;
 
-        $this->checkRefereeAccess($referee);
-
-        $user = auth()->user();
-        $isNationalAdmin = $user->user_type === 'national_admin' || $user->user_type === 'super_admin';
-
-        $zones = $isNationalAdmin
-            ? Zone::orderBy('name')->get()
-            : Zone::where('id', $user->zone_id)->get();
-
-        $levels = [
-            'aspirante' => 'Aspirante',
-            'primo_livello' => 'Primo Livello',
-            'regionale' => 'Regionale',
-            'nazionale' => 'Nazionale',
-            'internazionale' => 'Internazionale',
-        ];
-
-        return view('admin.referees.edit', compact('referee', 'zones', 'levels'));
+    // Se l'user non ha un referee collegato, crealo
+    if (!$referee) {
+        $referee = Referee::create([
+            'user_id' => $user->id,
+            'zone_id' => $user->zone_id,
+            'referee_code' => 'REF' . str_pad($user->id, 4, '0', STR_PAD_LEFT),
+            'level' => $user->level ?: 'primo_livello',
+            'category' => 'misto',
+            'certified_date' => now(),
+        ]);
     }
+
+    $levels = [
+        'aspirante' => 'Aspirante',
+        'primo_livello' => 'Primo Livello',
+        'regionale' => 'Regionale',
+        'nazionale' => 'Nazionale',
+        'internazionale' => 'Internazionale'
+    ];
+
+    $zones = Zone::all();
+
+    return view('admin.referees.edit', compact('referee', 'levels', 'zones'));
+}
 
     /**
      * Update the specified referee.
      */
-    public function update(Request $request, User $referee): RedirectResponse
-    {
-        if (!$referee->isReferee()) {
-            abort(404, 'Arbitro non trovato.');
-        }
 
-        $this->checkRefereeAccess($referee);
-
-        $user = auth()->user();
-
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|email|max:255|unique:users,email,' . $referee->id,
-            'phone' => 'nullable|string|max:20',
-            'city' => 'nullable|string|max:100',
-            'zone_id' => 'required|exists:zones,id',
-            'level' => 'required|in:aspirante,primo_livello,regionale,nazionale,internazionale',
-            'referee_code' => 'required|string|max:20|unique:users,referee_code,' . $referee->id,
-            'is_active' => 'boolean',
-        ]);
-
-        // Check zone access for non-national admins
-        if ($user->user_type === 'admin' && $request->zone_id != $user->zone_id) {
-            abort(403, 'Non puoi spostare arbitri in zone diverse dalla tua.');
-        }
-
-        $referee->update($request->all());
-
-        return redirect()
-            ->route('admin.referees.show', $referee)
-            ->with('success', "Arbitro \"{$referee->name}\" aggiornato con successo!");
+public function update(Request $request, User $referee): RedirectResponse
+{
+    if (!$referee->isReferee()) {
+        abort(404, 'Arbitro non trovato.');
     }
+
+    $this->checkRefereeAccess($referee);
+
+    $user = auth()->user();
+
+    $request->validate([
+        'name' => 'required|string|max:255',
+        'email' => 'required|email|max:255|unique:users,email,' . $referee->id,
+        'phone' => 'nullable|string|max:20',
+        'city' => 'nullable|string|max:100',
+        'zone_id' => 'required|exists:zones,id',
+        'level' => 'required|in:aspirante,primo_livello,regionale,nazionale,internazionale',
+        'referee_code' => 'nullable|string|max:20', // ✅ CAMBIATO da required
+        'is_active' => 'boolean',
+    ]);
+
+    // Check zone access for non-national admins
+    if ($user->user_type === 'admin' && $request->zone_id != $user->zone_id) {
+        abort(403, 'Non puoi spostare arbitri in zone diverse dalla tua.');
+    }
+
+    // ✅ AGGIORNA SOLO I CAMPI SPECIFICI invece di $request->all()
+    $referee->update([
+        'name' => $request->name,
+        'email' => $request->email,
+        'phone' => $request->phone,
+        'city' => $request->city,
+        'zone_id' => $request->zone_id,
+        'level' => $request->level,
+        'referee_code' => $request->referee_code ?: $referee->referee_code,
+        'is_active' => $request->boolean('is_active', true),
+    ]);
+
+    return redirect()
+        ->route('admin.referees.show', $referee)
+        ->with('success', "Arbitro \"{$referee->name}\" aggiornato con successo!");
+}
 
     /**
      * Toggle referee active status.
@@ -231,7 +312,7 @@ class RefereeController extends Controller
         $this->checkRefereeAccess($referee);
 
         // Check if referee has active assignments
-        if ($referee->assignments()->whereHas('tournament', function($q) {
+        if ($referee->assignments()->whereHas('tournament', function ($q) {
             $q->whereIn('status', ['open', 'closed', 'assigned']);
         })->exists()) {
             return redirect()

@@ -17,6 +17,21 @@
         <p class="text-gray-600">Inserisci i dettagli del nuovo arbitro</p>
     </div>
 
+    {{-- Alert Messages --}}
+    @if(session('success'))
+        <div class="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 mb-6" role="alert">
+            <p class="font-bold">Successo!</p>
+            <p>{{ session('success') }}</p>
+        </div>
+    @endif
+
+    @if(session('error'))
+        <div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6" role="alert">
+            <p class="font-bold">Errore!</p>
+            <p>{{ session('error') }}</p>
+        </div>
+    @endif
+
     {{-- Form --}}
     <div class="bg-white rounded-lg shadow p-6">
         <form method="POST" action="{{ route('admin.referees.store') }}" class="space-y-6">
@@ -45,22 +60,12 @@
                     @enderror
                 </div>
 
-                {{-- Codice Arbitro --}}
-                <div>
-                    <label for="referee_code" class="block text-sm font-medium text-gray-700 mb-1">Codice Arbitro *</label>
-                    <input type="text" name="referee_code" id="referee_code" value="{{ old('referee_code') }}"
-                           class="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500 @error('referee_code') border-red-500 @enderror"
-                           required>
-                    @error('referee_code')
-                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                    @enderror
-                </div>
-
                 {{-- Telefono --}}
                 <div>
                     <label for="phone" class="block text-sm font-medium text-gray-700 mb-1">Telefono</label>
                     <input type="text" name="phone" id="phone" value="{{ old('phone') }}"
-                           class="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500 @error('phone') border-red-500 @enderror">
+                           class="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500 @error('phone') border-red-500 @enderror"
+                           placeholder="es. 3331234567">
                     @error('phone')
                         <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                     @enderror
@@ -103,11 +108,23 @@
                 </div>
             </div>
 
+            {{-- Info automatiche --}}
+            <div class="bg-blue-50 border border-blue-200 rounded-md p-4">
+                <h3 class="text-sm font-medium text-blue-900 mb-2">ℹ️ Informazioni Automatiche</h3>
+                <ul class="text-sm text-blue-700 space-y-1">
+                    <li>• <strong>Codice Arbitro:</strong> Sarà generato automaticamente (es. REF0001)</li>
+                    <li>• <strong>Password temporanea:</strong> <code class="bg-blue-100 px-2 py-1 rounded">password123</code></li>
+                    <li>• <strong>Categoria:</strong> Misto (può essere modificata successivamente)</li>
+                    <li>• <strong>Primo accesso:</strong> L'arbitro dovrà usare la sua email + password123</li>
+                </ul>
+            </div>
+
             {{-- Note --}}
             <div>
                 <label for="notes" class="block text-sm font-medium text-gray-700 mb-1">Note</label>
                 <textarea name="notes" id="notes" rows="3"
-                          class="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500 @error('notes') border-red-500 @enderror">{{ old('notes') }}</textarea>
+                          class="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500 @error('notes') border-red-500 @enderror"
+                          placeholder="Note aggiuntive sull'arbitro...">{{ old('notes') }}</textarea>
                 @error('notes')
                     <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                 @enderror

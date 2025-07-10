@@ -6,28 +6,16 @@
 
 <div class="container mx-auto px-4 py-8 max-w-4xl">
     {{-- Header --}}
-    <div class="mb-8">
-        <div class="flex items-center justify-between">
-            <div>
-                <h1 class="text-3xl font-bold text-gray-900">Assegna Arbitro</h1>
-                @if($tournament)
-                    <p class="mt-1 text-gray-600">
-                        Torneo: {{ $tournament->name }} - {{ $tournament->club->name }}
-                    </p>
-                @endif
-            </div>
-            <div class="flex space-x-4">
-                <a href="{{ $tournament ? route('admin.assignments.index', $tournament) : route('admin.assignments.index') }}"
-                   class="text-gray-600 hover:text-gray-900 flex items-center">
-                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
-                    </svg>
-                    Indietro
-                </a>
-            </div>
-        </div>
-    </div>
-
+<x-table-header
+    title="Gestione Assegnazioni"
+    description="Gestisci le assegnazioni degli arbitri ai tornei"
+    :create-route="route('admin.assignments.create')"
+    create-text="👤 Assegna Singolo Arbitro"
+    create-color="blue"
+    :secondary-route="route('admin.tournaments.index')"
+    secondary-text="🏌️ Assegna per Torneo"
+    secondary-color="green"
+/>
     {{-- Alert Messages --}}
     @if(session('success'))
         <div class="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 mb-6" role="alert">
@@ -42,6 +30,7 @@
             <p>{{ session('error') }}</p>
         </div>
     @endif
+
 {{-- Arbitri già assegnati a questo torneo --}}
 @if($tournament && $tournament->assignments()->count() > 0)
 <div class="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
@@ -195,10 +184,11 @@
 
             {{-- Submit Buttons --}}
             <div class="flex justify-end space-x-4">
-<a href="{{ $tournament ? route('admin.assignments.index', $tournament) : route('admin.assignments.index') }}"
-   class="px-6 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-    Annulla
-</a>                <button type="submit"
+                <a href="{{ route('admin.assignments.index') }}"
+                   class="px-6 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                    Annulla
+                </a>
+                <button type="submit"
                         class="px-6 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
                     Assegna Arbitro
                 </button>
