@@ -20,14 +20,14 @@ public function calendar(Request $request): View
 
     try {
         // Get all published tournaments (public view)
-        $tournaments = Tournament::with(['tournamentCategory', 'zone', 'club'])
+        $tournaments = Tournament::with(['tournamentType', 'zone', 'club'])
             ->where('status', 'published') // Only published for public
             ->orderBy('start_date', 'asc')
             ->get();
 
         // Get filter data for public filtering
         $zones = \App\Models\Zone::orderBy('name')->get();
-        $tournamentTypes = \App\Models\TournamentCategory::orderBy('name')->get();
+        $tournamentTypes = \App\Models\TournamentType::orderBy('name')->get();
         $clubs = \App\Models\Club::orderBy('name')->get();
 
         // === STANDARDIZED CALENDAR DATA ===
@@ -55,7 +55,7 @@ public function calendar(Request $request): View
                         'days_until_deadline' => $tournament->days_until_deadline ?? 0,
 
                         // Type info (important for public filtering)
-                        'type_id' => $tournament->tournament_category_id,
+                        'type_id' => $tournament->tournament_type_id,
                         'type' => $tournament->tournamentCategory,
 
                         // Admin-specific (not applicable for public)
@@ -123,7 +123,7 @@ public function calendar(Request $request): View
 }
 
 /**
- * Get event color based on tournament category (same as admin/referee)
+ * Get event color based on tournament type (same as admin/referee)
  */
 private function getEventColor($tournament): string
 {

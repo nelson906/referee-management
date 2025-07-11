@@ -5,7 +5,7 @@ namespace App\Http\Requests;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use App\Models\Tournament;
-use App\Models\TournamentCategory;
+use App\Models\TournamentType;
 use App\Models\club;
 use Carbon\Carbon;
 
@@ -51,11 +51,11 @@ class TournamentRequest extends FormRequest
                 'string',
                 'max:255',
             ],
-            'tournament_category_id' => [
+            'tournament_type_id' => [
                 'required',
-                'exists:tournament_categories,id',
+                'exists:tournament_types,id',
                 function ($attribute, $value, $fail) {
-                    $category = TournamentCategory::find($value);
+                    $category = TournamentType::find($value);
                     if ($category && !$category->is_active) {
                         $fail('La categoria selezionata non è attiva.');
                     }
@@ -138,8 +138,8 @@ class TournamentRequest extends FormRequest
         return [
             'name.required' => 'Il nome del torneo è obbligatorio.',
             'name.max' => 'Il nome del torneo non può superare i 255 caratteri.',
-            'tournament_category_id.required' => 'La categoria del torneo è obbligatoria.',
-            'tournament_category_id.exists' => 'La categoria selezionata non è valida.',
+            'tournament_type_id.required' => 'La categoria del torneo è obbligatoria.',
+            'tournament_type_id.exists' => 'La categoria selezionata non è valida.',
             'club_id.required' => 'Il circolo è obbligatorio.',
             'club_id.exists' => 'Il circolo selezionato non è valido.',
             'zone_id.required' => 'La zona è obbligatoria.',
@@ -190,7 +190,7 @@ class TournamentRequest extends FormRequest
     {
         return [
             'name' => 'nome torneo',
-            'tournament_category_id' => 'categoria',
+            'tournament_type_id' => 'categoria',
             'club_id' => 'circolo',
             'zone_id' => 'zona',
             'start_date' => 'data inizio',

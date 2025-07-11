@@ -145,7 +145,7 @@
                                 <tr>
                                     <td class="px-6 py-4">
                                         <div class="text-sm font-medium text-gray-900">{{ $tournament->name }}</div>
-                                        <div class="text-sm text-gray-500">{{ $tournament->tournamentCategory->name }}</div>
+                                        <div class="text-sm text-gray-500">{{ $tournament->tournamentType->name }}</div>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                                         {{ $tournament->start_date->format('d/m/Y') }}

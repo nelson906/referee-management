@@ -30,7 +30,7 @@ class DataMigrationSeeder extends Seeder
         // 4. Migra clubs → clubs
         $this->migrateClubs();
 
-        // 5. Migra tournament_types → tournament_categories
+        // 5. Migra tournament_types → tournament_types
         $this->migrateTournamentTypes();
 
         // 6. Migra tournaments
@@ -188,7 +188,7 @@ class DataMigrationSeeder extends Seeder
 
     private function migrateTournamentTypes()
     {
-        $this->command->info('🏆 Migrazione tournament_types → tournament_categories...');
+        $this->command->info('🏆 Migrazione tournament_types → tournament_types...');
 
         $oldTypes = DB::connection('old')->table('tournament_types')->get();
 
@@ -211,7 +211,7 @@ class DataMigrationSeeder extends Seeder
                 'visibility_zones' => $type->is_national ? 'all' : 'own',
             ];
 
-            DB::table('tournament_categories')->updateOrInsert(
+            DB::table('tournament_types')->updateOrInsert(
                 ['id' => $type->id],
                 [
                     'name' => $type->name,
@@ -229,7 +229,7 @@ class DataMigrationSeeder extends Seeder
             );
         }
 
-        $this->command->info("✅ Migrati " . $oldTypes->count() . " tournament_types → tournament_categories");
+        $this->command->info("✅ Migrati " . $oldTypes->count() . " tournament_types → tournament_types");
     }
 
     private function migrateTournaments()
@@ -247,7 +247,7 @@ class DataMigrationSeeder extends Seeder
                     'end_date' => $tournament->end_date,
                     'availability_deadline' => $tournament->availability_deadline,
                     'club_id' => $tournament->club_id, // club_id → club_id
-                    'tournament_category_id' => $tournament->tournament_type_id, // tournament_type_id → tournament_category_id
+                    'tournament_type_id' => $tournament->tournament_type_id, // tournament_type_id → tournament_type_id
                     'zone_id' => $tournament->zone_id,
                     'notes' => $tournament->notes,
                     'status' => $tournament->status,

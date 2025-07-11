@@ -60,28 +60,28 @@
 
                 {{-- Category --}}
                 <div>
-                    <label for="tournament_category_id" class="block text-sm font-medium text-gray-700">
+                    <label for="tournament_type_id" class="block text-sm font-medium text-gray-700">
                         Categoria <span class="text-red-500">*</span>
                     </label>
-                    <select name="tournament_category_id"
-                            id="tournament_category_id"
-                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 @error('tournament_category_id') border-red-500 @enderror"
+                    <select name="tournament_type_id"
+                            id="tournament_type_id"
+                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 @error('tournament_type_id') border-red-500 @enderror"
                             required>
                         <option value="">Seleziona categoria...</option>
-                        @foreach($categories as $category)
-                            <option value="{{ $category->id }}"
-                                {{ old('tournament_category_id') == $category->id ? 'selected' : '' }}
+                        @foreach($tournamentTypes as $type)
+                            <option value="{{ $type->id }}"
+                                {{ old('tournament_type_id') == $type->id ? 'selected' : '' }}
                                 data-min-referees="{{ $category->min_referees }}"
                                 data-max-referees="{{ $category->max_referees }}"
                                 data-national="{{ $category->is_national ? '1' : '0' }}">
-                                {{ $category->name }}
+                                {{ $type->name }}
                                 @if($category->is_national)
                                     (Nazionale)
                                 @endif
                             </option>
                         @endforeach
                     </select>
-                    @error('tournament_category_id')
+                    @error('tournament_type_id')
                         <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                     @enderror
                     <p class="mt-1 text-xs text-gray-500" id="category-info" style="display: none;">
@@ -254,7 +254,7 @@
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     // Category change handler
-    const categorySelect = document.getElementById('tournament_category_id');
+    const categorySelect = document.getElementById('tournament_type_id');
     const categoryInfo = document.getElementById('category-info');
     const refereesRange = document.getElementById('referees-range');
 

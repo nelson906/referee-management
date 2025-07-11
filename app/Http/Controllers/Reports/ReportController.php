@@ -24,7 +24,7 @@ class ReportController extends Controller
 
         // Get recent tournaments
         $recentTournaments = $this->getAccessibleTournaments($user)
-            ->with(['club', 'zone', 'tournamentCategory'])
+            ->with(['club', 'zone', 'tournamentType'])
             ->orderBy('start_date', 'desc')
             ->limit(10)
             ->get();

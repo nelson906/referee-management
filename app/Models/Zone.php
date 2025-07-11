@@ -195,7 +195,7 @@ class Zone extends Model
     public function getTournamentsByCategoryAttribute(): array
     {
         return $this->tournaments()
-            ->with('tournamentCategory')
+            ->with('tournamentType')
             ->get()
             ->groupBy('tournamentCategory.name')
             ->map(function ($tournaments) {

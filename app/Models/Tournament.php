@@ -23,7 +23,7 @@ class Tournament extends Model
         'end_date',
         'availability_deadline',
         'club_id',
-        'tournament_category_id', // Changed from tournament_type_id
+        'tournament_type_id', // FIXED: Changed from tournament_category_id
         'zone_id',
         'notes',
         'status',
@@ -81,20 +81,19 @@ class Tournament extends Model
     }
 
     /**
-     * Get the tournament category.
-     * Renamed from tournamentType
+     * Get the tournament type (NEW primary relationship)
      */
-    public function tournamentCategory(): BelongsTo
+    public function tournamentType(): BelongsTo
     {
-        return $this->belongsTo(TournamentCategory::class);
+        return $this->belongsTo(TournamentType::class);
     }
 
     /**
      * Alias for backward compatibility
      */
-    public function tournament_type()
+    public function tournamentCategory()
     {
-        return $this->tournamentCategory();
+        return $this->tournamentType();
     }
 
     /**
@@ -130,34 +129,13 @@ class Tournament extends Model
     }
 
     /**
-     * Get available referees (those who declared availability)
-     */
-    public function availableReferees()
-    {
-        return $this->belongsToMany(User::class, 'availabilities')
-                    ->withPivot('notes', 'submitted_at')
-                    ->withTimestamps();
-    }
-
-   /**
- * Get assigned referees
- */
-public function assignedReferees()
-{
-    return $this->belongsToMany(User::class, 'assignments')
-                ->withPivot('role', 'is_confirmed', 'assigned_at', 'assigned_by_id', 'notes')
-                ->withTimestamps();
-}
-
-
-    /**
      * Scope a query to only include tournaments visible to a specific zone.
      */
     public function scopeVisibleToZone($query, $zoneId)
     {
         return $query->where(function ($q) use ($zoneId) {
             $q->where('zone_id', $zoneId)
-              ->orWhereHas('tournamentCategory', function ($q) {
+              ->orWhereHas('tournamentType', function ($q) {
                   $q->where('is_national', true);
               });
         });
@@ -218,7 +196,7 @@ public function assignedReferees()
      */
     public function needsReferees(): bool
     {
-        $requiredReferees = $this->tournamentCategory->min_referees ?? 1;
+        $requiredReferees = $this->tournamentType->min_referees ?? 1;
         $assignedReferees = $this->assignments()->count();
 
         return $assignedReferees < $requiredReferees;
@@ -229,7 +207,7 @@ public function assignedReferees()
      */
     public function getRequiredRefereesAttribute(): int
     {
-        return $this->tournamentCategory->min_referees ?? 1;
+        return $this->tournamentType->min_referees ?? 1;
     }
 
     /**
@@ -237,7 +215,7 @@ public function assignedReferees()
      */
     public function getMaxRefereesAttribute(): int
     {
-        return $this->tournamentCategory->max_referees ?? $this->required_referees;
+        return $this->tournamentType->max_referees ?? $this->required_referees;
     }
 
     /**
@@ -256,7 +234,7 @@ public function assignedReferees()
         }
 
         // Check referee level
-        if (!$this->tournamentCategory->requiresRefereeLevel($referee->referee->level)) {
+        if (!$this->tournamentType->requiresRefereeLevel($referee->level)) {
             return false;
         }
 
@@ -335,5 +313,25 @@ public function assignedReferees()
         $this->increment('document_version');
         $this->update(['documents_last_updated_by' => auth()->id()]);
     }
+
+    /**
+ * Get available referees (those who declared availability)
+ */
+public function availableReferees()
+{
+    return $this->belongsToMany(User::class, 'availabilities', 'tournament_id', 'user_id')
+                ->withPivot('notes', 'submitted_at')
+                ->withTimestamps();
+}
+
+/**
+ * Get assigned referees
+ */
+public function assignedReferees()
+{
+    return $this->belongsToMany(User::class, 'assignments', 'tournament_id', 'user_id')
+                ->withPivot('role', 'is_confirmed', 'assigned_at', 'assigned_by_id', 'notes')
+                ->withTimestamps();
+}
 
 }

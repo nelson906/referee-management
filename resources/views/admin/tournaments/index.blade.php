@@ -79,11 +79,11 @@
             {{-- Category Filter --}}
             <div>
                 <label for="category_id" class="block text-sm font-medium text-gray-700 mb-1">Categoria</label>
-                <select name="category_id" id="category_id" class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                <select name="type_id" id="type_id" class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
                     <option value="">Tutte le categorie</option>
-                    @foreach($categories as $category)
-                        <option value="{{ $category->id }}" {{ request('category_id') == $category->id ? 'selected' : '' }}>
-                            {{ $category->name }}
+                    @foreach($tournamentTypes as $type)
+                        <option value="{{ $type->id }}" {{ request('category_id') == $type->id ? 'selected' : '' }}>
+                            {{ $type->name }}
                         </option>
                     @endforeach
                 </select>
@@ -175,12 +175,12 @@
                     <td class="px-6 py-4 whitespace-nowrap">
                         <div class="flex items-center">
                             <div class="w-3 h-3 rounded-full mr-2"
-                                 style="background-color: {{ $tournament->tournamentCategory->calendar_color }}"></div>
+                                 style="background-color: {{ $tournament->tournamentType->calendar_color }}"></div>
                             <span class="text-sm text-gray-900">
-                                {{ $tournament->tournamentCategory->name }}
+                                {{ $tournament->tournamentType->name }}
                             </span>
                         </div>
-                        @if($tournament->tournamentCategory->is_national)
+                        @if($tournament->tournamentType->is_national)
                             <span class="text-xs text-blue-600">Nazionale</span>
                         @endif
                     </td>

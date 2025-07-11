@@ -13,8 +13,8 @@
                     <p><strong>Date:</strong> {{ $tournament->start_date->format('d/m/Y') }} - {{ $tournament->end_date->format('d/m/Y') }}</p>
                     <p><strong>Circolo:</strong> {{ $tournament->club->name }} ({{ $tournament->zone->name }})</p>
                     <p><strong>Categoria:</strong>
-                        <span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium {{ $tournament->tournamentCategory->is_national ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800' }}">
-                            {{ $tournament->tournamentCategory->name }}
+                        <span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium {{ $tournament->tournamentType->is_national ? 'bg-red-100 text-red-800' : 'bg-blue-100 text-blue-800' }}">
+                            {{ $tournament->tournamentType->name }}
                         </span>
                     </p>
                 </div>

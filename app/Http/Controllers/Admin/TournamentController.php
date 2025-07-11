@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\TournamentRequest;
 use App\Models\Tournament;
-use App\Models\TournamentCategory;
+use App\Models\TournamentType; // ✅ FIXED: Changed from TournamentCategory
 use App\Models\club;
 use App\Models\Zone;
 use Carbon\Carbon;
@@ -24,8 +24,8 @@ class TournamentController extends Controller
         $user = auth()->user();
         $isNationalAdmin = $user->user_type === 'national_admin' || $user->user_type === 'super_admin';
 
-        // Base query
-        $query = Tournament::with(['tournamentCategory', 'zone', 'club', 'assignments']);
+        // Base query - ✅ FIXED: tournamentType relationship
+        $query = Tournament::with(['tournamentType', 'zone', 'club', 'assignments']);
 
         // Filter by zone for zone admins
         if (!$isNationalAdmin && !in_array($user->user_type, ['super_admin'])) {
@@ -41,8 +41,9 @@ class TournamentController extends Controller
             $query->where('zone_id', $request->zone_id);
         }
 
-        if ($request->has('category_id') && $request->category_id !== '') {
-            $query->where('tournament_category_id', $request->category_id);
+        // ✅ FIXED: tournament_type_id filter name
+        if ($request->has('tournament_type_id') && $request->tournament_type_id !== '') {
+            $query->where('tournament_type_id', $request->tournament_type_id);
         }
 
         if ($request->has('month') && $request->month !== '') {
@@ -70,17 +71,21 @@ class TournamentController extends Controller
 
         // Get data for filters
         $zones = $isNationalAdmin ? Zone::orderBy('name')->get() : collect();
-        $categories = TournamentCategory::active()->ordered()->get();
+
+        // ✅ FIXED: Variable name from $categories to $tournamentTypes
+        $tournamentTypes = TournamentType::active()->ordered()->get();
         $statuses = Tournament::STATUSES;
 
+        // ✅ FIXED: compact() uses tournamentTypes instead of categories
         return view('admin.tournaments.index', compact(
             'tournaments',
             'zones',
-            'categories',
+            'tournamentTypes', // ← FIXED: was 'categories'
             'statuses',
             'isNationalAdmin'
         ));
     }
+
     /**
      * Show tournaments calendar view
      */
@@ -89,11 +94,8 @@ class TournamentController extends Controller
         $user = auth()->user();
         $isNationalAdmin = $user->user_type === 'national_admin' || $user->user_type === 'super_admin' || $user->user_type === 'admin';
 
-        // ✅ CONTROLLO SEMPLICE PRIMA:
-        $tournamentCount = Tournament::count();
-
-        // Get tournaments for calendar
-        $tournaments = Tournament::with(['tournamentCategory', 'zone', 'club', 'assignments.user'])
+        // ✅ FIXED: tournamentType relationship
+        $tournaments = Tournament::with(['tournamentType', 'zone', 'club', 'assignments.user'])
             ->when(!$isNationalAdmin && !in_array($user->user_type, ['super_admin']), function ($q) use ($user) {
                 $q->where('zone_id', $user->zone_id);
             })
@@ -112,8 +114,8 @@ class TournamentController extends Controller
             ->orderBy('name')
             ->get();
 
-        // Get tournament types
-        $types = TournamentCategory::active()->ordered()->get();
+        // ✅ FIXED: Variable name from $types to $tournamentTypes
+        $tournamentTypes = TournamentType::active()->ordered()->get();
 
         // User roles for permissions
         $userRoles = ['Admin'];
@@ -127,20 +129,21 @@ class TournamentController extends Controller
         $calendarTournaments = $tournaments->map(function ($tournament) {
             return [
                 'id' => $tournament->id,
-                'title' => $tournament->name,                              // ← AGGIUNGI title
-                'start' => $tournament->start_date->format('Y-m-d'),       // ← CORRETTO
-                'end' => $tournament->end_date->addDay()->format('Y-m-d'), // ← CORRETTO + 1 giorno
+                'title' => $tournament->name,
+                'start' => $tournament->start_date->format('Y-m-d'),
+                'end' => $tournament->end_date->addDay()->format('Y-m-d'),
                 'color' => '#3b82f6', // Default color
                 'borderColor' => '#1e40af',
                 'extendedProps' => [
                     'club' => $tournament->club->name ?? 'N/A',
                     'zone' => $tournament->zone->name ?? 'N/A',
                     'zone_id' => $tournament->zone_id,
-                    'category' => $tournament->tournamentCategory->name ?? 'N/A',
+                    // ✅ FIXED: tournamentType relationship
+                    'category' => $tournament->tournamentType->name ?? 'N/A',
                     'status' => $tournament->status,
                     'tournament_url' => route('admin.tournaments.show', $tournament),
                     'deadline' => $tournament->availability_deadline?->format('d/m/Y') ?? 'N/A',
-                    'type_id' => $tournament->tournament_category_id,
+                    'type_id' => $tournament->tournament_type_id,
                     'availabilities_count' => $tournament->availabilities()->count(),
                     'assignments_count' => $tournament->assignments()->count(),
                     'required_referees' => $tournament->required_referees ?? 1,
@@ -149,6 +152,7 @@ class TournamentController extends Controller
                 ],
             ];
         });
+
         // Prepare data for React component
         $calendarData = [
             'tournaments' => $calendarTournaments,
@@ -165,7 +169,8 @@ class TournamentController extends Controller
                     'zone_id' => $club->zone_id,
                 ];
             }),
-            'types' => $types->map(function ($type) {
+            // ✅ FIXED: tournamentTypes instead of types
+            'tournamentTypes' => $tournamentTypes->map(function ($type) {
                 return [
                     'id' => $type->id,
                     'name' => $type->name,
@@ -174,8 +179,8 @@ class TournamentController extends Controller
                 ];
             }),
             'userRoles' => $userRoles,
-            'userType' => 'admin', // ← AGGIUNGI QUESTA RIGA
-            'canModify' => true,   // ← AGGIUNGI QUESTA RIGA
+            'userType' => 'admin',
+            'canModify' => true,
         ];
 
         return view('admin.tournaments.calendar', compact('calendarData'));
@@ -189,8 +194,8 @@ class TournamentController extends Controller
         $user = auth()->user();
         $isNationalAdmin = $user->user_type === 'national_admin' || $user->user_type === 'super_admin';
 
-        // Get categories available for user's zone
-        $categories = TournamentCategory::active()
+        // ✅ FIXED: Variable name and model reference
+        $tournamentTypes = TournamentType::active()
             ->when(!$isNationalAdmin, function ($q) use ($user) {
                 $q->where(function ($q2) use ($user) {
                     $q2->where('is_national', false)
@@ -213,7 +218,8 @@ class TournamentController extends Controller
             ->ordered()
             ->get();
 
-        return view('admin.tournaments.create', compact('categories', 'zones', 'clubs'));
+        // ✅ FIXED: compact() uses tournamentTypes
+        return view('admin.tournaments.create', compact('tournamentTypes', 'zones', 'clubs'));
     }
 
     /**
@@ -237,39 +243,57 @@ class TournamentController extends Controller
             ->with('success', 'Torneo creato con successo!');
     }
 
-    /**
-     * Display the specified tournament for admin view
-     */
-    public function show(Tournament $tournament)
-    {
-        $user = auth()->user();
+/**
+ * Display the specified tournament.
+ */
+public function show(Tournament $tournament)
+{
+    // Check access
+    $this->checkTournamentAccess($tournament);
 
-        // Check permissions (zone admin can only see their zone tournaments)
-        if ($user->user_type === 'admin' && $user->zone_id !== $tournament->zone_id) {
-            abort(403, 'Non hai i permessi per visualizzare questo torneo.');
-        }
+    // Load relationships - CORRETTO ✅
+    $tournament->load([
+        'tournamentType', // ← FIX: era tournamentCategory
+        'zone',
+        'club',
+        'assignments.user', // ← FIX: rimuovo .referee
+        'availabilities.user' // ← FIX: rimuovo .referee
+    ]);
 
-        // Load relationships
-        $tournament->load([
-            'tournamentCategory',
-            'zone',
-            'club',
-            'assignments.referee',
-            'availabilities.referee'
-        ]);
+    // Get statistics
+    $stats = [
+        'total_availabilities' => $tournament->availabilities()->count(),
+        'total_assignments' => $tournament->assignments()->count(),
+        'required_referees' => $tournament->required_referees,
+        'max_referees' => $tournament->max_referees,
+        'days_until_deadline' => $tournament->days_until_deadline,
+    ];
 
-        // Get statistics
-        $stats = [
-            'total_referees' => $tournament->availabilities()->count(),
-            'assigned_referees' => $tournament->assignments()->count(),
-            'required_referees' => $tournament->required_referees ?? $tournament->tournamentCategory->min_referees ?? 1,
-            'max_referees' => $tournament->max_referees ?? $tournament->tournamentCategory->max_referees ?? 4,
-            'days_until_deadline' => $tournament->days_until_deadline,
-            'is_editable' => method_exists($tournament, 'isEditable') ? $tournament->isEditable() : true,
-        ];
+    // Get referees data using hasMany relationships - CORRETTO ✅
+    $availableReferees = $tournament->availabilities()
+        ->with('user.zone')
+        ->whereNotIn('user_id', $tournament->assignments()->pluck('user_id'))
+        ->get()
+        ->pluck('user'); // Estrae gli User dagli Availability
 
-        return view('admin.tournaments.show', compact('tournament', 'stats'));
-    }
+    $assignedReferees = $tournament->assignments()
+        ->with('user.zone')
+        ->get()
+        ->map(function($assignment) {
+            // Aggiungi i dati dell'assignment all'user per la view
+            $user = $assignment->user;
+            $user->assignment = $assignment; // role, is_confirmed, etc.
+            return $user;
+        });
+
+    return view('admin.tournaments.show', compact(
+        'tournament',
+        'stats',
+        'availableReferees',
+        'assignedReferees' // ← Ora questa variabile esiste!
+    ));
+}
+
 
     /**
      * Show the form for editing the specified tournament.
@@ -289,8 +313,8 @@ class TournamentController extends Controller
         $user = auth()->user();
         $isNationalAdmin = $user->user_type === 'national_admin' || $user->user_type === 'super_admin';
 
-        // Get categories
-        $categories = TournamentCategory::active()
+        // ✅ FIXED: Variable name and model reference
+        $tournamentTypes = TournamentType::active()
             ->when(!$isNationalAdmin, function ($q) use ($user) {
                 $q->where(function ($q2) use ($user) {
                     $q2->where('is_national', false)
@@ -311,7 +335,8 @@ class TournamentController extends Controller
             ->ordered()
             ->get();
 
-        return view('admin.tournaments.edit', compact('tournament', 'categories', 'zones', 'clubs'));
+        // ✅ FIXED: compact() uses tournamentTypes
+        return view('admin.tournaments.edit', compact('tournament', 'tournamentTypes', 'zones', 'clubs'));
     }
 
     /**
@@ -441,7 +466,8 @@ class TournamentController extends Controller
         // Get all eligible referees who haven't declared availability
         $eligibleReferees = \App\Models\User::where('user_type', 'referee')
             ->where('is_active', true)
-            ->when($tournament->tournamentCategory->is_national, function ($q) {
+            // ✅ FIXED: Use tournamentType relationship
+            ->when($tournament->tournamentType->is_national, function ($q) {
                 $q->whereIn('level', ['nazionale', 'internazionale']);
             }, function ($q) use ($tournament) {
                 $q->where('zone_id', $tournament->zone_id);
@@ -532,8 +558,8 @@ class TournamentController extends Controller
         $user = auth()->user();
         $isNationalReferee = in_array($user->level ?? '', ['nazionale', 'internazionale']);
 
-        // Get tournaments visible to this user
-        $query = Tournament::with(['tournamentCategory', 'zone', 'club'])
+        // ✅ FIXED: tournamentType relationship
+        $query = Tournament::with(['tournamentType', 'zone', 'club'])
             ->where('status', '!=', 'draft'); // Hide drafts from public view
 
         // Zone filtering logic
@@ -565,8 +591,8 @@ class TournamentController extends Controller
         $user = auth()->user();
         $isNationalReferee = in_array($user->level ?? '', ['nazionale', 'internazionale']);
 
-        // Get tournaments for calendar
-        $tournaments = Tournament::with(['tournamentCategory', 'zone', 'club'])
+        // ✅ FIXED: tournamentType relationship
+        $tournaments = Tournament::with(['tournamentType', 'zone', 'club'])
             ->where('status', '!=', 'draft')
             ->when(!$isNationalReferee, function ($q) use ($user) {
                 $q->where('zone_id', $user->zone_id);
@@ -590,11 +616,13 @@ class TournamentController extends Controller
                     'title' => $tournament->name,
                     'start' => $tournament->start_date->format('Y-m-d'),
                     'end' => $tournament->end_date->addDay()->format('Y-m-d'),
-                    'color' => $tournament->tournamentCategory->calendar_color ?? '#3b82f6',
+                    // ✅ FIXED: tournamentType relationship
+                    'color' => $tournament->tournamentType->calendar_color ?? '#3b82f6',
                     'extendedProps' => [
                         'club' => $tournament->club->name,
                         'zone' => $tournament->zone->name,
-                        'category' => $tournament->tournamentCategory->name,
+                        // ✅ FIXED: tournamentType relationship
+                        'category' => $tournament->tournamentType->name,
                         'status' => $tournament->status,
                         'available' => in_array($tournament->id, $userAvailabilities),
                         'assigned' => in_array($tournament->id, $userAssignments),
@@ -626,8 +654,9 @@ class TournamentController extends Controller
             abort(403, 'Non hai accesso a questo torneo.');
         }
 
+        // ✅ FIXED: tournamentType relationship
         $tournament->load([
-            'tournamentCategory',
+            'tournamentType',
             'zone',
             'club',
             'assignments.user',
@@ -658,8 +687,8 @@ class TournamentController extends Controller
         $user = auth()->user();
         $isNationalAdmin = $user->user_type === 'national_admin';
 
-        // Base query
-        $query = Tournament::with(['tournamentCategory', 'zone', 'club', 'assignments']);
+        // ✅ FIXED: tournamentType relationship
+        $query = Tournament::with(['tournamentType', 'zone', 'club', 'assignments']);
 
         // Filter by zone for zone admins
         if (!$isNationalAdmin && !in_array($user->user_type, ['super_admin'])) {
@@ -675,8 +704,9 @@ class TournamentController extends Controller
             $query->where('zone_id', $request->zone_id);
         }
 
-        if ($request->filled('category_id')) {
-            $query->where('tournament_category_id', $request->category_id);
+        // ✅ FIXED: tournament_type_id filter
+        if ($request->filled('tournament_type_id')) {
+            $query->where('tournament_type_id', $request->tournament_type_id);
         }
 
         if ($request->filled('month')) {
@@ -703,7 +733,9 @@ class TournamentController extends Controller
 
         // Get data for filters
         $zones = $isNationalAdmin ? \App\Models\Zone::orderBy('name')->get() : collect();
-        $categories = \App\Models\TournamentCategory::where('is_active', true)->orderBy('name')->get();
+
+        // ✅ FIXED: Variable name from $categories to $tournamentTypes
+        $tournamentTypes = \App\Models\TournamentType::where('is_active', true)->orderBy('name')->get();
 
         // Define statuses
         $statuses = [
@@ -714,10 +746,11 @@ class TournamentController extends Controller
             'completed' => 'Completato'
         ];
 
+        // ✅ FIXED: compact() uses tournamentTypes
         return view('admin.tournaments.index', compact(
             'tournaments',
             'zones',
-            'categories',
+            'tournamentTypes', // ← FIXED: was 'types'
             'statuses',
             'isNationalAdmin'
         ));
@@ -731,8 +764,8 @@ class TournamentController extends Controller
         $user = auth()->user();
         $isNationalAdmin = $user->user_type === 'national_admin';
 
-        // Get tournaments for calendar
-        $tournaments = Tournament::with(['tournamentCategory', 'zone', 'club', 'assignments', 'availabilities'])
+        // ✅ FIXED: tournamentType relationship
+        $tournaments = Tournament::with(['tournamentType', 'zone', 'club', 'assignments', 'availabilities'])
             ->when(!$isNationalAdmin && !in_array($user->user_type, ['super_admin']), function ($q) use ($user) {
                 $q->where('zone_id', $user->zone_id);
             })
@@ -746,11 +779,13 @@ class TournamentController extends Controller
                     'title' => $tournament->name,
                     'start' => $tournament->start_date->format('Y-m-d'),
                     'end' => $tournament->end_date->addDay()->format('Y-m-d'),
-                    'color' => $tournament->tournamentCategory->calendar_color ?? '#3b82f6',
+                    // ✅ FIXED: tournamentType relationship
+                    'color' => $tournament->tournamentType->calendar_color ?? '#3b82f6',
                     'extendedProps' => [
                         'club' => $tournament->club->name,
                         'zone' => $tournament->zone->name,
-                        'category' => $tournament->tournamentCategory->name,
+                        // ✅ FIXED: tournamentType relationship
+                        'category' => $tournament->tournamentType->name,
                         'status' => $tournament->status,
                         'assignments_count' => $tournament->assignments()->count(),
                         'availabilities_count' => $tournament->availabilities()->count(),

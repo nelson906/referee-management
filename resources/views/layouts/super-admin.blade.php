@@ -48,9 +48,9 @@
                         <h3 class="text-xs uppercase text-indigo-300 font-semibold px-3 mb-2"
                             x-show="sidebarOpen">Sistema</h3>
 
-                        <a href="{{ route('super-admin.tournament-categories.index') }}"
+                        <a href="{{ route('super-admin.tournament-types.index') }}"
                            class="flex items-center space-x-3 p-3 rounded-lg transition duration-200 group
-                           {{ request()->routeIs('super-admin.tournament-categories.*') ? 'bg-indigo-900' : 'hover:bg-indigo-700' }}"
+                           {{ request()->routeIs('super-admin.tournament-types.*') ? 'bg-indigo-900' : 'hover:bg-indigo-700' }}"
                            title="Categorie Tornei">
                             <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>

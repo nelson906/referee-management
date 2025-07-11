@@ -1,0 +1,270 @@
+# PIANO DI LAVORO MASTER - Sistema Gestione Arbitri Golf
+
+> **VERSIONE**: 1.0
+> **DATA**: 2025-01-11
+> **STATO**: Analisi completata, pronto per implementazione
+> **CONTESTO**: Sistema Laravel per gestione arbitri golf con competenze Zone vs CRC
+
+---
+
+## 📋 TEMPLATE PER NUOVE CHAT
+
+### **PROMPT DI APERTURA STANDARD**
+```
+Ciao Claude, sto lavorando su un progetto Laravel per la gestione arbitri del golf.
+
+ALLEGATI:
+- situazione_iniziale.txt (database, models, controllers, views, routes)
+- piano_lavoro_master.txt (questo documento)
+
+STATO ATTUALE: [Fase X del piano di lavoro]
+ULTIMO COMPLETATO: [Specifica cosa è stato fatto]
+PROSSIMO OBIETTIVO: [Specifica la fase corrente]
+
+PROBLEMA SPECIFICO: [Descrivi il problema/task specifico]
+
+Riferisciti al piano di lavoro per il contesto completo.
+```
+
+---
+
+## 🎯 FASI DEL PROGETTO
+
+### **FASE 1: CONSOLIDAMENTO DATABASE** 🔥
+**PRIORITÀ**: MASSIMA - Problema bloccante
+**DURATA STIMATA**: 2-3 chat
+**DIPENDENZE**: Nessuna
+
+#### **1.1 Analisi Conflitti User/Referee**
+- [x] ✅ **COMPLETATO** - Identificati campi duplicati
+- [x] ✅ **COMPLETATO** - Mappato utilizzo nei controller/model/view
+- [x] ✅ **COMPLETATO** - Definito approccio User-Centric
+
+#### **1.2 Migration di Consolidamento**
+- [ ] 🔄 **IN CORSO** - Creare migration per consolidare dati
+- [ ] ⏳ **TODO** - Testare migrazione dati da Referee a User
+- [ ] ⏳ **TODO** - Eliminare campi duplicati da Referee table
+
+#### **1.3 Aggiornamento Model/Controller**
+- [ ] ⏳ **TODO** - Aggiornare User model come fonte primaria
+- [ ] ⏳ **TODO** - Semplificare Referee model (solo extension)
+- [ ] ⏳ **TODO** - Aggiornare controller per usare solo User
+- [ ] ⏳ **TODO** - Aggiornare form/view per consistency
+
+**OUTPUT ATTESO**: User table come single source of truth per referee data
+
+---
+
+### **FASE 2: PULIZIA MIGRATION** ⚡
+**PRIORITÀ**: ALTA - Debt tecnico
+**DURATA STIMATA**: 1-2 chat
+**DIPENDENZE**: Fase 1 completata
+
+#### **2.1 Consolidamento Migration Files**
+- [ ] ⏳ **TODO** - Unificare add_referee_fields in create_users_table
+- [ ] ⏳ **TODO** - Eliminare migration add_*/remove_* ridondanti
+- [ ] ⏳ **TODO** - Ottimizzare tournament_categories migration
+- [ ] ⏳ **TODO** - Consolidare settings JSON vs colonne fisiche
+
+#### **2.2 Schema Optimization**
+- [ ] ⏳ **TODO** - Rimuovere campi non utilizzati
+- [ ] ⏳ **TODO** - Ottimizzare indici database
+- [ ] ⏳ **TODO** - Standardizzare naming convention
+
+**OUTPUT ATTESO**: Migration pulite e schema ottimizzato
+
+---
+
+### **FASE 3: FUNZIONALITÀ MANCANTI** 📧
+**PRIORITÀ**: MEDIA - Feature gap
+**DURATA STIMATA**: 3-4 chat
+**DIPENDENZE**: Fase 1-2 completate
+
+#### **3.1 Sistema Comunicazioni**
+- [ ] ⏳ **TODO** - Implementare NotificationController
+- [ ] ⏳ **TODO** - Sistema template email/lettere
+- [ ] ⏳ **TODO** - Gestione indirizzi istituzionali
+- [ ] ⏳ **TODO** - Queue per invio notifiche
+
+#### **3.2 Workflow Assegnazioni**
+- [ ] ⏳ **TODO** - Auto-notifica disponibilità → Zone/CRC
+- [ ] ⏳ **TODO** - Generazione lettere convocazione
+- [ ] ⏳ **TODO** - Comunicazione a Circoli + FIG
+
+**OUTPUT ATTESO**: Sistema comunicazioni completo e funzionante
+
+---
+
+### **FASE 4: STATISTICHE E REPORT** 📊
+**PRIORITÀ**: MEDIA - Nice to have
+**DURATA STIMATA**: 2-3 chat
+**DIPENDENZE**: Fase 1-3 completate
+
+#### **4.1 Dashboard Analytics**
+- [ ] ⏳ **TODO** - Statistiche Zone vs CRC
+- [ ] ⏳ **TODO** - Report arbitri (disponibilità/assegnazioni/presenze)
+- [ ] ⏳ **TODO** - Metriche performance
+
+#### **4.2 Export/Import**
+- [ ] ⏳ **TODO** - Export Excel report
+- [ ] ⏳ **TODO** - Import bulk arbitri
+- [ ] ⏳ **TODO** - Backup/restore configurazioni
+
+**OUTPUT ATTESO**: Sistema reporting completo
+
+---
+
+### **FASE 5: TESTING E DEPLOYMENT** 🚀
+**PRIORITÀ**: BASSA - Finale
+**DURATA STIMATA**: 2 chat
+**DIPENDENZE**: Tutte le fasi precedenti
+
+#### **5.1 Testing**
+- [ ] ⏳ **TODO** - Test automatizzati per logica Zone/CRC
+- [ ] ⏳ **TODO** - Test integrazione User/Referee consolidato
+- [ ] ⏳ **TODO** - Test workflow completo
+
+#### **5.2 Documentation & Deploy**
+- [ ] ⏳ **TODO** - Documentazione API
+- [ ] ⏳ **TODO** - Manuale utente
+- [ ] ⏳ **TODO** - Setup produzione
+
+**OUTPUT ATTESO**: Sistema pronto per produzione
+
+---
+
+## 🎯 DECISIONI ARCHITETTURALI PRESE
+
+### **✅ User/Referee Approach**
+- **DECISIONE**: User-Centric approach
+- **RATIONALE**: User è single source of truth per referee data
+- **IMPATTO**: Referee table diventa extension opzionale
+- **STATUS**: Approvato, da implementare
+
+### **✅ Competenze Zone vs CRC**
+- **Zone (SZR1-7)**: Competenza territoriale + arbitri Aspirante/1°liv/Regionale
+- **CRC**: Gare nazionali + arbitri Nazionale/Internazionale
+- **Archivio**: Gestito da entrambi
+- **STATUS**: Confermato, implementato parzialmente
+
+### **✅ Flusso Logico**
+1. Zone/CRC inseriscono tornei
+2. Arbitri dichiarano disponibilità
+3. Zone/CRC creano comitati di gara
+4. Sistema invia comunicazioni automatiche
+5. Generazione statistiche
+- **STATUS**: Flusso confermato, comunicazioni da implementare
+
+---
+
+## 📁 STRUTTURA FILE PROGETTO
+
+### **situazione_iniziale.txt** (DA CREARE)
+```
+=== DATABASE MIGRATIONS ===
+[Contenuto di database.txt]
+
+=== MODELS ===
+[Contenuto di models.txt]
+
+=== CONTROLLERS ===
+[Contenuto di controllers.txt]
+
+=== ROUTES ===
+[Contenuto di web.php]
+
+=== MIDDLEWARE ===
+[Contenuto di middleware.txt]
+
+=== VIEWS STRUCTURE ===
+[Contenuto di tree.txt + key views]
+```
+
+### **File di Lavoro per Chat Specifiche**
+- `database_consolidation.txt` - Per Fase 1
+- `migration_cleanup.txt` - Per Fase 2
+- `communications_system.txt` - Per Fase 3
+- `reports_analytics.txt` - Per Fase 4
+
+---
+
+## 🔄 CHECKPOINT DI VERIFICA
+
+### **Prima di Fase 2**
+- [ ] User table contiene tutti i dati referee essenziali
+- [ ] Referee table ha solo campi extension
+- [ ] Controller usano User come primary source
+- [ ] Test: creazione/modifica arbitro funziona
+
+### **Prima di Fase 3**
+- [ ] Migration consolidate in create_* principale
+- [ ] Schema database ottimizzato
+- [ ] Nessun campo duplicato o inutilizzato
+- [ ] Test: database migration completa funziona
+
+### **Prima di Fase 4**
+- [ ] Sistema comunicazioni implementato
+- [ ] Notifiche automatiche funzionanti
+- [ ] Workflow assegnazioni completo
+- [ ] Test: flusso completo torneo funziona
+
+### **Prima di Deploy**
+- [ ] Tutte le funzionalità implementate
+- [ ] Report e statistiche funzionanti
+- [ ] Testing automatizzato passed
+- [ ] Documentazione completa
+
+---
+
+## 🚨 NOTE IMPORTANTI
+
+### **ATTENZIONE PER NUOVE CHAT**
+1. **SEMPRE** allegare situazione_iniziale.txt + piano_lavoro_master.txt
+2. **SPECIFICARE** fase corrente e ultimo completato
+3. **RIFERIRSI** alle decisioni architetturali prese
+4. **NON REINVENTARE** soluzioni già decise
+
+### **MODIFICHE AL PIANO**
+- Ogni modifica al piano deve essere documentata
+- Aggiornare il numero di versione
+- Specificare rationale per i cambiamenti
+
+### **PROBLEMI COMUNI DA EVITARE**
+- ❌ Non ricreare l'approccio User/Referee da zero
+- ❌ Non ignorare le competenze Zone vs CRC definite
+- ❌ Non duplicare logica già implementata
+- ❌ Non proporre soluzioni inconsistenti con decisioni prese
+
+---
+
+## 📞 TEMPLATE SPECIFICI
+
+### **Per Chat Database (Fase 1)**
+```
+FOCUS: Consolidamento User/Referee
+RIFERIMENTO: situazione_iniziale.txt sezione DATABASE + MODELS
+DECISIONE PRESA: User-Centric approach
+TASK: [Specifico]
+```
+
+### **Per Chat Features (Fase 3)**
+```
+FOCUS: Sistema comunicazioni
+RIFERIMENTO: situazione_iniziale.txt sezione CONTROLLERS
+DECISIONE PRESA: Workflow automatico Zone/CRC
+TASK: [Specifico]
+```
+
+### **Per Chat Testing (Fase 5)**
+```
+FOCUS: Testing e deployment
+RIFERIMENTO: Tutto il progetto
+DECISIONE PRESA: Tutte le architetturali
+TASK: [Specifico]
+```
+
+---
+
+**🎯 PIANO AGGIORNATO IL**: 2025-01-11
+**🔄 PROSSIMA REVISIONE**: Al completamento Fase 1
+**📞 CHAT CORRENTE**: Fase 1.2 - Migration di Consolidamento

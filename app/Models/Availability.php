@@ -38,6 +38,13 @@ class Availability extends Model
     {
         return $this->belongsTo(User::class);
     }
+    /**
+     * Alias for backward compatibility - referee is actually user
+     */
+    public function referee(): BelongsTo
+    {
+        return $this->user();
+    }
 
     /**
      * Get the tournament for the availability.
@@ -153,7 +160,7 @@ class Availability extends Model
      */
     public function getStatusLabelAttribute(): string
     {
-        return match($this->status) {
+        return match ($this->status) {
             'assigned' => 'Assegnato',
             'not_selected' => 'Non selezionato',
             'pending' => 'In attesa',
@@ -166,7 +173,7 @@ class Availability extends Model
      */
     public function getStatusColorAttribute(): string
     {
-        return match($this->status) {
+        return match ($this->status) {
             'assigned' => 'green',
             'not_selected' => 'gray',
             'pending' => 'yellow',

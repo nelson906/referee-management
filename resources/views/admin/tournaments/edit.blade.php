@@ -67,19 +67,19 @@
                 </div>
 
                 <div>
-                    <label for="tournament_category_id" class="block text-sm font-medium text-gray-700 mb-2">
+                    <label for="tournament_type_id" class="block text-sm font-medium text-gray-700 mb-2">
                         Categoria *
                     </label>
-                    <select name="tournament_category_id" id="tournament_category_id" required
+                    <select name="tournament_type_id" id="tournament_type_id" required
                             class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
                         <option value="">Seleziona una categoria</option>
-                        @foreach($categories as $category)
-                            <option value="{{ $category->id }}" {{ old('tournament_category_id', $tournament->tournament_category_id) == $category->id ? 'selected' : '' }}>
-                                {{ $category->name }}
+                        @foreach($tournamentTypes as $type)
+                            <option value="{{ $type->id }}" {{ old('tournament_type_id', $tournament->tournament_type_id) == $type->id ? 'selected' : '' }}>
+                                {{ $type->name }}
                             </option>
                         @endforeach
                     </select>
-                    @error('tournament_category_id')
+                    @error('tournament_type_id')
                         <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                     @enderror
                 </div>

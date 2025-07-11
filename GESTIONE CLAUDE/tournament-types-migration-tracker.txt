@@ -1,0 +1,23 @@
+📞 TEMPLATE APERTURA NUOVE CHAT
+Prompt Standard per Chat Follow-up
+Ciao Claude, sto continuando la migration Tournament Types.
+
+ALLEGATI:
+- situazione_attuale.txt (stato del progetto)
+- tournament-types-migration-tracker.txt (questo documento)
+
+STATO CORRENTE: [Fase X da tracker]
+ULTIMO COMPLETATO: [Ultimo step completato]
+PROSSIMO OBIETTIVO: [Step successivo nel tracker]
+
+PROBLEMA SPECIFICO: [Dettaglio specifico]
+
+Usa il tracker per il contesto completo della migration.
+Info Essenziali per Chat Continuità
+
+Strategia: Database-aligned TournamentType convention
+Tabella DB: tournament_types (non tournament_categories)
+Model Target: App\Models\TournamentType
+Foreign Key: tournament_type_id (non tournament_category_id)
+Relationship: tournamentType() (non tournamentCategory())
+

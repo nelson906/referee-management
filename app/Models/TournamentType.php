@@ -6,9 +6,14 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-class TournamentCategory extends Model
+class TournamentType extends Model
 {
     use HasFactory;
+
+    /**
+     * The table associated with the model.
+     */
+    protected $table = 'tournament_types';
 
     /**
      * The attributes that are mass assignable.
@@ -62,7 +67,7 @@ class TournamentCategory extends Model
      */
     const REFEREE_LEVELS = [
         'aspirante' => 'Aspirante',
-        '1_livello' => 'Primo Livello',
+        'primo_livello' => 'Primo Livello',
         'regionale' => 'Regionale',
         'nazionale' => 'Nazionale',
         'internazionale' => 'Internazionale',
@@ -93,15 +98,15 @@ class TournamentCategory extends Model
     }
 
     /**
-     * Get the tournaments for the category.
+     * Get the tournaments for the type.
      */
     public function tournaments(): HasMany
     {
-        return $this->hasMany(Tournament::class, 'tournament_category_id');
+        return $this->hasMany(Tournament::class, 'tournament_type_id');
     }
 
     /**
-     * Scope a query to only include active categories.
+     * Scope a query to only include active types.
      */
     public function scopeActive($query)
     {
@@ -109,7 +114,7 @@ class TournamentCategory extends Model
     }
 
     /**
-     * Scope a query to only include national categories.
+     * Scope a query to only include national types.
      */
     public function scopeNational($query)
     {
@@ -117,7 +122,7 @@ class TournamentCategory extends Model
     }
 
     /**
-     * Scope a query to only include zonal categories.
+     * Scope a query to only include zonal types.
      */
     public function scopeZonal($query)
     {
@@ -149,7 +154,7 @@ class TournamentCategory extends Model
     }
 
     /**
-     * Check if category requires specific referee level
+     * Check if type requires specific referee level
      */
     public function requiresRefereeLevel(string $level): bool
     {
@@ -165,7 +170,7 @@ class TournamentCategory extends Model
     }
 
     /**
-     * Get notification templates for this category
+     * Get notification templates for this type
      */
     public function getNotificationTemplatesAttribute(): array
     {

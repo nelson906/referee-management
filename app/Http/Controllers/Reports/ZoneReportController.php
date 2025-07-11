@@ -44,7 +44,7 @@ class ZoneReportController extends Controller
 
         // Get recent tournaments
         $recentTournaments = $zone->tournaments()
-            ->with(['club', 'tournamentCategory'])
+            ->with(['club', 'tournamentType'])
             ->orderBy('start_date', 'desc')
             ->limit(10)
             ->get();
@@ -105,7 +105,7 @@ class ZoneReportController extends Controller
         $this->checkZoneAccess($zone);
 
         $tournaments = $zone->tournaments()
-            ->with(['club', 'tournamentCategory'])
+            ->with(['club', 'tournamentType'])
             ->withCount(['assignments', 'availabilities'])
             ->orderBy('start_date', 'desc')
             ->paginate(20);

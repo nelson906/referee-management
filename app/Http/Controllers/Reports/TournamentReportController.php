@@ -20,7 +20,7 @@ class TournamentReportController extends Controller
         $tournament->load([
             'club',
             'zone',
-            'tournamentCategory',
+            'tournamentType',
             'availabilities.user',
             'assignments.user',
             'assignments.assignedBy'

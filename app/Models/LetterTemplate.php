@@ -23,7 +23,7 @@ class LetterTemplate extends Model
         'variables',
         'is_active',
         'zone_id',
-        'tournament_category_id',
+        'tournament_type_id',
         'description',
         'settings',
     ];
@@ -97,11 +97,11 @@ class LetterTemplate extends Model
     }
 
     /**
-     * Get the tournament category that the template belongs to.
+     * Get the tournament type that the template belongs to.
      */
-    public function tournamentCategory(): BelongsTo
+    public function tournamentType(): BelongsTo
     {
-        return $this->belongsTo(TournamentCategory::class);
+        return $this->belongsTo(TournamentType::class);
     }
 
     /**
@@ -137,8 +137,8 @@ class LetterTemplate extends Model
     public function scopeForCategory($query, $categoryId)
     {
         return $query->where(function ($q) use ($categoryId) {
-            $q->whereNull('tournament_category_id')
-              ->orWhere('tournament_category_id', $categoryId);
+            $q->whereNull('tournament_type_id')
+              ->orWhere('tournament_type_id', $categoryId);
         });
     }
 

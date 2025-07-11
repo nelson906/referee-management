@@ -1,6 +1,6 @@
 @extends('layouts.super-admin')
 
-@section('title', 'Modifica Categoria: ' . $tournamentCategory->name)
+@section('title', 'Modifica Tipo: ' . $tournamentType->name)
 
 @section('content')
 <div class="container mx-auto px-4 py-8 max-w-4xl">
@@ -8,11 +8,11 @@
     <div class="mb-8">
         <div class="flex items-center justify-between">
             <div>
-                <h1 class="text-3xl font-bold text-gray-900">Modifica Categoria Torneo</h1>
-                <p class="mt-2 text-gray-600">Modifica le impostazioni della categoria: {{ $tournamentCategory->name }}</p>
+                <h1 class="text-3xl font-bold text-gray-900">Modifica Tipo Gara</h1>
+                <p class="mt-2 text-gray-600">Modifica le impostazioni del tipo: {{ $tournamentType->name }}</p>
             </div>
             <div class="flex space-x-4">
-                <a href="{{ route('super-admin.tournament-categories.show', $tournamentCategory) }}"
+                <a href="{{ route('super-admin.tournament-types.show', $tournamentType) }}"
                    class="text-gray-600 hover:text-gray-900 flex items-center">
                     <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
@@ -20,7 +20,7 @@
                     </svg>
                     Visualizza
                 </a>
-                <a href="{{ route('super-admin.tournament-categories.index') }}"
+                <a href="{{ route('super-admin.tournament-types.index') }}"
                    class="text-gray-600 hover:text-gray-900 flex items-center">
                     <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
@@ -32,7 +32,7 @@
     </div>
 
     {{-- Alert if category has tournaments --}}
-    @if($tournamentCategory->tournaments()->exists())
+    @if($tournamentType->tournaments()->exists())
     <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6">
         <div class="flex">
             <div class="flex-shrink-0">
@@ -42,7 +42,7 @@
             </div>
             <div class="ml-3">
                 <p class="text-sm text-yellow-700">
-                    <strong>Attenzione:</strong> Questa categoria ha {{ $tournamentCategory->tournaments()->count() }} tornei associati.
+                    <strong>Attenzione:</strong> Questa categoria ha {{ $tournamentType->tournaments()->count() }} tornei associati.
                     Le modifiche influenzeranno tutti i tornei esistenti.
                 </p>
             </div>
@@ -51,30 +51,30 @@
     @endif
 
     {{-- Form --}}
-    <form action="{{ route('super-admin.tournament-categories.update', $tournamentCategory) }}" method="POST" class="space-y-6">
+    <form action="{{ route('super-admin.tournament-types.update', $tournamentType) }}" method="POST" class="space-y-6">
         @csrf
         @method('PUT')
 
         <div class="bg-white shadow-sm rounded-lg p-6">
-            @include('super-admin.tournament-categories._form')
+            @include('super-admin.tournament-types._form')
         </div>
 
         {{-- Actions --}}
         <div class="flex justify-between">
             <div>
-                @if(!$tournamentCategory->tournaments()->exists())
+                @if(!$tournamentType->tournaments()->exists())
                 <button type="button"
                         onclick="confirmDelete()"
                         class="px-4 py-2 border border-red-300 rounded-md shadow-sm text-sm font-medium text-red-700 bg-white hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
                     <svg class="w-4 h-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
                     </svg>
-                    Elimina Categoria
+                    Elimina Tipo
                 </button>
                 @endif
             </div>
             <div class="flex space-x-4">
-                <a href="{{ route('super-admin.tournament-categories.index') }}"
+                <a href="{{ route('super-admin.tournament-types.index') }}"
                    class="px-6 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
                     Annulla
                 </a>
@@ -91,15 +91,15 @@
         <h3 class="text-lg font-medium text-gray-900 mb-4">Statistiche Categoria</h3>
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div class="bg-white rounded-lg p-4 text-center">
-                <div class="text-2xl font-bold text-indigo-600">{{ $tournamentCategory->tournaments()->count() }}</div>
+                <div class="text-2xl font-bold text-indigo-600">{{ $tournamentType->tournaments()->count() }}</div>
                 <div class="text-sm text-gray-600">Tornei Totali</div>
             </div>
             <div class="bg-white rounded-lg p-4 text-center">
-                <div class="text-2xl font-bold text-green-600">{{ $tournamentCategory->tournaments()->where('status', 'open')->count() }}</div>
+                <div class="text-2xl font-bold text-green-600">{{ $tournamentType->tournaments()->where('status', 'open')->count() }}</div>
                 <div class="text-sm text-gray-600">Tornei Aperti</div>
             </div>
             <div class="bg-white rounded-lg p-4 text-center">
-                <div class="text-2xl font-bold text-blue-600">{{ $tournamentCategory->tournaments()->where('status', 'completed')->count() }}</div>
+                <div class="text-2xl font-bold text-blue-600">{{ $tournamentType->tournaments()->where('status', 'completed')->count() }}</div>
                 <div class="text-sm text-gray-600">Tornei Completati</div>
             </div>
         </div>
@@ -107,7 +107,7 @@
 </div>
 
 {{-- Delete Form (hidden) --}}
-<form id="delete-form" action="{{ route('super-admin.tournament-categories.destroy', $tournamentCategory) }}" method="POST" style="display: none;">
+<form id="delete-form" action="{{ route('super-admin.tournament-types.destroy', $tournamentType) }}" method="POST" style="display: none;">
     @csrf
     @method('DELETE')
 </form>

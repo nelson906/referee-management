@@ -43,6 +43,13 @@ class Assignment extends Model
     {
         return $this->belongsTo(User::class);
     }
+    /**
+     * Alias for backward compatibility - referee is actually user
+     */
+    public function referee(): BelongsTo
+    {
+        return $this->user();
+    }
 
     /**
      * Get the tournament for the assignment.
@@ -92,8 +99,8 @@ class Assignment extends Model
     public function canBeConfirmed(): bool
     {
         return !$this->is_confirmed &&
-               $this->tournament->status === 'assigned' &&
-               $this->tournament->start_date >= now();
+            $this->tournament->status === 'assigned' &&
+            $this->tournament->start_date >= now();
     }
 
     /**

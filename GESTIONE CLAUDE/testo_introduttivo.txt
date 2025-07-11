@@ -1,0 +1,45 @@
+Sviluppo di un sistema di gestione arbitri del golf.
+Le gare di golf possono e essere zonali o nazionali. L’organizzazione sul territorio è divisa in 7 zone (da SZR1 a SZR7) è la responsabilità della gestione ricade sulla zona, che ha incarico di admin, non è arbitro. Le gare nazionali sono gestite da un’altra superzona CRC con incarico di national_admin. Quindi le zone hanno competenza su base territoriale, mentre il CRC su tipologia di gara.
+I tipi di gara tournamentCategory sono gestiti da un superadmin in apposita tabella.
+Gli arbitri hanno le seguenti categorie Aspirante, 1°livello, Regionale Nazionale, Internazionale, Archivio.
+Aspirante, 1°livello, Regionale sono gestiti dalle zone
+Nazionale, Internazionale sono gestiti dal CRC
+Archivio da entrambi.
+Il flusso logico è:
+1.        Le zone inseriscono i tornei in calendario
+2.        Gli arbitri inseriscono le loro disponibilità sia a livello zonale che nazionale. Questo inserimento da luogo ad una comunicazione alla zona di competenza e all’arbitro interessato (come memo) solo per informazione.
+3.        Le zone, CRC, incluso organizzano i comitati di gara in base alle disponibilità (in caso di mancanza disponibilità scelgono nomi in base ad altri criteri, cioè la designazione può avvenire anche in assenza di disponibilità). I ruoli nell’ambito del comitato di gara possono essere:
+a.        Direttore di Torneo
+b.        Arbitro
+c.        Osservatore
+4.        Le zone comunicano la composizione del Comitato di Gara a:
+a.        Circolo Organizzatore con allegata lettera di convocazione e lettera standard (facsimile) su come il Circolo debba convocare ufficialmente gli arbitri;
+b.        Arbitri interessati
+c.        Indirizzi istituzionali (l’elenco in tabella gestita da super admin)
+d.        Eventuali altri indirizzi (possibilità di campo libero per inserimento altri indirizzi email)
+5.        Il CRC comunica la composizione del Comitato direttamente alla Federazione Italiana Golf FIG e agli ‘arbitri interessati.  La responsabilità della scelta di Direttore di Torneo ed Arbitri è del CRC, mentre quella di eventuali Osservatori è della zona di competenza per territorio.
+6.        Sia Zone che CRC hanno bisogno di conoscere le statistiche standard in merito alla loro attività (gare convocate, tipo di composizione dei comitati, etc), ma soprattutto a livello tabella per i nominativi di competenza:
+a.        Il numero di disponibilità date
+b.        Il numero di assegnazioni
+c.        Il numero di presenze effettive e la durata in tempo nei vari ruoli (DT, Arbitro, Osservatore
+Sono state sviluppate le aree relative a:
+·      Gestione Tornei, anagrafica Circoli, anagrafica Arbitri (tabelle CRUD);
+·      Gestione disponibilità
+·      Gestione assegnazioni
+Mancano da sviluppare
+·      Gestione comunicazioni cioè
+o   tabelle indirizzi istituzionali e
+o   notifiche:
+§  Arbitro -> Zona/CRC comunicazione registrazione propria disponibilità
+§  Zona -> Arbitro comunicazione assegnazione con allegata lettera assegnazione
+§  Zona -> Circolo comunicazione assegnazione con allegata lettera assegnazione e lettera facsimile da inviare da parte del Circolo
+·      Statistiche
+
+Il sistema è sviluppato con due tabelle User e Referee connesse attraverso il campo user_id in referee e questo può causare confusione a volte.
+I database generati hanno bisogno di essere ottimizzati perché hanno campi non necessari. Questo processo vorrei fosse svolto in modo puntuale campo per campo secondo uno schema che indichi dove cercare il campo (controller, model, view) in base alla logica, riorganizzando le migration (voglio eliminare gli add e inserirli direttamente nella loro migration)
+Particolare attenzione alla differenza di competenze tra Zone e CRC
+·      Zone -> Competenza territoriale
+·      CRC -> Tipologia di gara (Nazionale/Internazionale/Pro)
+Sviluppa un flusso logico di quanto descritto che sia condensato e leggibile.
+Confronta con il tree.txt che rispecchia la struttura finora sviluppata
+Indica come potresti svolgere un’analisi e la razionalizzazione dei database

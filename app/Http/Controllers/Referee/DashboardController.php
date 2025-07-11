@@ -54,7 +54,7 @@ class DashboardController extends Controller
             ->get();
 
         // Tournaments open for availability
-        $openTournamentsQuery = Tournament::with(['club', 'zone', 'tournamentCategory'])
+        $openTournamentsQuery = Tournament::with(['club', 'zone', 'tournamentType'])
             ->where('status', 'open')
             ->where('availability_deadline', '>=', Carbon::today());
 
@@ -65,7 +65,7 @@ class DashboardController extends Controller
             // National referees see national tournaments from all zones
             $openTournamentsQuery->where(function ($q) use ($user) {
                 $q->where('zone_id', $user->zone_id)
-                  ->orWhereHas('tournamentCategory', function ($q2) {
+                  ->orWhereHas('tournamentType', function ($q2) {
                       $q2->where('is_national', true);
                   });
             });
@@ -101,13 +101,13 @@ class DashboardController extends Controller
             $monthlyStats[$month] = $count;
         }
 
-        // Assignments by tournament category - semplificato
+        // Assignments by tournament type - semplificato
         $assignmentsByCategory = $user->assignments()
             ->join('tournaments', 'assignments.tournament_id', '=', 'tournaments.id')
-            ->join('tournament_categories', 'tournaments.tournament_category_id', '=', 'tournament_categories.id')
-            ->select('tournament_categories.name', DB::raw('count(*) as total'))
+            ->join('tournament_types', 'tournaments.tournament_type_id', '=', 'tournament_types.id')
+            ->select('tournament_types.name', DB::raw('count(*) as total'))
             ->whereYear('assignments.created_at', Carbon::now()->year)
-            ->groupBy('tournament_categories.name')
+            ->groupBy('tournament_types.name')
             ->pluck('total', 'name')
             ->toArray();
 

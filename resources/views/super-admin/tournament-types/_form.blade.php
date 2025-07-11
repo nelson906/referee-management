@@ -24,7 +24,7 @@
         <input type="text"
                name="name"
                id="name"
-               value="{{ old('name', $tournamentCategory->name ?? '') }}"
+               value="{{ old('name', $tournamentType->name ?? '') }}"
                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm @error('name') border-red-500 @enderror"
                required>
         @error('name')
@@ -40,7 +40,7 @@
         <input type="text"
                name="code"
                id="code"
-               value="{{ old('code', $tournamentCategory->code ?? '') }}"
+               value="{{ old('code', $tournamentType->code ?? '') }}"
                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm uppercase @error('code') border-red-500 @enderror"
                pattern="[A-Za-z0-9_-]+"
                title="Solo lettere, numeri, trattini e underscore"
@@ -59,7 +59,7 @@
         <textarea name="description"
                   id="description"
                   rows="3"
-                  class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm @error('description') border-red-500 @enderror">{{ old('description', $tournamentCategory->description ?? '') }}</textarea>
+                  class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm @error('description') border-red-500 @enderror">{{ old('description', $tournamentType->description ?? '') }}</textarea>
         @error('description')
             <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
         @enderror
@@ -81,7 +81,7 @@
                 required>
             @foreach($categoryLevels as $value => $label)
                 <option value="{{ $value }}"
-                    {{ old('level', $tournamentCategory->level ?? 'zonale') == $value ? 'selected' : '' }}>
+                    {{ old('level', $tournamentType->level ?? 'zonale') == $value ? 'selected' : '' }}>
                     {{ $label }}
                 </option>
             @endforeach
@@ -102,7 +102,7 @@
                        name="is_national"
                        id="is_national"
                        value="1"
-                       {{ old('is_national', $tournamentCategory->is_national ?? false) ? 'checked' : '' }}
+                       {{ old('is_national', $tournamentType->is_national ?? false) ? 'checked' : '' }}
                        class="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
                 <span class="ml-2 text-sm text-gray-700">
                     Categoria Nazionale (visibile a tutte le zone)
@@ -112,7 +112,7 @@
     </div>
 
     {{-- Zone Visibilità (solo se non nazionale) --}}
-    <div class="col-span-2" id="zones-visibility-container" style="{{ old('is_national', $tournamentCategory->is_national ?? false) ? 'display:none' : '' }}">
+    <div class="col-span-2" id="zones-visibility-container" style="{{ old('is_national', $tournamentType->is_national ?? false) ? 'display:none' : '' }}">
         <label class="block text-sm font-medium text-gray-700 mb-2">
             Zone di Visibilità
         </label>
@@ -122,7 +122,7 @@
                     <input type="checkbox"
                            name="visibility_zones[]"
                            value="{{ $zone->id }}"
-                           {{ in_array($zone->id, old('visibility_zones', $tournamentCategory->settings['visibility_zones'] ?? [])) ? 'checked' : '' }}
+                           {{ in_array($zone->id, old('visibility_zones', $tournamentType->settings['visibility_zones'] ?? [])) ? 'checked' : '' }}
                            class="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
                     <span class="ml-2 text-sm text-gray-700">{{ $zone->name }}</span>
                 </label>
@@ -147,7 +147,7 @@
                 required>
             @foreach($refereeLevels as $value => $label)
                 <option value="{{ $value }}"
-                    {{ old('required_referee_level', $tournamentCategory->required_referee_level ?? 'aspirante') == $value ? 'selected' : '' }}>
+                    {{ old('required_referee_level', $tournamentType->required_referee_level ?? 'aspirante') == $value ? 'selected' : '' }}>
                     {{ $label }}
                 </option>
             @endforeach
@@ -169,7 +169,7 @@
                        id="min_referees"
                        min="1"
                        max="10"
-                       value="{{ old('min_referees', $tournamentCategory->min_referees ?? 1) }}"
+                       value="{{ old('min_referees', $tournamentType->min_referees ?? 1) }}"
                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm @error('min_referees') border-red-500 @enderror"
                        required>
                 @error('min_referees')
@@ -186,7 +186,7 @@
                        id="max_referees"
                        min="1"
                        max="10"
-                       value="{{ old('max_referees', $tournamentCategory->max_referees ?? 1) }}"
+                       value="{{ old('max_referees', $tournamentType->max_referees ?? 1) }}"
                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm @error('max_referees') border-red-500 @enderror"
                        required>
                 @error('max_referees')
@@ -205,7 +205,7 @@
                   id="special_requirements"
                   rows="3"
                   class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm @error('special_requirements') border-red-500 @enderror"
-                  placeholder="Es: Richiesta esperienza in tornei maggiori, certificazione specifica, ecc.">{{ old('special_requirements', $tournamentCategory->special_requirements ?? '') }}</textarea>
+                  placeholder="Es: Richiesta esperienza in tornei maggiori, certificazione specifica, ecc.">{{ old('special_requirements', $tournamentType->special_requirements ?? '') }}</textarea>
         @error('special_requirements')
             <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
         @enderror
@@ -225,7 +225,7 @@
                name="sort_order"
                id="sort_order"
                min="0"
-               value="{{ old('sort_order', $tournamentCategory->sort_order ?? 0) }}"
+               value="{{ old('sort_order', $tournamentType->sort_order ?? 0) }}"
                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm @error('sort_order') border-red-500 @enderror">
         <p class="mt-1 text-xs text-gray-500">Ordine crescente (0 = primo)</p>
         @error('sort_order')
@@ -244,7 +244,7 @@
                        name="is_active"
                        id="is_active"
                        value="1"
-                       {{ old('is_active', $tournamentCategory->is_active ?? true) ? 'checked' : '' }}
+                       {{ old('is_active', $tournamentType->is_active ?? true) ? 'checked' : '' }}
                        class="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
                 <span class="ml-2 text-sm text-gray-700">
                     Categoria Attiva

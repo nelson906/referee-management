@@ -47,17 +47,17 @@ Route::middleware(['auth'])->group(function () {
 
         // Dashboard
         Route::get('/', function () {
-            return redirect()->route('super-admin.tournament-categories.index');
+            return redirect()->route('super-admin.tournament-types.index');
         })->name('dashboard');
 
-        // Tournament Categories Management
-        Route::resource('tournament-categories', SuperAdmin\TournamentCategoryController::class);
-        Route::post('tournament-categories/update-order', [SuperAdmin\TournamentCategoryController::class, 'updateOrder'])
-            ->name('tournament-categories.update-order');
-        Route::post('tournament-categories/{tournamentCategory}/toggle-active', [SuperAdmin\TournamentCategoryController::class, 'toggleActive'])
-            ->name('tournament-categories.toggle-active');
-        Route::post('tournament-categories/{tournamentCategory}/duplicate', [SuperAdmin\TournamentCategoryController::class, 'duplicateCategory'])
-            ->name('tournament-categories.duplicate');
+        // Tournament Types Management
+        Route::resource('tournament-types', SuperAdmin\TournamentTypeController::class);
+        Route::post('tournament-types/update-order', [SuperAdmin\TournamentTypeController::class, 'updateOrder'])
+            ->name('tournament-types.update-order');
+        Route::post('tournament-types/{tournamentType}/toggle-active', [SuperAdmin\TournamentTypeController::class, 'toggleActive'])
+            ->name('tournament-types.toggle-active');
+        Route::post('tournament-types/{tournamentType}/duplicate', [SuperAdmin\TournamentTypeController::class, 'duplicateCategory'])
+            ->name('tournament-types.duplicate');
 
         // System Settings
         Route::get('settings', [SuperAdmin\SystemSettingsController::class, 'index'])->name('settings.index');
@@ -110,6 +110,14 @@ Route::middleware(['auth'])->group(function () {
         Route::delete('tournaments/{tournament}', [Admin\TournamentController::class, 'destroy'])->name('tournaments.destroy');
         Route::post('tournaments/{tournament}/close', [Admin\TournamentController::class, 'close'])->name('tournaments.close');
         Route::post('tournaments/{tournament}/reopen', [Admin\TournamentController::class, 'reopen'])->name('tournaments.reopen');
+    // AGGIUNGI QUESTE ROUTE MANCANTI ✅
+    Route::get('tournaments/{tournament}/availabilities', [Admin\TournamentController::class, 'availabilities'])
+        ->name('tournaments.availabilities');
+
+    // Potresti aver bisogno anche di:
+    Route::post('tournaments/{tournament}/update-status', [Admin\TournamentController::class, 'updateStatus'])
+        ->name('tournaments.update-status');
+
 
         // Referee Management
         Route::resource('referees', Admin\RefereeController::class);

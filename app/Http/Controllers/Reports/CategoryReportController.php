@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Reports;
 
 use App\Http\Controllers\Controller;
-use App\Models\TournamentCategory;
+use App\Models\TournamentType;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
@@ -14,11 +14,11 @@ class CategoryReportController extends Controller
      */
     public function index(): View
     {
-        $categories = TournamentCategory::withCount('tournaments')
+        $categories = TournamentType::withCount('tournaments')
             ->ordered()
             ->get();
 
-        return view('reports.categories.index', compact('categories'));
+        return view('reports.categories.index', compact('types'));
     }
 
     /**

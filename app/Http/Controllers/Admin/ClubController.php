@@ -131,7 +131,7 @@ class ClubController extends Controller
 
         // Get recent tournaments
         $recentTournaments = $club->tournaments()
-            ->with(['tournamentCategory', 'zone'])
+            ->with(['tournamentType', 'zone'])
             ->orderBy('start_date', 'desc')
             ->limit(10)
             ->get();

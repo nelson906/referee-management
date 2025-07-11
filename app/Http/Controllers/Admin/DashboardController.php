@@ -124,7 +124,7 @@ class DashboardController extends Controller
      */
     private function getTournamentsNeedingReferees($user, $isNationalAdmin)
     {
-        $query = Tournament::with(['club', 'tournamentCategory'])
+        $query = Tournament::with(['club', 'tournamentType'])
             ->whereIn('status', ['open', 'closed'])
             ->where('start_date', '>=', Carbon::today());
 

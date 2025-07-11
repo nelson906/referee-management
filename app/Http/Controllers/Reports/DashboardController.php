@@ -6,7 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\Zone;
 use App\Models\Tournament;
-use App\Models\TournamentCategory;
+use App\Models\TournamentType;
 use App\Models\Club;
 use App\Models\TournamentAssignment;
 use Illuminate\Http\Request;
@@ -73,8 +73,8 @@ class DashboardController extends Controller
             'total_tournaments' => Tournament::count(),
             'active_tournaments' => Tournament::whereIn('status', ['open', 'closed', 'assigned'])->count(),
             'completed_tournaments' => Tournament::where('status', 'completed')->count(),
-            'total_categories' => TournamentCategory::count(),
-            'active_categories' => TournamentCategory::where('is_active', true)->count(),
+            'total_categories' => TournamentType::count(),
+            'active_categories' => TournamentType::where('is_active', true)->count(),
             'total_assignments' => TournamentAssignment::count(),
             'pending_assignments' => TournamentAssignment::where('status', 'pending')->count(),
             'accepted_assignments' => TournamentAssignment::where('status', 'accepted')->count(),
@@ -202,11 +202,11 @@ class DashboardController extends Controller
     }
 
     /**
-     * Get tournament category usage statistics.
+     * Get tournament type usage statistics.
      */
     private function getCategoryUsage()
     {
-        return TournamentCategory::withCount('tournaments')
+        return TournamentType::withCount('tournaments')
             ->orderBy('tournaments_count', 'desc')
             ->get()
             ->map(function ($category) {

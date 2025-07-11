@@ -137,7 +137,7 @@
                             <div class="text-sm text-gray-900">{{ $tournament->start_date?->format('d/m/Y') ?? 'N/A' }}</div>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
-                            <div class="text-sm text-gray-900">{{ $tournament->tournamentCategory->name ?? 'N/A' }}</div>
+                            <div class="text-sm text-gray-900">{{ $tournament->tournamentType->name ?? 'N/A' }}</div>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                             <a href="{{ route('reports.tournament.show', $tournament) }}"

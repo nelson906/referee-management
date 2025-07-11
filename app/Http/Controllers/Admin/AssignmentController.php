@@ -23,9 +23,9 @@ class AssignmentController extends Controller
 
         $query = Assignment::with([
             'user:id,name,email,level',
-            'tournament:id,name,start_date,end_date,club_id,tournament_category_id',
+            'tournament:id,name,start_date,end_date,club_id,tournament_type_id',
             'tournament.club:id,name',
-            'tournament.tournamentCategory:id,name',
+            'tournament.tournamentType:id,name',
             'assignedBy:id,name'
         ]);
 
@@ -101,7 +101,7 @@ class AssignmentController extends Controller
         $isNationalAdmin = $user->user_type === 'national_admin' || $user->user_type === 'super_admin';
 
 
-        $query = Tournament::with(['club', 'tournamentCategory'])
+        $query = Tournament::with(['club', 'tournamentType'])
             ->whereIn('status', ['open', 'closed', 'draft'])
             ->where('start_date', '>=', Carbon::today()->subDays(30));
 
@@ -118,16 +118,17 @@ class AssignmentController extends Controller
         // Se un torneo è selezionato, separa arbitri per disponibilità
         // Nel metodo create(), modifica le query degli arbitri:
         if ($tournamentId) {
-            $tournament = Tournament::with(['assignments.user.referee'])->findOrFail($tournamentId);
+            $tournament = Tournament::with(['assignments.user'])->findOrFail($tournamentId);
+            $this->checkTournamentAccess($tournament);
 
             $assignedRefereeIds = $tournament->assignments->pluck('user_id')->toArray();
 
-            // Arbitri che hanno dato disponibilità e NON sono già assegnati
-            $availableReferees = User::with(['referee', 'zone'])
+            // CORRETTO ✅ - use only necessary relations
+            $availableReferees = User::with(['zone'])
                 ->whereHas('availabilities', function ($q) use ($tournamentId) {
                     $q->where('tournament_id', $tournamentId);
                 })
-                ->whereNotIn('id', $assignedRefereeIds) // ESCLUDI già assegnati
+                ->whereNotIn('id', $assignedRefereeIds)
                 ->where('user_type', 'referee')
                 ->where('is_active', true)
                 ->orderBy('name')
@@ -213,7 +214,7 @@ class AssignmentController extends Controller
             'user',
             'tournament.club',
             'tournament.zone',
-            'tournament.tournamentCategory',
+            'tournament.tournamentType',
             'assignedBy'
         ]);
 
@@ -255,32 +256,32 @@ class AssignmentController extends Controller
             ->with('success', 'Assegnazione confermata con successo.');
     }
 
-/**
- * Update destroy method to redirect back to tournament assignment if coming from there.
- */
-public function destroy(Assignment $assignment): RedirectResponse
-{
-    $this->checkAssignmentAccess($assignment);
+    /**
+     * Update destroy method to redirect back to tournament assignment if coming from there.
+     */
+    public function destroy(Assignment $assignment): RedirectResponse
+    {
+        $this->checkAssignmentAccess($assignment);
 
-    $tournamentId = $assignment->tournament_id;
-    $tournamentName = $assignment->tournament->name;
-    $refereeName = $assignment->user->name;
+        $tournamentId = $assignment->tournament_id;
+        $tournamentName = $assignment->tournament->name;
+        $refereeName = $assignment->user->name;
 
-    $assignment->delete();
+        $assignment->delete();
 
-    // Check if we came from tournament assignment page
-    $referer = request()->headers->get('referer');
-    if ($referer && str_contains($referer, '/assign')) {
+        // Check if we came from tournament assignment page
+        $referer = request()->headers->get('referer');
+        if ($referer && str_contains($referer, '/assign')) {
+            return redirect()
+                ->route('admin.assignments.assign-referees', $tournamentId)
+                ->with('success', "{$refereeName} rimosso dal comitato di gara di {$tournamentName}.");
+        }
+
+        // Default redirect to assignments list
         return redirect()
-            ->route('admin.assignments.assign-referees', $tournamentId)
-            ->with('success', "{$refereeName} rimosso dal comitato di gara di {$tournamentName}.");
+            ->route('admin.assignments.index')
+            ->with('success', "Assegnazione di {$refereeName} al torneo {$tournamentName} rimossa con successo.");
     }
-
-    // Default redirect to assignments list
-    return redirect()
-        ->route('admin.assignments.index')
-        ->with('success', "Assegnazione di {$refereeName} al torneo {$tournamentName} rimossa con successo.");
-}
 
 
     /**
@@ -357,169 +358,168 @@ public function destroy(Assignment $assignment): RedirectResponse
     }
 
     /**
- * Show assignment interface for a specific tournament.
- */
-public function assignReferees(Tournament $tournament): View
-{
-    $this->checkTournamentAccess($tournament);
+     * Show assignment interface for a specific tournament.
+     */
+    public function assignReferees(Tournament $tournament): View
+    {
+        $this->checkTournamentAccess($tournament);
 
-    $user = auth()->user();
-    $isNationalAdmin = in_array($user->user_type, ['national_admin', 'super_admin']);
+        $user = auth()->user();
+        $isNationalAdmin = in_array($user->user_type, ['national_admin', 'super_admin']);
 
-    // Load tournament with relations
-    $tournament->load(['club', 'zone', 'tournamentCategory']);
+        // Load tournament with relations
+        // CORRETTO ✅
+        $tournament->load(['club', 'zone', 'tournamentType']);
 
-    // Get currently assigned referees
-    $assignedReferees = $tournament->assignments()->with('user.referee')->get();
-    $assignedRefereeIds = $assignedReferees->pluck('user_id')->toArray();
+        // Get currently assigned referees - CORRETTO ✅
+        $assignedReferees = $tournament->assignments()->with('user')->get();
+        $assignedRefereeIds = $assignedReferees->pluck('user_id')->toArray();
 
-    // Get available referees (have declared availability) - EXCLUDE already assigned
-    $availableReferees = User::with(['referee', 'zone'])
-        ->whereHas('availabilities', function($q) use ($tournament) {
-            $q->where('tournament_id', $tournament->id);
-        })
-        ->where('user_type', 'referee')
-        ->where('is_active', true)
-        ->whereNotIn('id', $assignedRefereeIds)
-        ->orderBy('name')
-        ->get();
-
-    // Get possible referees (zone referees who haven't declared availability) - EXCLUDE already assigned
-    $possibleReferees = User::with(['referee', 'zone'])
-        ->where('user_type', 'referee')
-        ->where('is_active', true)
-        ->where('zone_id', $tournament->zone_id)
-        ->whereDoesntHave('availabilities', function($q) use ($tournament) {
-            $q->where('tournament_id', $tournament->id);
-        })
-        ->whereNotIn('id', $assignedRefereeIds)
-        ->orderBy('name')
-        ->get();
-
-    // Get national referees (for national tournaments) - EXCLUDE already assigned
-    $nationalReferees = collect();
-    if ($tournament->tournamentCategory->is_national) {
-        $nationalReferees = User::with(['referee', 'zone'])
+        // Get available referees - CORRETTO ✅
+        $availableReferees = User::with('zone')
+            ->whereHas('availabilities', function ($q) use ($tournament) {
+                $q->where('tournament_id', $tournament->id);
+            })
             ->where('user_type', 'referee')
             ->where('is_active', true)
-            ->whereHas('referee', function($q) {
-                $q->whereIn('level', ['nazionale', 'internazionale']);
-            })
             ->whereNotIn('id', $assignedRefereeIds)
-            ->whereNotIn('id', $availableReferees->pluck('id')->merge($possibleReferees->pluck('id')))
             ->orderBy('name')
             ->get();
-    }
 
-    // Check conflicts for all referees
-    $this->checkDateConflicts($availableReferees, $tournament);
-    $this->checkDateConflicts($possibleReferees, $tournament);
-    $this->checkDateConflicts($nationalReferees, $tournament);
-
-    return view('admin.assignments.assign-referees', compact(
-        'tournament',
-        'availableReferees',
-        'possibleReferees',
-        'nationalReferees',
-        'assignedReferees',
-        'isNationalAdmin'
-    ));
-}
-
-/**
- * Assign multiple referees to tournament.
- */
-public function bulkAssign(Request $request): RedirectResponse
-{
-    $request->validate([
-        'tournament_id' => 'required|exists:tournaments,id',
-        'referees' => 'required|array|min:1',
-        'referees.*.user_id' => 'required|exists:users,id',
-        'referees.*.role' => 'required|in:Arbitro,Direttore di Torneo,Osservatore',
-        'referees.*.notes' => 'nullable|string|max:500',
-    ]);
-
-    $tournament = Tournament::findOrFail($request->tournament_id);
-    $this->checkTournamentAccess($tournament);
-
-    $assignedCount = 0;
-    $errors = [];
-
-    \DB::beginTransaction();
-    try {
-        // Process the referees array
-        foreach ($request->referees as $key => $refereeData) {
-            // Skip if not selected or missing data
-            if (!isset($refereeData['selected']) || !isset($refereeData['user_id'])) {
-                continue;
-            }
-
-            $referee = User::findOrFail($refereeData['user_id']);
-
-            // Check if already assigned
-            if ($tournament->assignments()->where('user_id', $referee->id)->exists()) {
-                $errors[] = "{$referee->name} è già assegnato a questo torneo";
-                continue;
-            }
-
-            // Create assignment
-            Assignment::create([
-                'tournament_id' => $tournament->id,
-                'user_id' => $referee->id,
-                'role' => $refereeData['role'],
-                'notes' => $refereeData['notes'] ?? null,
-                'assigned_at' => now(),
-                'assigned_by' => auth()->id(),
-                'is_confirmed' => true, // Always confirmed
-            ]);
-
-            $assignedCount++;
-        }
-
-        \DB::commit();
-
-        $message = "{$assignedCount} arbitri assegnati con successo al torneo {$tournament->name}.";
-        if (!empty($errors)) {
-            $message .= " Errori: " . implode(', ', $errors);
-        }
-
-        return redirect()
-            ->route('admin.assignments.assign-referees', $tournament)
-            ->with('success', $message);
-
-    } catch (\Exception $e) {
-        \DB::rollback();
-
-        return redirect()->back()
-            ->with('error', 'Errore durante l\'assegnazione degli arbitri. Riprova.');
-    }
-}
-
-/**
- * Check date conflicts for referees.
- */
-private function checkDateConflicts($referees, Tournament $tournament)
-{
-    foreach ($referees as $referee) {
-        $conflicts = Assignment::where('user_id', $referee->id)
-            ->whereHas('tournament', function($q) use ($tournament) {
-                $q->where('id', '!=', $tournament->id)
-                  ->where(function($q2) use ($tournament) {
-                      // Tournament dates overlap
-                      $q2->whereBetween('start_date', [$tournament->start_date, $tournament->end_date])
-                         ->orWhereBetween('end_date', [$tournament->start_date, $tournament->end_date])
-                         ->orWhere(function($q3) use ($tournament) {
-                             $q3->where('start_date', '<=', $tournament->start_date)
-                                ->where('end_date', '>=', $tournament->end_date);
-                         });
-                  });
+        // Get possible referees (zone referees who haven't declared availability) - EXCLUDE already assigned
+        $possibleReferees = User::with(['referee', 'zone'])
+            ->where('user_type', 'referee')
+            ->where('is_active', true)
+            ->where('zone_id', $tournament->zone_id)
+            ->whereDoesntHave('availabilities', function ($q) use ($tournament) {
+                $q->where('tournament_id', $tournament->id);
             })
-            ->with('tournament:id,name,start_date,end_date')
+            ->whereNotIn('id', $assignedRefereeIds)
+            ->orderBy('name')
             ->get();
 
-        $referee->conflicts = $conflicts;
-        $referee->has_conflicts = $conflicts->count() > 0;
-    }
-}
+        // Get national referees (for national tournaments) - EXCLUDE already assigned
+        $nationalReferees = collect();
+        if ($tournament->tournamentType->is_national) {
+            $nationalReferees = User::with(['referee', 'zone'])
+                ->where('user_type', 'referee')
+                ->where('is_active', true)
+                ->whereHas('referee', function ($q) {
+                    $q->whereIn('level', ['nazionale', 'internazionale']);
+                })
+                ->whereNotIn('id', $assignedRefereeIds)
+                ->whereNotIn('id', $availableReferees->pluck('id')->merge($possibleReferees->pluck('id')))
+                ->orderBy('name')
+                ->get();
+        }
 
+        // Check conflicts for all referees
+        $this->checkDateConflicts($availableReferees, $tournament);
+        $this->checkDateConflicts($possibleReferees, $tournament);
+        $this->checkDateConflicts($nationalReferees, $tournament);
+
+        return view('admin.assignments.assign-referees', compact(
+            'tournament',
+            'availableReferees',
+            'possibleReferees',
+            'nationalReferees',
+            'assignedReferees',
+            'isNationalAdmin'
+        ));
+    }
+
+    /**
+     * Assign multiple referees to tournament.
+     */
+    public function bulkAssign(Request $request): RedirectResponse
+    {
+        $request->validate([
+            'tournament_id' => 'required|exists:tournaments,id',
+            'referees' => 'required|array|min:1',
+            'referees.*.user_id' => 'required|exists:users,id',
+            'referees.*.role' => 'required|in:Arbitro,Direttore di Torneo,Osservatore',
+            'referees.*.notes' => 'nullable|string|max:500',
+        ]);
+
+        $tournament = Tournament::findOrFail($request->tournament_id);
+        $this->checkTournamentAccess($tournament);
+
+        $assignedCount = 0;
+        $errors = [];
+
+        \DB::beginTransaction();
+        try {
+            // Process the referees array
+            foreach ($request->referees as $key => $refereeData) {
+                // Skip if not selected or missing data
+                if (!isset($refereeData['selected']) || !isset($refereeData['user_id'])) {
+                    continue;
+                }
+
+                $referee = User::findOrFail($refereeData['user_id']);
+
+                // Check if already assigned
+                if ($tournament->assignments()->where('user_id', $referee->id)->exists()) {
+                    $errors[] = "{$referee->name} è già assegnato a questo torneo";
+                    continue;
+                }
+
+                // Create assignment
+                Assignment::create([
+                    'tournament_id' => $tournament->id,
+                    'user_id' => $referee->id,
+                    'role' => $refereeData['role'],
+                    'notes' => $refereeData['notes'] ?? null,
+                    'assigned_at' => now(),
+                    'assigned_by' => auth()->id(),
+                    'is_confirmed' => true, // Always confirmed
+                ]);
+
+                $assignedCount++;
+            }
+
+            \DB::commit();
+
+            $message = "{$assignedCount} arbitri assegnati con successo al torneo {$tournament->name}.";
+            if (!empty($errors)) {
+                $message .= " Errori: " . implode(', ', $errors);
+            }
+
+            return redirect()
+                ->route('admin.assignments.assign-referees', $tournament)
+                ->with('success', $message);
+        } catch (\Exception $e) {
+            \DB::rollback();
+
+            return redirect()->back()
+                ->with('error', 'Errore durante l\'assegnazione degli arbitri. Riprova.');
+        }
+    }
+
+    /**
+     * Check date conflicts for referees.
+     */
+    private function checkDateConflicts($referees, Tournament $tournament)
+    {
+        foreach ($referees as $referee) {
+            $conflicts = Assignment::where('user_id', $referee->id)
+                ->whereHas('tournament', function ($q) use ($tournament) {
+                    $q->where('id', '!=', $tournament->id)
+                        ->where(function ($q2) use ($tournament) {
+                            // Tournament dates overlap
+                            $q2->whereBetween('start_date', [$tournament->start_date, $tournament->end_date])
+                                ->orWhereBetween('end_date', [$tournament->start_date, $tournament->end_date])
+                                ->orWhere(function ($q3) use ($tournament) {
+                                    $q3->where('start_date', '<=', $tournament->start_date)
+                                        ->where('end_date', '>=', $tournament->end_date);
+                                });
+                        });
+                })
+                ->with('tournament:id,name,start_date,end_date')
+                ->get();
+
+            $referee->conflicts = $conflicts;
+            $referee->has_conflicts = $conflicts->count() > 0;
+        }
+    }
 }

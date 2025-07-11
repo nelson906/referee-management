@@ -1,6 +1,6 @@
 @extends('layouts.super-admin')
 
-@section('title', 'Categoria: ' . $tournamentCategory->name)
+@section('title', 'Tipo: ' . $tournamentType->name)
 
 @section('content')
 <div class="container mx-auto px-4 py-8 max-w-6xl">
@@ -9,21 +9,21 @@
         <div class="flex items-center justify-between">
             <div class="flex items-center">
                 <div class="w-4 h-4 rounded-full mr-4"
-                     style="background-color: {{ $tournamentCategory->calendar_color }}"></div>
+                     style="background-color: {{ $tournamentType->calendar_color }}"></div>
                 <div>
-                    <h1 class="text-3xl font-bold text-gray-900">{{ $tournamentCategory->name }}</h1>
-                    <p class="mt-1 text-gray-600">Codice: {{ $tournamentCategory->code }}</p>
+                    <h1 class="text-3xl font-bold text-gray-900">{{ $tournamentType->name }}</h1>
+                    <p class="mt-1 text-gray-600">Codice: {{ $tournamentType->code }}</p>
                 </div>
             </div>
             <div class="flex space-x-4">
-                <a href="{{ route('super-admin.tournament-categories.edit', $tournamentCategory) }}"
+                <a href="{{ route('super-admin.tournament-types.edit', $tournamentType) }}"
                    class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition duration-200 flex items-center">
                     <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
                     </svg>
                     Modifica
                 </a>
-                <a href="{{ route('super-admin.tournament-categories.index') }}"
+                <a href="{{ route('super-admin.tournament-types.index') }}"
                    class="text-gray-600 hover:text-gray-900 flex items-center px-4 py-2">
                     <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
@@ -37,12 +37,12 @@
     {{-- Status Badge --}}
     <div class="mb-6">
         <span class="px-3 py-1 inline-flex text-sm leading-5 font-semibold rounded-full
-            {{ $tournamentCategory->is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800' }}">
-            {{ $tournamentCategory->is_active ? 'Attiva' : 'Non Attiva' }}
+            {{ $tournamentType->is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800' }}">
+            {{ $tournamentType->is_active ? 'Attiva' : 'Non Attiva' }}
         </span>
         <span class="ml-2 px-3 py-1 inline-flex text-sm leading-5 font-semibold rounded-full
-            {{ $tournamentCategory->is_national ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800' }}">
-            {{ $tournamentCategory->is_national ? 'Nazionale' : 'Zonale' }}
+            {{ $tournamentType->is_national ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800' }}">
+            {{ $tournamentType->is_national ? 'Nazionale' : 'Zonale' }}
         </span>
     </div>
 
@@ -52,31 +52,31 @@
         <div class="bg-white shadow rounded-lg p-6">
             <h2 class="text-lg font-medium text-gray-900 mb-4">Dettagli Categoria</h2>
             <dl class="space-y-3">
-                @if($tournamentCategory->description)
+                @if($tournamentType->description)
                 <div>
                     <dt class="text-sm font-medium text-gray-500">Descrizione</dt>
-                    <dd class="mt-1 text-sm text-gray-900">{{ $tournamentCategory->description }}</dd>
+                    <dd class="mt-1 text-sm text-gray-900">{{ $tournamentType->description }}</dd>
                 </div>
                 @endif
 
                 <div>
                     <dt class="text-sm font-medium text-gray-500">Livello Categoria</dt>
-                    <dd class="mt-1 text-sm text-gray-900">{{ ucfirst($tournamentCategory->level) }}</dd>
+                    <dd class="mt-1 text-sm text-gray-900">{{ ucfirst($tournamentType->level) }}</dd>
                 </div>
 
                 <div>
                     <dt class="text-sm font-medium text-gray-500">Ordine Visualizzazione</dt>
-                    <dd class="mt-1 text-sm text-gray-900">{{ $tournamentCategory->sort_order }}</dd>
+                    <dd class="mt-1 text-sm text-gray-900">{{ $tournamentType->sort_order }}</dd>
                 </div>
 
                 <div>
                     <dt class="text-sm font-medium text-gray-500">Visibilità</dt>
                     <dd class="mt-1 text-sm text-gray-900">
-                        @if($tournamentCategory->is_national)
+                        @if($tournamentType->is_national)
                             Tutte le zone
                         @else
-                            @if(is_array($tournamentCategory->visibility_zones) && count($tournamentCategory->visibility_zones) > 0)
-                                {{ count($tournamentCategory->visibility_zones) }} zone selezionate
+                            @if(is_array($tournamentType->visibility_zones) && count($tournamentType->visibility_zones) > 0)
+                                {{ count($tournamentType->visibility_zones) }} zone selezionate
                             @else
                                 Solo zona proprietaria
                             @endif
@@ -93,22 +93,22 @@
                 <div>
                     <dt class="text-sm font-medium text-gray-500">Livello Arbitro Minimo</dt>
                     <dd class="mt-1 text-sm text-gray-900">
-                        {{ App\Models\TournamentCategory::REFEREE_LEVELS[$tournamentCategory->required_referee_level] ?? 'Non specificato' }}
+                        {{ App\Models\TournamentType::REFEREE_LEVELS[$tournamentType->required_referee_level] ?? 'Non specificato' }}
                     </dd>
                 </div>
 
                 <div>
                     <dt class="text-sm font-medium text-gray-500">Numero Arbitri</dt>
                     <dd class="mt-1 text-sm text-gray-900">
-                        Minimo: {{ $tournamentCategory->min_referees }} -
-                        Massimo: {{ $tournamentCategory->max_referees }}
+                        Minimo: {{ $tournamentType->min_referees }} -
+                        Massimo: {{ $tournamentType->max_referees }}
                     </dd>
                 </div>
 
-                @if($tournamentCategory->special_requirements)
+                @if($tournamentType->special_requirements)
                 <div>
                     <dt class="text-sm font-medium text-gray-500">Requisiti Speciali</dt>
-                    <dd class="mt-1 text-sm text-gray-900">{{ $tournamentCategory->special_requirements }}</dd>
+                    <dd class="mt-1 text-sm text-gray-900">{{ $tournamentType->special_requirements }}</dd>
                 </div>
                 @endif
             </dl>
@@ -118,24 +118,24 @@
     {{-- Statistiche --}}
     <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
         <div class="bg-white rounded-lg shadow p-6 text-center">
-            <div class="text-3xl font-bold text-indigo-600">{{ $tournamentCategory->tournaments_count }}</div>
+            <div class="text-3xl font-bold text-indigo-600">{{ $tournamentType->tournaments_count }}</div>
             <div class="text-sm text-gray-600 mt-1">Tornei Totali</div>
         </div>
         <div class="bg-white rounded-lg shadow p-6 text-center">
             <div class="text-3xl font-bold text-green-600">
-                {{ $tournamentCategory->tournaments()->where('status', 'open')->count() }}
+                {{ $tournamentType->tournaments()->where('status', 'open')->count() }}
             </div>
             <div class="text-sm text-gray-600 mt-1">Tornei Aperti</div>
         </div>
         <div class="bg-white rounded-lg shadow p-6 text-center">
             <div class="text-3xl font-bold text-blue-600">
-                {{ $tournamentCategory->tournaments()->where('status', 'assigned')->count() }}
+                {{ $tournamentType->tournaments()->where('status', 'assigned')->count() }}
             </div>
             <div class="text-sm text-gray-600 mt-1">Con Arbitri Assegnati</div>
         </div>
         <div class="bg-white rounded-lg shadow p-6 text-center">
             <div class="text-3xl font-bold text-gray-600">
-                {{ $tournamentCategory->tournaments()->where('status', 'completed')->count() }}
+                {{ $tournamentType->tournaments()->where('status', 'completed')->count() }}
             </div>
             <div class="text-sm text-gray-600 mt-1">Completati</div>
         </div>
@@ -214,11 +214,11 @@
             </table>
         </div>
 
-        @if($tournamentCategory->tournaments_count > 10)
+        @if($tournamentType->tournaments_count > 10)
         <div class="bg-gray-50 px-6 py-3 text-center">
-            <a href="{{ route('admin.tournaments.index', ['tournament_category_id' => $tournamentCategory->id]) }}"
+            <a href="{{ route('admin.tournaments.index', ['tournament_type_id' => $tournamentType->id]) }}"
                class="text-sm text-indigo-600 hover:text-indigo-900">
-                Vedi tutti i {{ $tournamentCategory->tournaments_count }} tornei →
+                Vedi tutti i {{ $tournamentType->tournaments_count }} tornei →
             </a>
         </div>
         @endif

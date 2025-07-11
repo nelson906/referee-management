@@ -8,6 +8,12 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
+/**
+ * Referee Model - Extension Only
+ *
+ * NOTE: Core referee data (referee_code, level, category, certified_date, zone_id, phone, is_active)
+ * is now stored in Users table. This model contains only additional referee-specific fields.
+ */
 class Referee extends Model
 {
     use HasFactory, SoftDeletes;
@@ -19,17 +25,10 @@ class Referee extends Model
      */
     protected $fillable = [
         'user_id',
-        'zone_id',
-        'referee_code',
-        'level',
-        'category',
-        'certified_date',
-        'phone',
         'address',
         'city',
         'postal_code',
         'tax_code',
-        'is_active',
         'profile_completed_at',
         'preferences',
         'badge_number',
@@ -41,7 +40,7 @@ class Referee extends Model
         'available_for_international',
         'specializations',
         'total_tournaments',
-        'tournaments_current_year',
+        'tournaments_current_year'
     ];
 
     /**

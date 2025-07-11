@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Tournament;
 use App\Models\Zone;
-use App\Models\TournamentCategory;
+use App\Models\TournamentType;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
@@ -90,7 +90,7 @@ class CalendarController extends Controller
     private function getTournamentsWithErrorHandling($user, $isNationalAdmin)
     {
         try {
-            $query = Tournament::with(['tournamentCategory', 'zone', 'club', 'assignments', 'availabilities']);
+            $query = Tournament::with(['tournamentType', 'zone', 'club', 'assignments', 'availabilities']);
 
             // Apply zone filter for non-national admins
             if (!$isNationalAdmin) {
@@ -147,7 +147,7 @@ class CalendarController extends Controller
     private function getTournamentTypesWithErrorHandling()
     {
         try {
-            return TournamentCategory::orderBy('name')->get();
+            return TournamentType::orderBy('name')->get();
         } catch (Exception $e) {
             \Log::error('Error fetching tournament types for admin calendar', ['error' => $e->getMessage()]);
             return collect();
@@ -213,7 +213,7 @@ class CalendarController extends Controller
                     'tournament_url' => route('admin.tournaments.show', $tournament),
                     'deadline' => $tournament->availability_deadline?->format('d/m/Y') ?? 'Non specificata',
                     'days_until_deadline' => $tournament->days_until_deadline ?? 0,
-                    'type_id' => $tournament->tournament_category_id,
+                    'type_id' => $tournament->tournament_type_id,
                     'type' => $tournament->tournamentCategory,
                     'availabilities_count' => $tournament->availabilities()->count(),
                     'assignments_count' => $tournament->assignments()->count(),
@@ -301,7 +301,7 @@ class CalendarController extends Controller
 
 
     /**
-     * Get event color based on tournament category
+     * Get event color based on tournament type
      * TODO: Replace with your actual category color logic
      */
     private function getEventColor($tournament): string

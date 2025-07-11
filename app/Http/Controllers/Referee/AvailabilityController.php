@@ -10,7 +10,6 @@ use Illuminate\Http\Request;
 use Carbon\Carbon;
 use Illuminate\View\View;
 
-
 class AvailabilityController extends Controller
 {
     /**
@@ -27,7 +26,7 @@ class AvailabilityController extends Controller
         $month = $isNationalReferee ? $request->get('month') : null;
 
         // Base query - SENZA AVAILABILITY_DEADLINE
-        $query = Tournament::with(['tournamentCategory', 'zone', 'club'])
+        $query = Tournament::with(['tournamentType', 'zone', 'club'])
             ->where(function ($q) use ($user) {
                 $q->where(function ($q2) {
                     // Tornei futuri (status aperto o altro)
@@ -50,7 +49,7 @@ class AvailabilityController extends Controller
                 } else {
                     // Altrimenti: zona propria + gare nazionali ovunque
                     $q->where('zone_id', $user->zone_id)
-                        ->orWhereHas('tournamentCategory', function ($q2) {
+                        ->orWhereHas('tournamentType', function ($q2) {
                             $q2->where('is_national', true);
                         });
                 }
@@ -62,7 +61,7 @@ class AvailabilityController extends Controller
 
         // Apply category filter SOLO SE SPECIFICATO E ARBITRO NAZIONALE
         if ($categoryId && $isNationalReferee) {
-            $query->where('tournament_category_id', $categoryId);
+            $query->where('tournament_type_id', $categoryId);
         }
 
         // Apply month filter SOLO SE SPECIFICATO E ARBITRO NAZIONALE
@@ -90,8 +89,8 @@ class AvailabilityController extends Controller
         // Get zones for filter (only for national referees)
         $zones = $isNationalReferee ? Zone::orderBy('name')->get() : collect();
 
-        // Get categories visible to user (only for national referees)
-        $categories = $isNationalReferee ? \App\Models\TournamentCategory::active()
+        // Get categories visible to user (only for national referees) - FIX: Renamed from $categories to $types
+        $types = $isNationalReferee ? \App\Models\TournamentType::active()
             ->when(!$isNationalReferee, function ($q) use ($user) {
                 $q->where(function ($q2) use ($user) {
                     $q2->where('is_national', false)
@@ -110,7 +109,7 @@ class AvailabilityController extends Controller
             'tournamentsByMonth',
             'userAvailabilities',
             'zones',
-            'categories',
+            'types', // ← FIX: Corrected variable name
             'zoneId',
             'categoryId',
             'month',
@@ -142,7 +141,7 @@ class AvailabilityController extends Controller
             // Arbitri nazionali: zona propria + gare nazionali
             $accessibleQuery->where(function ($q) use ($user) {
                 $q->where('zone_id', $user->zone_id)
-                    ->orWhereHas('tournamentCategory', function ($q2) {
+                    ->orWhereHas('tournamentType', function ($q2) {
                         $q2->where('is_national', true);
                     });
             });
@@ -207,7 +206,7 @@ class AvailabilityController extends Controller
         if ($isNationalReferee) {
             // Arbitri nazionali: zona propria + gare nazionali
             $canAccess = $tournament->zone_id == $user->zone_id ||
-                $tournament->tournamentCategory->is_national;
+                $tournament->tournamentType->is_national;
         } else {
             // Arbitri non nazionali: solo zona propria
             $canAccess = $tournament->zone_id == $user->zone_id;
@@ -261,14 +260,14 @@ class AvailabilityController extends Controller
         $isNationalReferee = in_array($user->level ?? '', ['nazionale', 'internazionale']);
 
         // Get tournaments for calendar - LOGICA AGGIORNATA
-        $tournamentsQuery = Tournament::with(['tournamentCategory', 'zone', 'club'])
+        $tournamentsQuery = Tournament::with(['tournamentType', 'zone', 'club'])
             ->whereIn('status', ['draft', 'open', 'closed', 'assigned']);
 
         if ($isNationalReferee) {
             // Arbitri nazionali: zona propria + gare nazionali ovunque
             $tournamentsQuery->where(function ($q) use ($user) {
                 $q->where('zone_id', $user->zone_id)
-                    ->orWhereHas('tournamentCategory', function ($q2) {
+                    ->orWhereHas('tournamentType', function ($q2) {
                         $q2->where('is_national', true);
                     });
             });
@@ -300,7 +299,7 @@ class AvailabilityController extends Controller
                     'club' => $tournament->club->name ?? 'N/A',
                     'club_code' => $tournament->club->code ?? '',
                     'zone' => $tournament->zone->name ?? 'N/A',
-                    'category' => $tournament->tournamentCategory->name ?? 'N/A',
+                    'category' => $tournament->tournamentType->name ?? 'N/A',
                     'status' => $tournament->status,
                     'deadline' => $tournament->availability_deadline?->format('d/m/Y') ?? 'N/A',
                     'days_until_deadline' => $tournament->availability_deadline
@@ -312,7 +311,7 @@ class AvailabilityController extends Controller
                         ($tournament->availability_deadline ? $tournament->availability_deadline >= Carbon::today() : true),
                     'personal_status' => $isAssigned ? 'assigned' : ($isAvailable ? 'available' : 'can_apply'),
                     'tournament_url' => route('tournaments.show', $tournament),
-                    'is_national' => $tournament->tournamentCategory->is_national ?? false,
+                    'is_national' => $tournament->tournamentType->is_national ?? false,
                 ],
             ];
         });
@@ -335,76 +334,5 @@ class AvailabilityController extends Controller
         ];
 
         return view('referee.availability.calendar', compact('calendarData'));
-    }
-
-
-    /**
-     * NUOVO METODO: Check if user can apply to tournament
-     */
-    private function userCanApplyToTournament($user, $tournament): bool
-    {
-        $isNationalReferee = in_array($user->level, ['nazionale', 'internazionale']);
-
-        // National referees: own zone + national tournaments
-        if ($isNationalReferee) {
-            return $tournament->zone_id == $user->zone_id
-                || $tournament->tournamentCategory->is_national;
-        }
-
-        // Zone referees: only own zone (including national tournaments in own zone)
-        return $tournament->zone_id == $user->zone_id;
-    }
-
-    /**
-     * Get event color based on tournament category (same as admin) - PRESERVATO
-     */
-    private function getEventColor($tournament, $userAvailabilities, $userAssignments): string
-    {
-        if (in_array($tournament->id, $userAssignments)) {
-            return '#10B981'; // Green - Assigned
-        }
-
-        if (in_array($tournament->id, $userAvailabilities)) {
-            return '#3B82F6'; // Blue - Available
-        }
-
-        if ($tournament->isOpenForAvailability()) {
-            return '#F59E0B'; // Amber - Open
-        }
-
-        return '#6B7280'; // Gray - Closed/Other
-    }
-
-    /**
-     * Referee border color - based on personal status - PRESERVATO
-     */
-    private function getRefereeBorderColor($isAvailable, $isAssigned): string
-    {
-        if ($isAssigned) {
-            return '#10B981'; // Green - Assigned
-        }
-
-        if ($isAvailable) {
-            return '#F59E0B'; // Amber - Available but not assigned
-        }
-
-        return '#6B7280'; // Gray - Not available
-    }
-
-    /**
-     * Get personal status for referee
-     */
-    private function getPersonalStatus($isAvailable, $isAssigned, $tournament): string
-    {
-        if ($isAssigned) {
-            return 'assigned';
-        }
-
-        if ($isAvailable) {
-            return 'available';
-        }
-
-        // Can apply if tournament is open for availability
-        return 'can_apply';
     }
 }
