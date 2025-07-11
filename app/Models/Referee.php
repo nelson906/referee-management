@@ -164,10 +164,10 @@ class Referee extends Model
     public function hasCompletedProfile(): bool
     {
         return !is_null($this->profile_completed_at) &&
-               !is_null($this->referee_code) &&
-               !is_null($this->level) &&
-               !is_null($this->certified_date) &&
-               !is_null($this->phone);
+            !is_null($this->referee_code) &&
+            !is_null($this->level) &&
+            !is_null($this->certified_date) &&
+            !is_null($this->phone);
     }
 
     /**
@@ -274,26 +274,23 @@ class Referee extends Model
         return $this->expiry_date->lt(now());
     }
 
-    // Nel tuo app/Models/Referee.php - Aggiungi/Aggiorna questo metodo:
+    public function isProfileComplete(): bool
+    {
+        // Se è stato marcato come completato (dall'admin o dal form), è completo
+        if ($this->profile_completed_at !== null) {
+            return true;
+        }
 
-public function isProfileComplete(): bool
-{
-    // Se è stato marcato come completato (dall'admin o dal form), è completo
-    if ($this->profile_completed_at !== null) {
-        return true;
+        // Controllo minimale: solo campi veramente essenziali
+        return !empty($this->user->name) &&
+            !empty($this->user->email) &&
+            !empty($this->level) &&
+            !empty($this->zone_id);
     }
 
-    // Controllo minimale: solo campi veramente essenziali
-    return !empty($this->user->name) &&
-           !empty($this->user->email) &&
-           !empty($this->level) &&
-           !empty($this->zone_id);
-}
-
-// Aggiungi anche questo metodo helper:
-public function markAsCompleted()
-{
-    $this->update(['profile_completed_at' => now()]);
-}
-
+    // Aggiungi anche questo metodo helper:
+    public function markAsCompleted()
+    {
+        $this->update(['profile_completed_at' => now()]);
+    }
 }

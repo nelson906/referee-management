@@ -1,0 +1,3174 @@
+cat *
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+
+class Assignment extends Model
+{
+    use HasFactory;
+
+    protected $fillable = [
+        'user_id',
+        'tournament_id',
+        'role',
+        'is_confirmed',
+        'assigned_at',
+        'assigned_by_id', // CORRETTO: usa assigned_by_id
+        'notes',
+    ];
+
+    protected $casts = [
+        'is_confirmed' => 'boolean',
+        'assigned_at' => 'datetime',
+    ];
+
+    // Assignment roles
+    const ROLE_REFEREE = 'Arbitro';
+    const ROLE_TOURNAMENT_DIRECTOR = 'Direttore di Torneo';
+    const ROLE_OBSERVER = 'Osservatore';
+
+    const ROLES = [
+        self::ROLE_REFEREE => 'Arbitro',
+        self::ROLE_TOURNAMENT_DIRECTOR => 'Direttore di Torneo',
+        self::ROLE_OBSERVER => 'Osservatore',
+    ];
+
+    /**
+     * Get the referee (user) for the assignment.
+     */
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    /**
+     * Get the tournament for the assignment.
+     */
+    public function tournament(): BelongsTo
+    {
+        return $this->belongsTo(Tournament::class);
+    }
+
+    /**
+     * Get the user who made the assignment.
+     */
+    public function assignedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'assigned_by_id'); // Cambiato da 'assigned_by'
+    }
+
+    /**
+     * Scope a query to only include confirmed assignments.
+     */
+    public function scopeConfirmed($query)
+    {
+        return $query->where('is_confirmed', true);
+    }
+
+    /**
+     * Scope a query to only include unconfirmed assignments.
+     */
+    public function scopeUnconfirmed($query)
+    {
+        return $query->where('is_confirmed', false);
+    }
+
+    /**
+     * Scope a query to only include assignments for upcoming tournaments.
+     */
+    public function scopeUpcoming($query)
+    {
+        return $query->whereHas('tournament', function ($q) {
+            $q->upcoming();
+        });
+    }
+
+    /**
+     * Check if assignment can be confirmed by the referee
+     */
+    public function canBeConfirmed(): bool
+    {
+        return !$this->is_confirmed &&
+               $this->tournament->status === 'assigned' &&
+               $this->tournament->start_date >= now();
+    }
+
+    /**
+     * Get status label for UI
+     */
+    public function getStatusLabelAttribute(): string
+    {
+        if ($this->is_confirmed) {
+            return 'Confermato';
+        }
+
+        if ($this->tournament->start_date < now()) {
+            return 'Scaduto';
+        }
+
+        return 'In attesa di conferma';
+    }
+
+    /**
+     * Get status color for UI
+     */
+    public function getStatusColorAttribute(): string
+    {
+        if ($this->is_confirmed) {
+            return 'green';
+        }
+
+        if ($this->tournament->start_date < now()) {
+            return 'gray';
+        }
+
+        return 'yellow';
+    }
+}
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+
+class Availability extends Model
+{
+    use HasFactory;
+
+    /**
+     * The attributes that are mass assignable.
+     *
+     * @var array<int, string>
+     */
+    protected $fillable = [
+        'user_id',
+        'tournament_id',
+        'notes',
+        'submitted_at',
+    ];
+
+    /**
+     * The attributes that should be cast.
+     *
+     * @var array<string, string>
+     */
+    protected $casts = [
+        'submitted_at' => 'datetime',
+    ];
+
+    /**
+     * Get the user (referee) who declared availability.
+     */
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    /**
+     * Get the tournament for the availability.
+     */
+    public function tournament(): BelongsTo
+    {
+        return $this->belongsTo(Tournament::class);
+    }
+
+    /**
+     * Scope a query to only include availabilities for upcoming tournaments.
+     */
+    public function scopeForUpcomingTournaments($query)
+    {
+        return $query->whereHas('tournament', function ($q) {
+            $q->upcoming();
+        });
+    }
+
+    /**
+     * Scope a query to only include availabilities for open tournaments.
+     */
+    public function scopeForOpenTournaments($query)
+    {
+        return $query->whereHas('tournament', function ($q) {
+            $q->where('status', 'open');
+        });
+    }
+
+    /**
+     * Scope a query to only include unassigned availabilities.
+     */
+    public function scopeUnassigned($query)
+    {
+        return $query->whereDoesntHave('tournament.assignments', function ($q) {
+            $q->where('user_id', $this->user_id);
+        });
+    }
+
+    /**
+     * Check if availability has been converted to assignment
+     */
+    public function hasBeenAssigned(): bool
+    {
+        return Assignment::where('tournament_id', $this->tournament_id)
+            ->where('user_id', $this->user_id)
+            ->exists();
+    }
+
+    /**
+     * Get the assignment if exists
+     */
+    public function getAssignmentAttribute(): ?Assignment
+    {
+        return Assignment::where('tournament_id', $this->tournament_id)
+            ->where('user_id', $this->user_id)
+            ->first();
+    }
+
+    /**
+     * Check if availability can be withdrawn
+     */
+    public function canBeWithdrawn(): bool
+    {
+        // Cannot withdraw if already assigned
+        if ($this->hasBeenAssigned()) {
+            return false;
+        }
+
+        // Cannot withdraw if tournament is not open
+        if ($this->tournament->status !== 'open') {
+            return false;
+        }
+
+        // Cannot withdraw if past deadline
+        if ($this->tournament->availability_deadline < now()) {
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Get days since submission
+     */
+    public function getDaysSinceSubmissionAttribute(): int
+    {
+        return $this->submitted_at->diffInDays(now());
+    }
+
+    /**
+     * Get submission status
+     */
+    public function getStatusAttribute(): string
+    {
+        if ($this->hasBeenAssigned()) {
+            return 'assigned';
+        }
+
+        if ($this->tournament->status === 'completed') {
+            return 'not_selected';
+        }
+
+        if ($this->tournament->status === 'assigned') {
+            return 'not_selected';
+        }
+
+        return 'pending';
+    }
+
+    /**
+     * Get status label
+     */
+    public function getStatusLabelAttribute(): string
+    {
+        return match($this->status) {
+            'assigned' => 'Assegnato',
+            'not_selected' => 'Non selezionato',
+            'pending' => 'In attesa',
+            default => 'Sconosciuto',
+        };
+    }
+
+    /**
+     * Get status color
+     */
+    public function getStatusColorAttribute(): string
+    {
+        return match($this->status) {
+            'assigned' => 'green',
+            'not_selected' => 'gray',
+            'pending' => 'yellow',
+            default => 'gray',
+        };
+    }
+}
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+
+class Club extends Model
+{
+    use HasFactory;
+
+    /**
+     * The table associated with the model.
+     */
+    protected $table = 'clubs';
+
+    /**
+     * The attributes that are mass assignable.
+     *
+     * @var array<int, string>
+     */
+    protected $fillable = [
+        'name',
+        'code',
+        'city',
+        'province',
+        'email',
+        'phone',
+        'address',
+        'contact_person',
+        'zone_id',
+        'notes',
+        'is_active',
+    ];
+
+    /**
+     * The attributes that should be cast.
+     *
+     * @var array<string, string>
+     */
+    protected $casts = [
+        'is_active' => 'boolean',
+    ];
+
+    /**
+     * Get the zone that the club belongs to.
+     */
+    public function zone(): BelongsTo
+    {
+        return $this->belongsTo(Zone::class);
+    }
+
+    /**
+     * Get the tournaments hosted by the club.
+     */
+    public function tournaments(): HasMany
+    {
+        return $this->hasMany(Tournament::class, 'club_id');
+    }
+
+    /**
+     * Scope a query to only include active clubs.
+     */
+    public function scopeActive($query)
+    {
+        return $query->where('is_active', true);
+    }
+
+    /**
+     * Scope a query to only include clubs from a specific zone.
+     */
+    public function scopeFromZone($query, $zoneId)
+    {
+        return $query->where('zone_id', $zoneId);
+    }
+
+    /**
+     * Get the full address
+     */
+    public function getFullAddressAttribute(): string
+    {
+        $parts = array_filter([
+            $this->address,
+            $this->city,
+            $this->province
+        ]);
+
+        return implode(', ', $parts);
+    }
+
+    /**
+     * Get upcoming tournaments count
+     */
+    public function getUpcomingTournamentsCountAttribute(): int
+    {
+        return $this->tournaments()
+            ->upcoming()
+            ->count();
+    }
+
+    /**
+     * Get active tournaments count
+     */
+    public function getActiveTournamentsCountAttribute(): int
+    {
+        return $this->tournaments()
+            ->active()
+            ->count();
+    }
+
+    /**
+     * Check if club has any active tournaments
+     */
+    public function hasActiveTournaments(): bool
+    {
+        return $this->tournaments()
+            ->active()
+            ->exists();
+    }
+
+    /**
+     * Get formatted contact info
+     */
+    public function getContactInfoAttribute(): array
+    {
+        return [
+            'person' => $this->contact_person,
+            'email' => $this->email,
+            'phone' => $this->phone,
+        ];
+    }
+
+    /**
+     * Search clubs by name or code
+     */
+    public function scopeSearch($query, $search)
+    {
+        return $query->where(function ($q) use ($search) {
+            $q->where('name', 'like', "%{$search}%")
+              ->orWhere('code', 'like', "%{$search}%")
+              ->orWhere('city', 'like', "%{$search}%");
+        });
+    }
+
+    /**
+     * Order by name
+     */
+    public function scopeOrdered($query)
+    {
+        return $query->orderBy('name');
+    }
+
+    /**
+     * Get display name with code
+     */
+    public function getDisplayNameAttribute(): string
+    {
+        return "{$this->name} ({$this->code})";
+    }
+
+    /**
+     * Check if can be deleted
+     */
+    public function canBeDeleted(): bool
+    {
+        return !$this->tournaments()->exists();
+    }
+}
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+
+class InstitutionalEmail extends Model
+{
+    use HasFactory;
+
+    /**
+     * The attributes that are mass assignable.
+     *
+     * @var array<int, string>
+     */
+    protected $fillable = [
+        'name',
+        'email',
+        'description',
+        'is_active',
+        'zone_id',
+        'category',
+        'receive_all_notifications',
+        'notification_types',
+    ];
+
+    /**
+     * The attributes that should be cast.
+     *
+     * @var array<string, string>
+     */
+    protected $casts = [
+        'is_active' => 'boolean',
+        'receive_all_notifications' => 'boolean',
+        'notification_types' => 'array',
+    ];
+
+    /**
+     * Categories
+     */
+    const CATEGORY_FEDERATION = 'federazione';
+    const CATEGORY_COMMITTEE = 'comitato';
+    const CATEGORY_ZONE = 'zona';
+    const CATEGORY_OTHER = 'altro';
+
+    const CATEGORIES = [
+        self::CATEGORY_FEDERATION => 'Federazione',
+        self::CATEGORY_COMMITTEE => 'Comitato',
+        self::CATEGORY_ZONE => 'Zona',
+        self::CATEGORY_OTHER => 'Altro',
+    ];
+
+    /**
+     * Notification types
+     */
+    const NOTIFICATION_TYPES = [
+        'assignment' => 'Assegnazioni',
+        'availability' => 'Disponibilità',
+        'tournament_created' => 'Nuovi Tornei',
+        'tournament_updated' => 'Modifiche Tornei',
+        'referee_registered' => 'Nuovi Arbitri',
+        'reports' => 'Report',
+    ];
+
+    /**
+     * Get the zone that the institutional email belongs to.
+     */
+    public function zone(): BelongsTo
+    {
+        return $this->belongsTo(Zone::class);
+    }
+
+    /**
+     * Scope a query to only include active emails.
+     */
+    public function scopeActive($query)
+    {
+        return $query->where('is_active', true);
+    }
+
+    /**
+     * Scope a query to only include emails for a specific zone.
+     */
+    public function scopeForZone($query, $zoneId)
+    {
+        return $query->where(function ($q) use ($zoneId) {
+            $q->whereNull('zone_id')
+              ->orWhere('zone_id', $zoneId);
+        });
+    }
+
+    /**
+     * Scope a query to only include emails that should receive a specific notification type.
+     */
+    public function scopeForNotificationType($query, string $type)
+    {
+        return $query->where(function ($q) use ($type) {
+            $q->where('receive_all_notifications', true)
+              ->orWhereJsonContains('notification_types', $type);
+        });
+    }
+
+    /**
+     * Get the category label
+     */
+    public function getCategoryLabelAttribute(): string
+    {
+        return self::CATEGORIES[$this->category] ?? $this->category;
+    }
+
+    /**
+     * Check if should receive notification type
+     */
+    public function shouldReceiveNotificationType(string $type): bool
+    {
+        if ($this->receive_all_notifications) {
+            return true;
+        }
+
+        return in_array($type, $this->notification_types ?? []);
+    }
+
+    /**
+     * Get notification types labels
+     */
+    public function getNotificationTypesLabelsAttribute(): array
+    {
+        if ($this->receive_all_notifications) {
+            return ['Tutte le notifiche'];
+        }
+
+        $labels = [];
+        foreach ($this->notification_types ?? [] as $type) {
+            $labels[] = self::NOTIFICATION_TYPES[$type] ?? $type;
+        }
+
+        return $labels;
+    }
+
+    /**
+     * Get display name with category
+     */
+    public function getDisplayNameAttribute(): string
+    {
+        return $this->name . ' (' . $this->category_label . ')';
+    }
+
+    /**
+     * Get zone display
+     */
+    public function getZoneDisplayAttribute(): string
+    {
+        return $this->zone ? $this->zone->name : 'Tutte le zone';
+    }
+}
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+
+class LetterTemplate extends Model
+{
+    use HasFactory;
+
+    /**
+     * The attributes that are mass assignable.
+     *
+     * @var array<int, string>
+     */
+    protected $fillable = [
+        'name',
+        'type',
+        'subject',
+        'body',
+        'variables',
+        'is_active',
+        'zone_id',
+        'tournament_category_id',
+        'description',
+        'settings',
+    ];
+
+    /**
+     * The attributes that should be cast.
+     *
+     * @var array<string, string>
+     */
+    protected $casts = [
+        'variables' => 'array',
+        'is_active' => 'boolean',
+        'settings' => 'array',
+    ];
+
+    /**
+     * Template types
+     */
+    const TYPE_CONVOCATION = 'convocation';
+    const TYPE_ASSIGNMENT = 'assignment';
+    const TYPE_club = 'club';
+    const TYPE_GENERAL = 'general';
+
+    const TYPES = [
+        self::TYPE_CONVOCATION => 'Convocazione Arbitro',
+        self::TYPE_ASSIGNMENT => 'Notifica Assegnazione',
+        self::TYPE_club => 'Comunicazione Circolo',
+        self::TYPE_GENERAL => 'Generale',
+    ];
+
+    /**
+     * Available variables by type
+     */
+    const AVAILABLE_VARIABLES = [
+        'common' => [
+            'tournament_name' => 'Nome Torneo',
+            'tournament_dates' => 'Date Torneo',
+            'tournament_category' => 'Categoria Torneo',
+            'club_name' => 'Nome Circolo',
+            'club_address' => 'Indirizzo Circolo',
+            'zone_name' => 'Nome Zona',
+            'current_date' => 'Data Corrente',
+            'current_year' => 'Anno Corrente',
+        ],
+        'convocation' => [
+            'referee_name' => 'Nome Arbitro',
+            'referee_code' => 'Codice Arbitro',
+            'referee_level' => 'Livello Arbitro',
+            'role' => 'Ruolo Assegnato',
+            'assignment_notes' => 'Note Assegnazione',
+        ],
+        'assignment' => [
+            'referee_name' => 'Nome Arbitro',
+            'referee_email' => 'Email Arbitro',
+            'assigned_date' => 'Data Assegnazione',
+            'assigned_by' => 'Assegnato da',
+        ],
+        'club' => [
+            'contact_person' => 'Persona di Contatto',
+            'referee_list' => 'Lista Arbitri',
+            'total_referees' => 'Totale Arbitri',
+        ],
+    ];
+
+    /**
+     * Get the zone that the template belongs to.
+     */
+    public function zone(): BelongsTo
+    {
+        return $this->belongsTo(Zone::class);
+    }
+
+    /**
+     * Get the tournament category that the template belongs to.
+     */
+    public function tournamentCategory(): BelongsTo
+    {
+        return $this->belongsTo(TournamentCategory::class);
+    }
+
+    /**
+     * Scope a query to only include active templates.
+     */
+    public function scopeActive($query)
+    {
+        return $query->where('is_active', true);
+    }
+
+    /**
+     * Scope a query to only include templates for a specific type.
+     */
+    public function scopeOfType($query, string $type)
+    {
+        return $query->where('type', $type);
+    }
+
+    /**
+     * Scope a query to only include templates for a specific zone.
+     */
+    public function scopeForZone($query, $zoneId)
+    {
+        return $query->where(function ($q) use ($zoneId) {
+            $q->whereNull('zone_id')
+              ->orWhere('zone_id', $zoneId);
+        });
+    }
+
+    /**
+     * Scope a query to only include templates for a specific category.
+     */
+    public function scopeForCategory($query, $categoryId)
+    {
+        return $query->where(function ($q) use ($categoryId) {
+            $q->whereNull('tournament_category_id')
+              ->orWhere('tournament_category_id', $categoryId);
+        });
+    }
+
+    /**
+     * Get the type label
+     */
+    public function getTypeLabelAttribute(): string
+    {
+        return self::TYPES[$this->type] ?? $this->type;
+    }
+
+    /**
+     * Get available variables for this template type
+     */
+    public function getAvailableVariablesAttribute(): array
+    {
+        $variables = self::AVAILABLE_VARIABLES['common'] ?? [];
+
+        if (isset(self::AVAILABLE_VARIABLES[$this->type])) {
+            $variables = array_merge($variables, self::AVAILABLE_VARIABLES[$this->type]);
+        }
+
+        return $variables;
+    }
+
+    /**
+     * Get variables as formatted list
+     */
+    public function getVariablesListAttribute(): array
+    {
+        $list = [];
+        foreach ($this->available_variables as $key => $label) {
+            $list[] = [
+                'variable' => '{{' . $key . '}}',
+                'description' => $label,
+            ];
+        }
+        return $list;
+    }
+
+    /**
+     * Get scope display
+     */
+    public function getScopeDisplayAttribute(): string
+    {
+        $scope = [];
+
+        if ($this->zone) {
+            $scope[] = 'Zona: ' . $this->zone->name;
+        }
+
+        if ($this->tournamentCategory) {
+            $scope[] = 'Categoria: ' . $this->tournamentCategory->name;
+        }
+
+        return !empty($scope) ? implode(' - ', $scope) : 'Globale';
+    }
+
+    /**
+     * Preview template with sample data
+     */
+    public function preview(array $data = []): array
+    {
+        // Merge with sample data
+        $sampleData = [
+            'tournament_name' => 'Torneo di Esempio',
+            'tournament_dates' => '01/07 - 03/07/2025',
+            'tournament_category' => 'Open Nazionale',
+            'club_name' => 'Golf Club Esempio',
+            'club_address' => 'Via Esempio 123, Città',
+            'zone_name' => 'Zona Centro',
+            'current_date' => now()->format('d/m/Y'),
+            'current_year' => now()->year,
+            'referee_name' => 'Mario Rossi',
+            'referee_code' => 'ARB001',
+            'referee_level' => 'Nazionale',
+            'role' => 'Arbitro',
+        ];
+
+        $data = array_merge($sampleData, $data);
+
+        // Replace variables
+        $subject = $this->subject;
+        $body = $this->body;
+
+        foreach ($data as $key => $value) {
+            $subject = str_replace('{{' . $key . '}}', $value, $subject);
+            $body = str_replace('{{' . $key . '}}', $value, $body);
+        }
+
+        return [
+            'subject' => $subject,
+            'body' => $body,
+        ];
+    }
+
+    /**
+     * Clone template
+     */
+    public function cloneTemplate(array $overrides = []): self
+    {
+        $clone = $this->replicate();
+        $clone->name = $this->name . ' (Copia)';
+        $clone->is_active = false;
+
+        foreach ($overrides as $key => $value) {
+            $clone->$key = $value;
+        }
+
+        $clone->save();
+
+        return $clone;
+    }
+}
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Facades\Storage;
+
+class Letterhead extends Model
+{
+    use HasFactory;
+
+    /**
+     * The attributes that are mass assignable.
+     *
+     * @var array<int, string>
+     */
+    protected $fillable = [
+        'zone_id',
+        'title',
+        'logo_path',
+        'header_text',
+        'header_content',
+        'footer_text',
+        'footer_content',
+        'contact_info',
+        'is_active',
+        'is_default',
+        'settings',
+    ];
+
+    /**
+     * The attributes that should be cast.
+     *
+     * @var array<string, string>
+     */
+    protected $casts = [
+        'contact_info' => 'array',
+        'is_active' => 'boolean',
+        'is_default' => 'boolean',
+        'settings' => 'array',
+    ];
+
+    /**
+     * Default settings structure
+     */
+    protected $attributes = [
+        'settings' => '{}',
+        'contact_info' => '{}',
+        'is_active' => true,
+        'is_default' => false,
+    ];
+
+    /**
+     * Get the zone that owns the letterhead.
+     */
+    public function zone(): BelongsTo
+    {
+        return $this->belongsTo(Zone::class);
+    }
+
+    /**
+     * Scope a query to only include active letterheads.
+     */
+    public function scopeActive($query)
+    {
+        return $query->where('is_active', true);
+    }
+
+    /**
+     * Scope a query to only include default letterheads.
+     */
+    public function scopeDefault($query)
+    {
+        return $query->where('is_default', true);
+    }
+
+    /**
+     * Scope a query to get letterhead for a specific zone.
+     */
+    public function scopeForZone($query, $zoneId)
+    {
+        return $query->where(function ($q) use ($zoneId) {
+            $q->where('zone_id', $zoneId)
+              ->orWhereNull('zone_id');
+        });
+    }
+
+    /**
+     * Get the logo URL
+     */
+    public function getLogoUrlAttribute(): ?string
+    {
+        if (!$this->logo_path) {
+            return null;
+        }
+
+        return Storage::url($this->logo_path);
+    }
+
+    /**
+     * Get formatted contact info
+     */
+    public function getFormattedContactInfoAttribute(): string
+    {
+        $info = $this->contact_info ?? [];
+        $parts = [];
+
+        if (!empty($info['address'])) {
+            $parts[] = $info['address'];
+        }
+
+        if (!empty($info['phone'])) {
+            $parts[] = "Tel: " . $info['phone'];
+        }
+
+        if (!empty($info['email'])) {
+            $parts[] = "Email: " . $info['email'];
+        }
+
+        if (!empty($info['website'])) {
+            $parts[] = "Web: " . $info['website'];
+        }
+
+        return implode(' | ', $parts);
+    }
+
+    /**
+     * Get scope display
+     */
+    public function getScopeDisplayAttribute(): string
+    {
+        return $this->zone ? $this->zone->name : 'Globale';
+    }
+
+    /**
+     * Set as default for zone
+     */
+    public function setAsDefault(): void
+    {
+        // Remove default from other letterheads in same zone
+        self::where('zone_id', $this->zone_id)
+            ->where('id', '!=', $this->id)
+            ->update(['is_default' => false]);
+
+        // Set this as default
+        $this->update(['is_default' => true]);
+    }
+
+    /**
+     * Get margin settings
+     */
+    public function getMarginSettingsAttribute(): array
+    {
+        return $this->settings['margins'] ?? [
+            'top' => 20,
+            'bottom' => 20,
+            'left' => 25,
+            'right' => 25,
+        ];
+    }
+
+    /**
+     * Get font settings
+     */
+    public function getFontSettingsAttribute(): array
+    {
+        return $this->settings['font'] ?? [
+            'family' => 'Arial',
+            'size' => 11,
+            'color' => '#000000',
+        ];
+    }
+
+    /**
+     * Clone letterhead
+     */
+    public function cloneLetterhead(array $overrides = []): self
+    {
+        $clone = $this->replicate();
+        $clone->title = $this->title . ' (Copia)';
+        $clone->is_default = false;
+        $clone->is_active = false;
+
+        foreach ($overrides as $key => $value) {
+            $clone->$key = $value;
+        }
+
+        // Copy logo if exists
+        if ($this->logo_path && Storage::exists($this->logo_path)) {
+            $extension = pathinfo($this->logo_path, PATHINFO_EXTENSION);
+            $newPath = 'letterheads/logo_' . uniqid() . '.' . $extension;
+            Storage::copy($this->logo_path, $newPath);
+            $clone->logo_path = $newPath;
+        }
+
+        $clone->save();
+
+        return $clone;
+    }
+
+    /**
+     * Delete logo file when deleting letterhead
+     */
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::deleting(function ($letterhead) {
+            if ($letterhead->logo_path && Storage::exists($letterhead->logo_path)) {
+                Storage::delete($letterhead->logo_path);
+            }
+        });
+    }
+}
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Carbon\Carbon;
+
+class Notification extends Model
+{
+    use HasFactory;
+
+    /**
+     * The attributes that are mass assignable.
+     *
+     * @var array<int, string>
+     */
+    protected $fillable = [
+        'assignment_id',
+        'recipient_type',
+        'recipient_email',
+        'subject',
+        'body',
+        'template_used',
+        'status',
+        'sent_at',
+        'error_message',
+        'retry_count',
+        'attachments',
+    ];
+
+    /**
+     * The attributes that should be cast.
+     *
+     * @var array<string, string>
+     */
+    protected $casts = [
+        'sent_at' => 'datetime',
+        'retry_count' => 'integer',
+        'attachments' => 'array',
+    ];
+
+    /**
+     * Notification statuses
+     */
+    const STATUS_PENDING = 'pending';
+    const STATUS_SENT = 'sent';
+    const STATUS_FAILED = 'failed';
+    const STATUS_CANCELLED = 'cancelled';
+
+    const STATUSES = [
+        self::STATUS_PENDING => 'In attesa',
+        self::STATUS_SENT => 'Inviata',
+        self::STATUS_FAILED => 'Fallita',
+        self::STATUS_CANCELLED => 'Annullata',
+    ];
+
+    /**
+     * Recipient types
+     */
+    const TYPE_REFEREE = 'referee';
+    const TYPE_club = 'club';
+    const TYPE_INSTITUTIONAL = 'institutional';
+
+    const RECIPIENT_TYPES = [
+        self::TYPE_REFEREE => 'Arbitro',
+        self::TYPE_club => 'Circolo',
+        self::TYPE_INSTITUTIONAL => 'Istituzionale',
+    ];
+
+    /**
+     * Maximum retry attempts
+     */
+    const MAX_RETRY_ATTEMPTS = 3;
+
+    /**
+     * Get the assignment that this notification belongs to.
+     */
+    public function assignment(): BelongsTo
+    {
+        return $this->belongsTo(Assignment::class);
+    }
+
+    /**
+     * Scope a query to only include sent notifications.
+     */
+    public function scopeSent($query)
+    {
+        return $query->where('status', self::STATUS_SENT);
+    }
+
+    /**
+     * Scope a query to only include pending notifications.
+     */
+    public function scopePending($query)
+    {
+        return $query->where('status', self::STATUS_PENDING);
+    }
+
+    /**
+     * Scope a query to only include failed notifications.
+     */
+    public function scopeFailed($query)
+    {
+        return $query->where('status', self::STATUS_FAILED);
+    }
+
+    /**
+     * Scope a query to only include notifications for a specific recipient type.
+     */
+    public function scopeForRecipientType($query, string $type)
+    {
+        return $query->where('recipient_type', $type);
+    }
+
+    /**
+     * Scope a query to only include notifications that can be retried.
+     */
+    public function scopeRetryable($query)
+    {
+        return $query->where('status', self::STATUS_FAILED)
+                    ->where('retry_count', '<', self::MAX_RETRY_ATTEMPTS);
+    }
+
+    /**
+     * Scope a query to only include recent notifications.
+     */
+    public function scopeRecent($query, int $days = 7)
+    {
+        return $query->where('created_at', '>=', now()->subDays($days));
+    }
+
+    /**
+     * Mark notification as sent.
+     */
+    public function markAsSent(): void
+    {
+        $this->update([
+            'status' => self::STATUS_SENT,
+            'sent_at' => now(),
+            'error_message' => null,
+        ]);
+    }
+
+    /**
+     * Mark notification as failed.
+     */
+    public function markAsFailed(string $errorMessage): void
+    {
+        $this->update([
+            'status' => self::STATUS_FAILED,
+            'error_message' => $errorMessage,
+            'retry_count' => $this->retry_count + 1,
+        ]);
+    }
+
+    /**
+     * Mark notification as cancelled.
+     */
+    public function markAsCancelled(): void
+    {
+        $this->update([
+            'status' => self::STATUS_CANCELLED,
+        ]);
+    }
+
+    /**
+     * Reset notification for retry.
+     */
+    public function resetForRetry(): void
+    {
+        $this->update([
+            'status' => self::STATUS_PENDING,
+            'error_message' => null,
+        ]);
+    }
+
+    /**
+     * Check if notification can be retried.
+     */
+    public function canBeRetried(): bool
+    {
+        return $this->status === self::STATUS_FAILED &&
+               $this->retry_count < self::MAX_RETRY_ATTEMPTS;
+    }
+
+    /**
+     * Check if notification has exceeded max retry attempts.
+     */
+    public function hasExceededMaxRetries(): bool
+    {
+        return $this->retry_count >= self::MAX_RETRY_ATTEMPTS;
+    }
+
+    /**
+     * Get recipient type label.
+     */
+    public function getRecipientTypeLabelAttribute(): string
+    {
+        return self::RECIPIENT_TYPES[$this->recipient_type] ?? ucfirst($this->recipient_type);
+    }
+
+    /**
+     * Get status label.
+     */
+    public function getStatusLabelAttribute(): string
+    {
+        return self::STATUSES[$this->status] ?? ucfirst($this->status);
+    }
+
+    /**
+     * Get status color for UI.
+     */
+    public function getStatusColorAttribute(): string
+    {
+        return match($this->status) {
+            self::STATUS_SENT => 'green',
+            self::STATUS_PENDING => 'yellow',
+            self::STATUS_FAILED => 'red',
+            self::STATUS_CANCELLED => 'gray',
+            default => 'gray',
+        };
+    }
+
+    /**
+     * Get time since sent/created.
+     */
+    public function getTimeSinceAttribute(): string
+    {
+        $date = $this->sent_at ?? $this->created_at;
+        return $date->diffForHumans();
+    }
+
+    /**
+     * Get days since creation.
+     */
+    public function getDaysSinceCreationAttribute(): int
+    {
+        return $this->created_at->diffInDays(now());
+    }
+
+    /**
+     * Check if notification is recent.
+     */
+    public function isRecent(int $days = 7): bool
+    {
+        return $this->days_since_creation <= $days;
+    }
+
+    /**
+     * Get attachment count.
+     */
+    public function getAttachmentCountAttribute(): int
+    {
+        return $this->attachments ? count($this->attachments) : 0;
+    }
+
+    /**
+     * Check if notification has attachments.
+     */
+    public function hasAttachments(): bool
+    {
+        return $this->attachment_count > 0;
+    }
+
+    /**
+     * Get attachment names.
+     */
+    public function getAttachmentNamesAttribute(): array
+    {
+        if (!$this->attachments) {
+            return [];
+        }
+
+        return array_keys($this->attachments);
+    }
+
+    /**
+     * Get attachment paths.
+     */
+    public function getAttachmentPathsAttribute(): array
+    {
+        if (!$this->attachments) {
+            return [];
+        }
+
+        return array_values($this->attachments);
+    }
+
+    /**
+     * Get template display name.
+     */
+    public function getTemplateDisplayNameAttribute(): string
+    {
+        return $this->template_used ?: 'Template predefinito';
+    }
+
+    /**
+     * Get notification priority for queue processing.
+     */
+    public function getPriorityAttribute(): int
+    {
+        $priority = 0;
+
+        // Higher priority for referees
+        if ($this->recipient_type === self::TYPE_REFEREE) {
+            $priority += 10;
+        }
+
+        // Higher priority for urgent tournaments (within 3 days)
+        if ($this->assignment) {
+            $daysUntil = now()->diffInDays($this->assignment->tournament->start_date, false);
+            if ($daysUntil <= 3) {
+                $priority += 20;
+            }
+        }
+
+        // Higher priority for retries
+        if ($this->status === self::STATUS_FAILED) {
+            $priority += 5;
+        }
+
+        return $priority;
+    }
+
+    /**
+     * Get summary for logging/display.
+     */
+    public function getSummaryAttribute(): string
+    {
+        $summary = "{$this->recipient_type_label} - {$this->recipient_email}";
+
+        if ($this->assignment) {
+            $summary .= " - {$this->assignment->tournament->name}";
+        }
+
+        return $summary;
+    }
+
+    /**
+     * Create notification for assignment.
+     */
+    public static function createForAssignment(Assignment $assignment, array $data): self
+    {
+        return self::create(array_merge($data, [
+            'assignment_id' => $assignment->id,
+        ]));
+    }
+
+    /**
+     * Get failed notifications requiring attention.
+     */
+    public static function getFailedNotificationsRequiringAttention()
+    {
+        return self::failed()
+            ->where('retry_count', '>=', self::MAX_RETRY_ATTEMPTS)
+            ->where('created_at', '>=', now()->subDays(7))
+            ->with(['assignment.tournament', 'assignment.user'])
+            ->get();
+    }
+
+    /**
+     * Get notifications statistics.
+     */
+    public static function getStatistics(int $days = 30): array
+    {
+        $query = self::where('created_at', '>=', now()->subDays($days));
+
+        return [
+            'total' => $query->count(),
+            'sent' => $query->where('status', self::STATUS_SENT)->count(),
+            'pending' => $query->where('status', self::STATUS_PENDING)->count(),
+            'failed' => $query->where('status', self::STATUS_FAILED)->count(),
+            'by_type' => $query->selectRaw('recipient_type, COUNT(*) as count')
+                              ->groupBy('recipient_type')
+                              ->pluck('count', 'recipient_type')
+                              ->toArray(),
+        ];
+    }
+}
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
+
+class Referee extends Model
+{
+    use HasFactory, SoftDeletes;
+
+    /**
+     * The attributes that are mass assignable.
+     *
+     * @var array<int, string>
+     */
+    protected $fillable = [
+        'user_id',
+        'zone_id',
+        'referee_code',
+        'level',
+        'category',
+        'certified_date',
+        'phone',
+        'address',
+        'city',
+        'postal_code',
+        'tax_code',
+        'is_active',
+        'profile_completed_at',
+        'preferences',
+        'badge_number',
+        'first_certification_date',
+        'last_renewal_date',
+        'expiry_date',
+        'qualifications',
+        'languages',
+        'available_for_international',
+        'specializations',
+        'total_tournaments',
+        'tournaments_current_year',
+    ];
+
+    /**
+     * The attributes that should be cast.
+     *
+     * @var array<string, string>
+     */
+    protected $casts = [
+        'certified_date' => 'date',
+        'first_certification_date' => 'date',
+        'last_renewal_date' => 'date',
+        'expiry_date' => 'date',
+        'profile_completed_at' => 'datetime',
+        'is_active' => 'boolean',
+        'available_for_international' => 'boolean',
+        'preferences' => 'array',
+        'qualifications' => 'array',
+        'languages' => 'array',
+        'total_tournaments' => 'integer',
+        'tournaments_current_year' => 'integer',
+    ];
+
+    /**
+     * Referee levels
+     */
+    const LEVEL_ASPIRANTE = 'aspirante';
+    const LEVEL_PRIMO_LIVELLO = 'primo_livello';
+    const LEVEL_REGIONALE = 'regionale';
+    const LEVEL_NAZIONALE = 'nazionale';
+    const LEVEL_INTERNAZIONALE = 'internazionale';
+
+    const REFEREE_LEVELS = [
+        self::LEVEL_ASPIRANTE => 'Aspirante',
+        self::LEVEL_PRIMO_LIVELLO => 'Primo Livello',
+        self::LEVEL_REGIONALE => 'Regionale',
+        self::LEVEL_NAZIONALE => 'Nazionale',
+        self::LEVEL_INTERNAZIONALE => 'Internazionale',
+    ];
+
+    /**
+     * Referee categories
+     */
+    const CATEGORY_MASCHILE = 'maschile';
+    const CATEGORY_FEMMINILE = 'femminile';
+    const CATEGORY_MISTO = 'misto';
+
+    const CATEGORIES = [
+        self::CATEGORY_MASCHILE => 'Maschile',
+        self::CATEGORY_FEMMINILE => 'Femminile',
+        self::CATEGORY_MISTO => 'Misto',
+    ];
+
+    /**
+     * Get the user that owns the referee profile.
+     */
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    /**
+     * Get the zone that the referee belongs to.
+     */
+    public function zone(): BelongsTo
+    {
+        return $this->belongsTo(Zone::class);
+    }
+
+    /**
+     * Get the availabilities for the referee.
+     */
+    public function availabilities(): HasMany
+    {
+        return $this->hasMany(Availability::class, 'user_id', 'user_id');
+    }
+
+    /**
+     * Get the assignments for the referee.
+     */
+    public function assignments(): HasMany
+    {
+        return $this->hasMany(Assignment::class, 'user_id', 'user_id');
+    }
+
+    /**
+     * Scope a query to only include active referees.
+     */
+    public function scopeActive($query)
+    {
+        return $query->where('is_active', true);
+    }
+
+    /**
+     * Scope a query to only include referees from a specific zone.
+     */
+    public function scopeInZone($query, $zoneId)
+    {
+        return $query->where('zone_id', $zoneId);
+    }
+
+    /**
+     * Scope a query to only include national level referees.
+     */
+    public function scopeNationalLevel($query)
+    {
+        return $query->whereIn('level', [self::LEVEL_NAZIONALE, self::LEVEL_INTERNAZIONALE]);
+    }
+
+    /**
+     * Check if referee can access national tournaments.
+     */
+    public function canAccessNationalTournaments(): bool
+    {
+        return in_array($this->level, [self::LEVEL_NAZIONALE, self::LEVEL_INTERNAZIONALE]);
+    }
+
+    /**
+     * Check if referee has completed their profile.
+     */
+    public function hasCompletedProfile(): bool
+    {
+        return !is_null($this->profile_completed_at) &&
+            !is_null($this->referee_code) &&
+            !is_null($this->level) &&
+            !is_null($this->certified_date) &&
+            !is_null($this->phone);
+    }
+
+    /**
+     * Mark profile as completed.
+     */
+    public function markProfileAsCompleted(): void
+    {
+        $this->update(['profile_completed_at' => now()]);
+    }
+
+    /**
+     * Get the referee's level label.
+     */
+    public function getLevelLabelAttribute(): string
+    {
+        return self::REFEREE_LEVELS[$this->level] ?? ucfirst($this->level ?? '');
+    }
+
+    /**
+     * Get the referee's category label.
+     */
+    public function getCategoryLabelAttribute(): string
+    {
+        return self::CATEGORIES[$this->category] ?? ucfirst($this->category ?? '');
+    }
+
+    /**
+     * Get the referee's full name with code.
+     */
+    public function getFullNameWithCodeAttribute(): string
+    {
+        return "{$this->user->name} ({$this->referee_code})";
+    }
+
+    /**
+     * Get upcoming assignments count.
+     */
+    public function getUpcomingAssignmentsCountAttribute(): int
+    {
+        return $this->assignments()
+            ->whereHas('tournament', function ($q) {
+                $q->where('start_date', '>=', now());
+            })
+            ->count();
+    }
+
+    /**
+     * Get this year's assignments count.
+     */
+    public function getThisYearAssignmentsCountAttribute(): int
+    {
+        return $this->assignments()
+            ->whereHas('tournament', function ($q) {
+                $q->whereYear('start_date', now()->year);
+            })
+            ->count();
+    }
+
+    /**
+     * Get availability count for current year.
+     */
+    public function getThisYearAvailabilitiesCountAttribute(): int
+    {
+        return $this->availabilities()
+            ->whereHas('tournament', function ($q) {
+                $q->whereYear('start_date', now()->year);
+            })
+            ->count();
+    }
+
+    /**
+     * Generate unique referee code.
+     */
+    public static function generateRefereeCode(): string
+    {
+        do {
+            $code = 'ARB' . str_pad(rand(1, 9999), 4, '0', STR_PAD_LEFT);
+        } while (self::where('referee_code', $code)->exists());
+
+        return $code;
+    }
+
+    /**
+     * Check if certification is expiring soon.
+     */
+    public function isCertificationExpiringSoon(int $days = 30): bool
+    {
+        if (!$this->expiry_date) {
+            return false;
+        }
+
+        return $this->expiry_date->lte(now()->addDays($days));
+    }
+
+    /**
+     * Check if certification is expired.
+     */
+    public function isCertificationExpired(): bool
+    {
+        if (!$this->expiry_date) {
+            return false;
+        }
+
+        return $this->expiry_date->lt(now());
+    }
+
+    public function isProfileComplete(): bool
+    {
+        // Se è stato marcato come completato (dall'admin o dal form), è completo
+        if ($this->profile_completed_at !== null) {
+            return true;
+        }
+
+        // Controllo minimale: solo campi veramente essenziali
+        return !empty($this->user->name) &&
+            !empty($this->user->email) &&
+            !empty($this->level) &&
+            !empty($this->zone_id);
+    }
+
+    // Aggiungi anche questo metodo helper:
+    public function markAsCompleted()
+    {
+        $this->update(['profile_completed_at' => now()]);
+    }
+}
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Cache;
+
+class Setting extends Model
+{
+    use HasFactory;
+
+    /**
+     * The attributes that are mass assignable.
+     *
+     * @var array<int, string>
+     */
+    protected $fillable = [
+        'key',
+        'value',
+        'type',
+        'description',
+        'group',
+    ];
+
+    /**
+     * The attributes that should be cast.
+     *
+     * @var array<string, string>
+     */
+    protected $casts = [
+        'value' => 'string',
+    ];
+
+    /**
+     * Boot method to clear cache when settings change
+     */
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::saved(function () {
+            Cache::forget('system_settings');
+        });
+
+        static::deleted(function () {
+            Cache::forget('system_settings');
+        });
+    }
+
+    /**
+     * Get a setting value by key
+     */
+    public static function get($key, $default = null)
+    {
+        $settings = Cache::remember('system_settings', 3600, function () {
+            return static::pluck('value', 'key')->toArray();
+        });
+
+        return $settings[$key] ?? $default;
+    }
+
+    /**
+     * Set a setting value
+     */
+    public static function set($key, $value, $type = 'string', $description = null, $group = 'general')
+    {
+        return static::updateOrCreate(
+            ['key' => $key],
+            [
+                'value' => $value,
+                'type' => $type,
+                'description' => $description,
+                'group' => $group,
+            ]
+        );
+    }
+
+    /**
+     * Get settings by group
+     */
+    public static function getByGroup($group)
+    {
+        return static::where('group', $group)->pluck('value', 'key')->toArray();
+    }
+
+    /**
+     * Get all settings grouped
+     */
+    public static function getAllGrouped()
+    {
+        return static::all()->groupBy('group')->map(function ($settings) {
+            return $settings->pluck('value', 'key');
+        });
+    }
+
+    /**
+     * Check if setting exists
+     */
+    public static function has($key)
+    {
+        return static::where('key', $key)->exists();
+    }
+
+    /**
+     * Remove a setting
+     */
+    public static function remove($key)
+    {
+        return static::where('key', $key)->delete();
+    }
+
+    /**
+     * Get typed value
+     */
+    public function getTypedValue()
+    {
+        switch ($this->type) {
+            case 'boolean':
+                return filter_var($this->value, FILTER_VALIDATE_BOOLEAN);
+            case 'integer':
+                return (int) $this->value;
+            case 'float':
+                return (float) $this->value;
+            case 'array':
+                return json_decode($this->value, true) ?: [];
+            case 'json':
+                return json_decode($this->value) ?: new \stdClass();
+            default:
+                return $this->value;
+        }
+    }
+
+    /**
+     * Set typed value
+     */
+    public function setTypedValue($value)
+    {
+        switch ($this->type) {
+            case 'boolean':
+                $this->value = $value ? '1' : '0';
+                break;
+            case 'array':
+            case 'json':
+                $this->value = json_encode($value);
+                break;
+            default:
+                $this->value = (string) $value;
+        }
+    }
+}
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Carbon\Carbon;
+
+class Tournament extends Model
+{
+    use HasFactory;
+
+    /**
+     * The attributes that are mass assignable.
+     *
+     * @var array<int, string>
+     */
+    protected $fillable = [
+        'name',
+        'start_date',
+        'end_date',
+        'availability_deadline',
+        'club_id',
+        'tournament_category_id', // Changed from tournament_type_id
+        'zone_id',
+        'notes',
+        'status',
+        'convocation_letter',
+        'club_letter',
+        'letters_generated_at',
+        'convocation_file_path',
+        'convocation_file_name',
+        'convocation_generated_at',
+        'club_letter_file_path',
+        'club_letter_file_name',
+        'club_letter_generated_at',
+        'documents_last_updated_by',
+        'document_version',
+    ];
+
+    /**
+     * The attributes that should be cast.
+     *
+     * @var array<string, string>
+     */
+    protected $casts = [
+        'start_date' => 'date',
+        'end_date' => 'date',
+        'availability_deadline' => 'date',
+        'letters_generated_at' => 'datetime',
+        'convocation_generated_at' => 'datetime',
+        'club_letter_generated_at' => 'datetime',
+        'document_version' => 'integer',
+    ];
+
+    /**
+     * Tournament statuses
+     */
+    const STATUS_DRAFT = 'draft';
+    const STATUS_OPEN = 'open';
+    const STATUS_CLOSED = 'closed';
+    const STATUS_ASSIGNED = 'assigned';
+    const STATUS_COMPLETED = 'completed';
+
+    const STATUSES = [
+        self::STATUS_DRAFT => 'Bozza',
+        self::STATUS_OPEN => 'Aperto',
+        self::STATUS_CLOSED => 'Chiuso',
+        self::STATUS_ASSIGNED => 'Assegnato',
+        self::STATUS_COMPLETED => 'Completato',
+    ];
+
+    /**
+     * Get the club that hosts the tournament.
+     */
+    public function club(): BelongsTo
+    {
+        return $this->belongsTo(Club::class);
+    }
+
+    /**
+     * Get the tournament category.
+     * Renamed from tournamentType
+     */
+    public function tournamentCategory(): BelongsTo
+    {
+        return $this->belongsTo(TournamentCategory::class);
+    }
+
+    /**
+     * Alias for backward compatibility
+     */
+    public function tournament_type()
+    {
+        return $this->tournamentCategory();
+    }
+
+    /**
+     * Get the zone.
+     */
+    public function zone(): BelongsTo
+    {
+        return $this->belongsTo(Zone::class);
+    }
+
+    /**
+     * Get the user who last updated documents.
+     */
+    public function documentsLastUpdatedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'documents_last_updated_by');
+    }
+
+    /**
+     * Get the availabilities for the tournament.
+     */
+    public function availabilities(): HasMany
+    {
+        return $this->hasMany(Availability::class);
+    }
+
+    /**
+     * Get the assignments for the tournament.
+     */
+    public function assignments(): HasMany
+    {
+        return $this->hasMany(Assignment::class);
+    }
+
+    /**
+     * Get available referees (those who declared availability)
+     */
+    public function availableReferees()
+    {
+        return $this->belongsToMany(User::class, 'availabilities')
+                    ->withPivot('notes', 'submitted_at')
+                    ->withTimestamps();
+    }
+
+   /**
+ * Get assigned referees
+ */
+public function assignedReferees()
+{
+    return $this->belongsToMany(User::class, 'assignments')
+                ->withPivot('role', 'is_confirmed', 'assigned_at', 'assigned_by_id', 'notes')
+                ->withTimestamps();
+}
+
+
+    /**
+     * Scope a query to only include tournaments visible to a specific zone.
+     */
+    public function scopeVisibleToZone($query, $zoneId)
+    {
+        return $query->where(function ($q) use ($zoneId) {
+            $q->where('zone_id', $zoneId)
+              ->orWhereHas('tournamentCategory', function ($q) {
+                  $q->where('is_national', true);
+              });
+        });
+    }
+
+    /**
+     * Scope a query to only include active tournaments.
+     */
+    public function scopeActive($query)
+    {
+        return $query->whereIn('status', [self::STATUS_OPEN, self::STATUS_CLOSED, self::STATUS_ASSIGNED]);
+    }
+
+    /**
+     * Scope a query to only include upcoming tournaments.
+     */
+    public function scopeUpcoming($query)
+    {
+        return $query->where('start_date', '>=', Carbon::today());
+    }
+
+    /**
+     * Scope a query to only include past tournaments.
+     */
+    public function scopePast($query)
+    {
+        return $query->where('end_date', '<', Carbon::today());
+    }
+
+    /**
+     * Scope a query to only include tournaments open for availability.
+     */
+    public function scopeOpenForAvailability($query)
+    {
+        return $query->where('status', self::STATUS_OPEN)
+                     ->where('availability_deadline', '>=', Carbon::today());
+    }
+
+    /**
+     * Check if tournament is editable
+     */
+    public function isEditable(): bool
+    {
+        return in_array($this->status, [self::STATUS_DRAFT, self::STATUS_OPEN]);
+    }
+
+    /**
+     * Check if tournament is open for availability declarations
+     */
+    public function isOpenForAvailability(): bool
+    {
+        return $this->status === self::STATUS_OPEN
+               && $this->availability_deadline >= Carbon::today();
+    }
+
+    /**
+     * Check if tournament needs referees
+     */
+    public function needsReferees(): bool
+    {
+        $requiredReferees = $this->tournamentCategory->min_referees ?? 1;
+        $assignedReferees = $this->assignments()->count();
+
+        return $assignedReferees < $requiredReferees;
+    }
+
+    /**
+     * Get the number of required referees
+     */
+    public function getRequiredRefereesAttribute(): int
+    {
+        return $this->tournamentCategory->min_referees ?? 1;
+    }
+
+    /**
+     * Get the maximum number of referees allowed
+     */
+    public function getMaxRefereesAttribute(): int
+    {
+        return $this->tournamentCategory->max_referees ?? $this->required_referees;
+    }
+
+    /**
+     * Check if a referee can be assigned
+     */
+    public function canAssignReferee(User $referee): bool
+    {
+        // Check if already assigned
+        if ($this->assignments()->where('user_id', $referee->id)->exists()) {
+            return false;
+        }
+
+        // Check if max referees reached
+        if ($this->assignments()->count() >= $this->max_referees) {
+            return false;
+        }
+
+        // Check referee level
+        if (!$this->tournamentCategory->requiresRefereeLevel($referee->referee->level)) {
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Get status label
+     */
+    public function getStatusLabelAttribute(): string
+    {
+        return self::STATUSES[$this->status] ?? $this->status;
+    }
+
+    /**
+     * Get status color for UI
+     */
+    public function getStatusColorAttribute(): string
+    {
+        return match($this->status) {
+            self::STATUS_DRAFT => 'gray',
+            self::STATUS_OPEN => 'green',
+            self::STATUS_CLOSED => 'yellow',
+            self::STATUS_ASSIGNED => 'blue',
+            self::STATUS_COMPLETED => 'gray',
+            default => 'gray',
+        };
+    }
+
+    /**
+     * Get formatted date range
+     */
+    public function getDateRangeAttribute(): string
+    {
+        if ($this->start_date->equalTo($this->end_date)) {
+            return $this->start_date->format('d/m/Y');
+        }
+
+        return $this->start_date->format('d/m/Y') . ' - ' . $this->end_date->format('d/m/Y');
+    }
+
+    /**
+     * Get days until availability deadline
+     */
+    public function getDaysUntilDeadlineAttribute(): int
+    {
+        return Carbon::today()->diffInDays($this->availability_deadline, false);
+    }
+
+    /**
+     * Update tournament status based on conditions
+     */
+    public function updateStatus(): void
+    {
+        // If past deadline and still open, close it
+        if ($this->status === self::STATUS_OPEN && $this->availability_deadline < Carbon::today()) {
+            $this->update(['status' => self::STATUS_CLOSED]);
+        }
+
+        // If has enough assignments and closed, mark as assigned
+        if ($this->status === self::STATUS_CLOSED && $this->assignments()->count() >= $this->required_referees) {
+            $this->update(['status' => self::STATUS_ASSIGNED]);
+        }
+
+        // If tournament date has passed and assigned, mark as completed
+        if ($this->status === self::STATUS_ASSIGNED && $this->end_date < Carbon::today()) {
+            $this->update(['status' => self::STATUS_COMPLETED]);
+        }
+    }
+
+    /**
+     * Generate document version number
+     */
+    public function incrementDocumentVersion(): void
+    {
+        $this->increment('document_version');
+        $this->update(['documents_last_updated_by' => auth()->id()]);
+    }
+
+}
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+
+class TournamentCategory extends Model
+{
+    use HasFactory;
+
+    /**
+     * The attributes that are mass assignable.
+     *
+     * @var array<int, string>
+     */
+    protected $fillable = [
+        'name',
+        'code',
+        'description',
+        'is_national',
+        'required_level',
+        'level',
+        'sort_order',
+        'is_active',
+        'settings',
+        'min_referees',
+        'max_referees',
+    ];
+
+    /**
+     * The attributes that should be cast.
+     *
+     * @var array<string, string>
+     */
+    protected $casts = [
+        'is_national' => 'boolean',
+        'is_active' => 'boolean',
+        'settings' => 'array',
+        'sort_order' => 'integer',
+        'min_referees' => 'integer',
+        'max_referees' => 'integer',
+    ];
+
+    /**
+     * Default settings structure
+     *
+     * @var array
+     */
+    protected $attributes = [
+        'settings' => '{}',
+        'is_active' => true,
+        'sort_order' => 0,
+        'level' => 'zonale',
+        'min_referees' => 1,
+        'max_referees' => 1,
+    ];
+
+    /**
+     * Referee levels
+     */
+    const REFEREE_LEVELS = [
+        'aspirante' => 'Aspirante',
+        '1_livello' => 'Primo Livello',
+        'regionale' => 'Regionale',
+        'nazionale' => 'Nazionale',
+        'internazionale' => 'Internazionale',
+    ];
+
+    /**
+     * Category levels
+     */
+    const CATEGORY_LEVELS = [
+        'zonale' => 'Zonale',
+        'nazionale' => 'Nazionale',
+    ];
+
+    /**
+     * Boot method to keep JSON settings in sync with physical columns
+     */
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::saving(function ($model) {
+            // Sync physical columns to JSON settings
+            $settings = $model->settings ?? [];
+            $settings['min_referees'] = $model->min_referees;
+            $settings['max_referees'] = $model->max_referees;
+            $model->settings = $settings;
+        });
+    }
+
+    /**
+     * Get the tournaments for the category.
+     */
+    public function tournaments(): HasMany
+    {
+        return $this->hasMany(Tournament::class, 'tournament_category_id');
+    }
+
+    /**
+     * Scope a query to only include active categories.
+     */
+    public function scopeActive($query)
+    {
+        return $query->where('is_active', true);
+    }
+
+    /**
+     * Scope a query to only include national categories.
+     */
+    public function scopeNational($query)
+    {
+        return $query->where('is_national', true);
+    }
+
+    /**
+     * Scope a query to only include zonal categories.
+     */
+    public function scopeZonal($query)
+    {
+        return $query->where('is_national', false);
+    }
+
+    /**
+     * Scope a query to order by sort order.
+     */
+    public function scopeOrdered($query)
+    {
+        return $query->orderBy('sort_order')->orderBy('name');
+    }
+
+    /**
+     * Get the required referee level from settings (for backward compatibility)
+     */
+    public function getRequiredRefereeLevelAttribute(): string
+    {
+        return $this->settings['required_referee_level'] ?? $this->required_level ?? 'aspirante';
+    }
+
+    /**
+     * Get the visibility zones setting
+     */
+    public function getVisibilityZonesAttribute()
+    {
+        return $this->settings['visibility_zones'] ?? ($this->is_national ? 'all' : 'own');
+    }
+
+    /**
+     * Check if category requires specific referee level
+     */
+    public function requiresRefereeLevel(string $level): bool
+    {
+        // Se level è null, considera come aspirante
+        if ($level === null) {
+            $level = 'aspirante';
+        }
+        $levels = array_keys(self::REFEREE_LEVELS);
+        $requiredIndex = array_search($this->required_referee_level, $levels);
+        $checkIndex = array_search($level, $levels);
+
+        return $checkIndex !== false && $requiredIndex !== false && $checkIndex >= $requiredIndex;
+    }
+
+    /**
+     * Get notification templates for this category
+     */
+    public function getNotificationTemplatesAttribute(): array
+    {
+        return $this->settings['notification_templates'] ?? [];
+    }
+
+    /**
+     * Get special requirements
+     */
+    public function getSpecialRequirementsAttribute(): ?string
+    {
+        return $this->settings['special_requirements'] ?? null;
+    }
+
+    /**
+     * Update settings and sync with physical columns
+     */
+    public function updateSettings(array $settings): void
+    {
+        $currentSettings = $this->settings ?? [];
+        $newSettings = array_merge($currentSettings, $settings);
+
+        // Update physical columns if provided in settings
+        if (isset($settings['min_referees'])) {
+            $this->min_referees = $settings['min_referees'];
+        }
+        if (isset($settings['max_referees'])) {
+            $this->max_referees = $settings['max_referees'];
+        }
+
+        $this->settings = $newSettings;
+        $this->save();
+    }
+
+    /**
+     * Get available for zones
+     */
+    public function isAvailableForZone($zoneId): bool
+    {
+        if ($this->is_national || $this->visibility_zones === 'all') {
+            return true;
+        }
+
+        if (is_array($this->visibility_zones)) {
+            return in_array($zoneId, $this->visibility_zones);
+        }
+
+        return false;
+    }
+
+    /**
+     * Get formatted name with level
+     */
+    public function getFormattedNameAttribute(): string
+    {
+        $prefix = $this->is_national ? '[NAZ] ' : '[ZONA] ';
+        return $prefix . $this->name;
+    }
+
+    /**
+     * Check if can be deleted
+     */
+    public function canBeDeleted(): bool
+    {
+        return !$this->tournaments()->exists();
+    }
+
+    /**
+     * Get display information
+     */
+    public function getDisplayInfoAttribute(): array
+    {
+        return [
+            'formatted_name' => $this->formatted_name,
+            'referee_range' => "{$this->min_referees}-{$this->max_referees} arbitri",
+            'required_level' => self::REFEREE_LEVELS[$this->required_referee_level] ?? 'Non specificato',
+            'visibility' => $this->is_national ? 'Nazionale' : 'Zonale',
+        ];
+    }
+}
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Notifications\Notifiable;
+use Laravel\Sanctum\HasApiTokens;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
+
+class User extends Authenticatable
+{
+    use HasApiTokens, HasFactory, Notifiable, SoftDeletes;
+
+    /**
+     * The attributes that are mass assignable.
+     *
+     * @var array<int, string>
+     */
+    protected $fillable = [
+        'name',
+        'email',
+        'password',
+        'referee_code',
+        'level',
+        'category',
+        'zone_id',
+        'phone',
+        'notes',
+        'is_active',
+        'user_type',
+        'certified_date',
+    ];
+
+    /**
+     * The attributes that should be hidden for serialization.
+     *
+     * @var array<int, string>
+     */
+    protected $hidden = [
+        'password',
+        'remember_token',
+    ];
+
+    /**
+     * The attributes that should be cast.
+     *
+     * @var array<string, string>
+     */
+    protected $casts = [
+        'email_verified_at' => 'datetime',
+        'password' => 'hashed',
+        'is_active' => 'boolean',
+        'certified_date' => 'date',
+    ];
+
+    /**
+     * User types
+     */
+    const TYPE_REFEREE = 'referee';
+    const TYPE_ADMIN = 'admin';
+    const TYPE_NATIONAL_ADMIN = 'national_admin';
+    const TYPE_SUPER_ADMIN = 'super_admin';
+
+    const USER_TYPES = [
+        self::TYPE_REFEREE => 'Arbitro',
+        self::TYPE_ADMIN => 'Admin Zona',
+        self::TYPE_NATIONAL_ADMIN => 'Admin CRC',
+        self::TYPE_SUPER_ADMIN => 'Super Admin',
+    ];
+
+    /**
+     * Referee levels
+     */
+    const LEVEL_ASPIRANT = 'aspirante';
+    const LEVEL_FIRST = 'primo_livello';
+    const LEVEL_REGIONAL = 'regionale';
+    const LEVEL_NATIONAL = 'nazionale';
+    const LEVEL_INTERNATIONAL = 'internazionale';
+    const LEVEL_ARCHIVE = 'archivio';
+
+    const REFEREE_LEVELS = [
+        self::LEVEL_ASPIRANT => 'Aspirante',
+        self::LEVEL_FIRST => 'Primo Livello',
+        self::LEVEL_REGIONAL => 'Regionale',
+        self::LEVEL_NATIONAL => 'Nazionale',
+        self::LEVEL_INTERNATIONAL => 'Internazionale',
+        self::LEVEL_ARCHIVE => 'Archivio',
+    ];
+
+    /**
+     * Get the zone that the user belongs to.
+     */
+    public function zone(): BelongsTo
+    {
+        return $this->belongsTo(Zone::class);
+    }
+
+    /**
+     * Get the referee details.
+     */
+    public function refereeDetails(): HasOne
+    {
+        return $this->hasOne(RefereeDetail::class);
+    }
+
+    /**
+     * Get the availabilities declared by the user.
+     */
+    public function availabilities(): HasMany
+    {
+        return $this->hasMany(Availability::class);
+    }
+
+    /**
+     * Get the assignments for the user.
+     */
+    public function assignments(): HasMany
+    {
+        return $this->hasMany(Assignment::class);
+    }
+
+    /**
+     * Get the assignments made by this user (as admin).
+     */
+    public function assignmentsMade(): HasMany
+    {
+        return $this->hasMany(Assignment::class, 'assigned_by');
+    }
+
+    /**
+     * Scope a query to only include active users.
+     */
+    public function scopeActive($query)
+    {
+        return $query->where('is_active', true);
+    }
+
+    /**
+     * Scope a query to only include referees.
+     */
+    public function scopeReferees($query)
+    {
+        return $query->where('user_type', self::TYPE_REFEREE);
+    }
+
+    /**
+     * Scope a query to only include admins (all types).
+     */
+    public function scopeAdmins($query)
+    {
+        return $query->whereIn('user_type', [
+            self::TYPE_ADMIN,
+            self::TYPE_NATIONAL_ADMIN,
+            self::TYPE_SUPER_ADMIN
+        ]);
+    }
+
+    /**
+     * Scope a query to only include users from a specific zone.
+     */
+    public function scopeFromZone($query, $zoneId)
+    {
+        return $query->where('zone_id', $zoneId);
+    }
+
+    /**
+     * Scope a query to only include referees of a specific level.
+     */
+    public function scopeOfLevel($query, $level)
+    {
+        return $query->where('level', $level);
+    }
+
+    /**
+     * Scope a query to only include national/international referees.
+     */
+    public function scopeNationalReferees($query)
+    {
+        return $query->whereIn('level', [self::LEVEL_NATIONAL, self::LEVEL_INTERNATIONAL]);
+    }
+
+    /**
+     * Check if user is a referee
+     */
+    public function isReferee(): bool
+    {
+        return $this->user_type === self::TYPE_REFEREE;
+    }
+
+    /**
+     * Check if user is an admin (any type)
+     */
+    public function isAdmin(): bool
+    {
+        return in_array($this->user_type, [
+            self::TYPE_ADMIN,
+            self::TYPE_NATIONAL_ADMIN,
+            self::TYPE_SUPER_ADMIN
+        ]);
+    }
+
+    /**
+     * Check if user is a zone admin
+     */
+    public function isZoneAdmin(): bool
+    {
+        return $this->user_type === self::TYPE_ADMIN;
+    }
+
+    /**
+     * Check if user is a national admin
+     */
+    public function isNationalAdmin(): bool
+    {
+        return $this->user_type === self::TYPE_NATIONAL_ADMIN;
+    }
+
+    /**
+     * Check if user is a super admin
+     */
+    public function isSuperAdmin(): bool
+    {
+        return $this->user_type === self::TYPE_SUPER_ADMIN;
+    }
+
+    /**
+     * Check if user can manage zone
+     */
+    public function canManageZone($zoneId): bool
+    {
+        if ($this->isSuperAdmin() || $this->isNationalAdmin()) {
+            return true;
+        }
+
+        if ($this->isZoneAdmin() && $this->zone_id == $zoneId) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Check if user can view tournament
+     */
+    public function canViewTournament(Tournament $tournament): bool
+    {
+        // Admins can view based on zone access
+        if ($this->isAdmin()) {
+            return $this->canManageZone($tournament->zone_id);
+        }
+
+        // Referees can view if tournament is visible to them
+        if ($this->isReferee()) {
+            // National tournaments are visible to all
+            if ($tournament->tournamentCategory->is_national) {
+                return true;
+            }
+
+            // Zone tournaments are visible to zone referees
+            return $this->zone_id === $tournament->zone_id;
+        }
+
+        return false;
+    }
+
+    /**
+     * Get user type label
+     */
+    public function getUserTypeLabelAttribute(): string
+    {
+        return self::USER_TYPES[$this->user_type] ?? $this->user_type;
+    }
+
+    /**
+     * Get referee level label
+     */
+    public function getLevelLabelAttribute(): string
+    {
+        return self::REFEREE_LEVELS[$this->level] ?? $this->level;
+    }
+
+    /**
+     * Get full display name with code
+     */
+    public function getFullNameAttribute(): string
+    {
+        if ($this->referee_code) {
+            return "{$this->name} ({$this->referee_code})";
+        }
+        return $this->name;
+    }
+
+    /**
+     * Get upcoming assignments
+     */
+    public function getUpcomingAssignmentsAttribute()
+    {
+        return $this->assignments()
+            ->upcoming()
+            ->with(['tournament.club', 'tournament.zone'])
+            ->orderBy('tournaments.start_date')
+            ->get();
+    }
+
+    /**
+     * Get statistics for referee
+     */
+    public function getRefereeStatisticsAttribute(): array
+    {
+        if (!$this->isReferee()) {
+            return [];
+        }
+
+        return [
+            'total_availabilities' => $this->availabilities()->count(),
+            'total_assignments' => $this->assignments()->count(),
+            'confirmed_assignments' => $this->assignments()->confirmed()->count(),
+            'upcoming_assignments' => $this->assignments()->upcoming()->count(),
+            'completed_assignments' => $this->assignments()->whereHas('tournament', function ($q) {
+                $q->where('status', 'completed');
+            })->count(),
+            'current_year_assignments' => $this->assignments()
+                ->whereYear('assigned_at', now()->year)
+                ->count(),
+        ];
+    }
+
+    /**
+     * Check if can be assigned to tournament
+     */
+    public function canBeAssignedToTournament(Tournament $tournament): bool
+    {
+        if (!$this->isReferee() || !$this->is_active) {
+            return false;
+        }
+
+        // Check if already assigned
+        if ($this->assignments()->where('tournament_id', $tournament->id)->exists()) {
+            return false;
+        }
+
+        // Check level requirement
+        if (!$tournament->tournamentCategory->requiresRefereeLevel($this->level)) {
+            return false;
+        }
+
+        // Check zone for non-national tournaments
+        if (!$tournament->tournamentCategory->is_national && $this->zone_id !== $tournament->zone_id) {
+            return false;
+        }
+
+        return true;
+    }
+    /**
+     * Check if user has completed their profile.
+     * Add this method to your app/Models/User.php file
+     */
+    public function hasCompletedProfile(): bool
+    {
+        // Per gli admin, considerali sempre con profilo completo
+        if ($this->isAdmin()) {
+            return true;
+        }
+
+        // Per gli arbitri, verifica campi obbligatori
+        if ($this->isReferee()) {
+            return !empty($this->name) &&
+                !empty($this->email) &&
+                !empty($this->referee_code) &&
+                !empty($this->level) &&
+                !empty($this->zone_id) &&
+                !empty($this->phone);
+        }
+
+        // Default: profilo completo se ha nome ed email
+        return !empty($this->name) && !empty($this->email);
+    }
+    /**
+     * Check if user has a specific role based on user_type
+     * Aggiungere questo metodo alla fine della classe User in app/Models/User.php
+     */
+    public function hasRole($role): bool
+    {
+        // Mapping dei ruoli al user_type per compatibilità
+        $roleMapping = [
+            'admin' => ['admin', 'national_admin', 'super_admin'],
+            'zone_admin' => ['admin'], // zone_admin è un alias per admin
+            'national_admin' => ['national_admin', 'super_admin'],
+            'super_admin' => ['super_admin'],
+            'referee' => ['referee'],
+            'administrator' => ['admin', 'national_admin', 'super_admin'],
+        ];
+
+        // Se il ruolo non è mappato, verifica direttamente con user_type
+        if (!isset($roleMapping[$role])) {
+            return $this->user_type === $role;
+        }
+
+        // Verifica se user_type è incluso nel mapping del ruolo
+        return in_array($this->user_type, $roleMapping[$role]);
+    }
+
+    /**
+     * Check if user has any of the specified roles
+     */
+    public function hasAnyRole($roles): bool
+    {
+        if (is_string($roles)) {
+            $roles = [$roles];
+        }
+
+        foreach ($roles as $role) {
+            if ($this->hasRole($role)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+    /**
+     * Get the referee profile.
+     */
+    public function referee(): HasOne
+    {
+        return $this->hasOne(Referee::class);
+    }
+
+}
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+
+class Zone extends Model
+{
+    use HasFactory;
+
+    /**
+     * The attributes that are mass assignable.
+     *
+     * @var array<int, string>
+     */
+    protected $fillable = [
+        'name',
+        'description',
+        'is_national',
+        'header_document_path',
+        'header_updated_at',
+        'header_updated_by',
+    ];
+
+    /**
+     * The attributes that should be cast.
+     *
+     * @var array<string, string>
+     */
+    protected $casts = [
+        'is_national' => 'boolean',
+        'header_updated_at' => 'datetime',
+    ];
+
+    /**
+     * Get the users in this zone.
+     */
+    public function users(): HasMany
+    {
+        return $this->hasMany(User::class);
+    }
+
+    /**
+     * Get the referees in this zone.
+     */
+    public function referees(): HasMany
+    {
+        return $this->hasMany(User::class)->where('user_type', 'referee');
+    }
+
+    /**
+     * Get the admins in this zone.
+     */
+    public function admins(): HasMany
+    {
+        return $this->hasMany(User::class)->where('user_type', 'admin');
+    }
+
+    /**
+     * Get the clubs in this zone.
+     */
+    public function clubs(): HasMany
+    {
+        return $this->hasMany(Club::class);
+    }
+
+    /**
+     * Get the tournaments in this zone.
+     */
+    public function tournaments(): HasMany
+    {
+        return $this->hasMany(Tournament::class);
+    }
+
+    /**
+     * Get the institutional emails for this zone.
+     */
+    public function institutionalEmails(): HasMany
+    {
+        return $this->hasMany(InstitutionalEmail::class);
+    }
+
+    /**
+     * Get the letter templates for this zone.
+     */
+    public function letterTemplates(): HasMany
+    {
+        return $this->hasMany(LetterTemplate::class);
+    }
+
+    /**
+     * Get the letterheads for this zone.
+     */
+    public function letterheads(): HasMany
+    {
+        return $this->hasMany(Letterhead::class);
+    }
+
+    /**
+     * Get the user who last updated the header.
+     */
+    public function headerUpdatedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'header_updated_by');
+    }
+
+    /**
+     * Scope a query to only include non-national zones.
+     */
+    public function scopeRegional($query)
+    {
+        return $query->where('is_national', false);
+    }
+
+    /**
+     * Get active referees count
+     */
+    public function getActiveRefereesCountAttribute(): int
+    {
+        return $this->referees()->where('is_active', true)->count();
+    }
+
+    /**
+     * Get active clubs count
+     */
+    public function getActiveClubsCountAttribute(): int
+    {
+        return $this->clubs()->where('is_active', true)->count();
+    }
+
+    /**
+     * DEPRECATED: Use getActiveClubsCountAttribute() instead
+     */
+    public function getActiveCirclesCountAttribute(): int
+    {
+        return $this->getActiveClubsCountAttribute();
+    }
+
+    /**
+     * Get upcoming tournaments count
+     */
+    public function getUpcomingTournamentsCountAttribute(): int
+    {
+        return $this->tournaments()->upcoming()->count();
+    }
+
+    /**
+     * Get active tournaments count
+     */
+    public function getActiveTournamentsCountAttribute(): int
+    {
+        return $this->tournaments()->active()->count();
+    }
+
+    /**
+     * Get statistics for the zone
+     */
+    public function getStatisticsAttribute(): array
+    {
+        return [
+            'total_referees' => $this->referees()->count(),
+            'active_referees' => $this->active_referees_count,
+            'total_clubs' => $this->clubs()->count(),
+            'active_clubs' => $this->active_clubs_count,
+            'total_circles' => $this->clubs()->count(), // For backward compatibility
+            'active_circles' => $this->active_clubs_count, // For backward compatibility
+            'total_tournaments' => $this->tournaments()->count(),
+            'upcoming_tournaments' => $this->upcoming_tournaments_count,
+            'active_tournaments' => $this->active_tournaments_count,
+            'completed_tournaments' => $this->tournaments()->where('status', 'completed')->count(),
+        ];
+    }
+
+    /**
+     * Get referee statistics by level
+     */
+    public function getRefereesByLevelAttribute(): array
+    {
+        return $this->referees()
+            ->where('is_active', true)
+            ->get()
+            ->groupBy('level')
+            ->map(function ($referees) {
+                return $referees->count();
+            })
+            ->toArray();
+    }
+
+    /**
+     * Get tournaments by category
+     */
+    public function getTournamentsByCategoryAttribute(): array
+    {
+        return $this->tournaments()
+            ->with('tournamentCategory')
+            ->get()
+            ->groupBy('tournamentCategory.name')
+            ->map(function ($tournaments) {
+                return $tournaments->count();
+            })
+            ->toArray();
+    }
+
+    /**
+ * Scope per ottenere solo le zone attive
+ */
+public function scopeActive($query)
+{
+    return $query->where('is_active', true);
+}
+
+/**
+ * Scope per ordinare le zone per nome
+ */
+public function scopeOrdered($query)
+{
+    return $query->orderBy('name');
+}
+}

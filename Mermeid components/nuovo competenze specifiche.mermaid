@@ -1,0 +1,57 @@
+graph LR
+    subgraph ARBITRI["GESTIONE ARBITRI"]
+        ASP[Aspirante]
+        PRIMO[1° Livello]
+        REG[Regionale]
+        NAZ[Nazionale]
+        INT[Internazionale]
+        ARCH[Archivio]
+    end
+
+    subgraph ZONE["ZONE (SZR1-SZR7)"]
+        ZC[Zone Competence]
+        ZT[Tornei Zonali]
+        ZA_TYPES[Aspirante<br/>1° Livello<br/>Regionale<br/>Archivio]
+    end
+
+    subgraph CRC_COMP["CRC"]
+        CC[CRC Competence]
+        CT[Tornei Nazionali/<br/>Internazionali/Pro]
+        CA_TYPES[Nazionale<br/>Internazionale<br/>Archivio]
+    end
+
+    subgraph ROLES_RESP["RESPONSABILITÀ RUOLI"]
+        DT_RESP[Direttore Torneo<br/>CRC → Nazionale<br/>Zone → Zonale]
+        ARB_RESP[Arbitri<br/>CRC → Nazionale<br/>Zone → Zonale]
+        OSS_RESP[Osservatori<br/>Sempre Zone territoriale]
+    end
+
+    subgraph COMM["COMUNICAZIONI"]
+        Z_COMM[Zone →<br/>• Circolo + lettere<br/>• Arbitri<br/>• Indirizzi istituzionali<br/>• Altri indirizzi]
+        C_COMM[CRC →<br/>• FIG<br/>• Arbitri]
+    end
+
+    %% Competenze arbitri
+    ZONE --> ZA_TYPES
+    CRC_COMP --> CA_TYPES
+
+    %% Competenze tornei
+    ZC -.->|Criterio territoriale| ZT
+    CC -.->|Criterio tipologia| CT
+
+    %% Responsabilità
+    ZC --> DT_RESP
+    CC --> DT_RESP
+    ZC --> OSS_RESP
+
+    %% Comunicazioni
+    ZC --> Z_COMM
+    CC --> C_COMM
+
+    classDef zone fill:#e1f5fe,stroke:#01579b
+    classDef crc fill:#f3e5f5,stroke:#4a148c
+    classDef shared fill:#fff3e0,stroke:#e65100
+
+    class ZONE,ZC,ZT,ZA_TYPES,Z_COMM zone
+    class CRC_COMP,CC,CT,CA_TYPES,C_COMM crc
+    class ARCH,OSS_RESP shared
