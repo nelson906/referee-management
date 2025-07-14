@@ -91,7 +91,7 @@
                         @enderror
                     </div>
 
-                    {{-- Livello - CORRETTO: dal User, non dal Referee --}}
+                        {{-- Livello - CORRETTO: dal User, non dal Referee --}}
                     <div>
                         <label for="level" class="block text-sm font-medium text-gray-700 mb-1">Livello *</label>
                         <select name="level" id="level"

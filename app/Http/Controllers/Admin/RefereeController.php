@@ -66,11 +66,11 @@ class RefereeController extends Controller
             : Zone::where('id', $user->zone_id)->get();
 
         $levels = [
-            'aspirante' => 'Aspirante',
-            'primo_livello' => 'Primo Livello',
-            'regionale' => 'Regionale',
-            'nazionale' => 'Nazionale',
-            'internazionale' => 'Internazionale',
+            'Aspirante' => 'Aspirante',
+            '1_livello' => 'Primo Livello',
+            'Regionale' => 'Regionale',
+            'Nazionale' => 'Nazionale',
+            'Internazionale' => 'Internazionale',
         ];
 
         return view('admin.referees.index', compact('referees', 'zones', 'levels', 'isNationalAdmin'));
@@ -209,13 +209,13 @@ public function edit($id)
     // ✅ CARICA LA RELAZIONE USER
     $referee->load('user');
 
-    $levels = [
-        'aspirante' => 'Aspirante',
-        'primo_livello' => 'Primo Livello',
-        'regionale' => 'Regionale',
-        'nazionale' => 'Nazionale',
-        'internazionale' => 'Internazionale'
-    ];
+        $levels = [
+            'Aspirante' => 'Aspirante',
+            '1_livello' => 'Primo Livello',
+            'Regionale' => 'Regionale',
+            'Nazionale' => 'Nazionale',
+            'Internazionale' => 'Internazionale',
+        ];
 
     $zones = Zone::all();
 

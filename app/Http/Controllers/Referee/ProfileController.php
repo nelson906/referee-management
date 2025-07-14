@@ -31,11 +31,11 @@ class ProfileController extends Controller
         $zones = Zone::orderBy('name')->get();
 
         $levels = [
-            'primo_livello' => 'Primo Livello',
-            'secondo_livello' => 'Secondo Livello',
-            'terzo_livello' => 'Terzo Livello',
-            'nazionale' => 'Nazionale',
-            'internazionale' => 'Internazionale'
+            'Aspirante' => 'Aspirante',
+            '1_livello' => 'Primo Livello',
+            'Regionale' => 'Regionale',
+            'Nazionale' => 'Nazionale',
+            'Internazionale' => 'Internazionale',
         ];
 
         return view('referee.profile.edit', compact('referee', 'zones', 'levels'));
@@ -87,7 +87,6 @@ class ProfileController extends Controller
             return redirect()
                 ->route('referee.dashboard')
                 ->with('success', 'Profilo aggiornato con successo!');
-
         } catch (\Exception $e) {
             DB::rollback();
 
