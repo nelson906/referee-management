@@ -1,0 +1,9 @@
+id,name,description,is_national,header_document_path,header_updated_at,header_updated_by,created_at,updated_at
+1,SZR1,"Piemonte e Liguria",0,NULL,NULL,NULL,"2025-07-03 14:11:54","2025-07-03 14:11:54"
+2,SZR2,Lombardia,0,NULL,NULL,NULL,"2025-07-03 14:11:54","2025-07-03 14:11:54"
+3,SZR3,"Veneto e Friuli Venezia Giulia",0,NULL,NULL,NULL,"2025-07-03 14:11:54","2025-07-03 14:11:55"
+4,SZR4,"Emilia e Romagna",0,NULL,NULL,NULL,"2025-07-03 14:11:54","2025-07-03 14:11:55"
+5,SZR5,"Toscana e Marche",0,NULL,NULL,NULL,"2025-07-03 14:11:54","2025-07-03 14:11:55"
+6,SZR6,"Lazio, Abruzzo, Molise e Sardegna",0,NULL,NULL,NULL,"2025-07-03 14:11:54","2025-07-03 14:11:55"
+7,SZR7,"Sud Italia",0,NULL,NULL,NULL,"2025-07-03 14:11:54","2025-07-03 14:11:55"
+8,CRC,"Comitato Regole Campionati",1,NULL,NULL,NULL,"2025-07-03 14:11:54","2025-07-03 14:11:55"

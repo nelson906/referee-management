@@ -1,4 +1,11 @@
 <?php
+/**
+ * MIGRATION CORRETTA - TOURNAMENTS
+ *
+ * File: database/migrations/2025_07_04_160821_create_tournaments_table.php
+ *
+ * Usa tournament_type_id foreign key (FASE 2 compliant)
+ */
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
@@ -18,7 +25,10 @@ return new class extends Migration
             $table->date('end_date');
             $table->date('availability_deadline');
             $table->foreignId('club_id')->constrained('clubs');
-            $table->foreignId('tournament_category_id')->constrained('tournament_categories');
+
+            // ✅ FIXED: tournament_type_id instead of tournament_category_id
+            $table->foreignId('tournament_type_id')->constrained('tournament_types');
+
             $table->foreignId('zone_id')->constrained('zones');
             $table->text('notes')->nullable();
             $table->enum('status', ['draft', 'open', 'closed', 'assigned', 'completed'])->default('draft');
@@ -38,9 +48,10 @@ return new class extends Migration
 
             $table->timestamps();
 
+            // ✅ FIXED: Indexes updated for tournament_type_id
             $table->index(['zone_id', 'status']);
             $table->index(['start_date', 'status']);
-            $table->index(['tournament_category_id', 'status']);
+            $table->index(['tournament_type_id', 'status']);
             $table->index(['club_id', 'status']);
         });
     }

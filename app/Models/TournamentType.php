@@ -89,10 +89,24 @@ class TournamentType extends Model
         parent::boot();
 
         static::saving(function ($model) {
+            // ✅ FIXED: Gestisce correttamente sia array che stringa JSON
+            $settings = $model->settings;
+
+            // Se settings è una stringa JSON, convertila in array
+            if (is_string($settings)) {
+                $settings = json_decode($settings, true) ?: [];
+            }
+
+            // Se settings è null, usa array vuoto
+            if (!is_array($settings)) {
+                $settings = [];
+            }
+
             // Sync physical columns to JSON settings
-            $settings = $model->settings ?? [];
             $settings['min_referees'] = $model->min_referees;
             $settings['max_referees'] = $model->max_referees;
+
+            // Riassegna come array (il cast lo convertirà in JSON automaticamente)
             $model->settings = $settings;
         });
     }
@@ -142,7 +156,9 @@ class TournamentType extends Model
      */
     public function getRequiredRefereeLevelAttribute(): string
     {
-        return $this->settings['required_referee_level'] ?? $this->required_level ?? 'aspirante';
+        // ✅ FIXED: Gestisce correttamente l'accesso a settings
+        $settings = $this->getSettingsAsArray();
+        return $settings['required_referee_level'] ?? $this->required_level ?? 'aspirante';
     }
 
     /**
@@ -150,7 +166,8 @@ class TournamentType extends Model
      */
     public function getVisibilityZonesAttribute()
     {
-        return $this->settings['visibility_zones'] ?? ($this->is_national ? 'all' : 'own');
+        $settings = $this->getSettingsAsArray();
+        return $settings['visibility_zones'] ?? ($this->is_national ? 'all' : 'own');
     }
 
     /**
@@ -174,7 +191,8 @@ class TournamentType extends Model
      */
     public function getNotificationTemplatesAttribute(): array
     {
-        return $this->settings['notification_templates'] ?? [];
+        $settings = $this->getSettingsAsArray();
+        return $settings['notification_templates'] ?? [];
     }
 
     /**
@@ -182,7 +200,22 @@ class TournamentType extends Model
      */
     public function getSpecialRequirementsAttribute(): ?string
     {
-        return $this->settings['special_requirements'] ?? null;
+        $settings = $this->getSettingsAsArray();
+        return $settings['special_requirements'] ?? null;
+    }
+
+    /**
+     * ✅ NEW: Helper method to get settings as array safely
+     */
+    private function getSettingsAsArray(): array
+    {
+        $settings = $this->settings;
+
+        if (is_string($settings)) {
+            return json_decode($settings, true) ?: [];
+        }
+
+        return is_array($settings) ? $settings : [];
     }
 
     /**
@@ -190,7 +223,7 @@ class TournamentType extends Model
      */
     public function updateSettings(array $settings): void
     {
-        $currentSettings = $this->settings ?? [];
+        $currentSettings = $this->getSettingsAsArray();
         $newSettings = array_merge($currentSettings, $settings);
 
         // Update physical columns if provided in settings

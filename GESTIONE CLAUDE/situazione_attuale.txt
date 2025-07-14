@@ -1,5 +1,263 @@
 <?php
 
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     * TOURNAMENTS TABLE - Corrected foreign key references
+     */
+    public function up(): void
+    {
+        Schema::create('tournaments', function (Blueprint $table) {
+            $table->id();
+
+            // ✅ BASIC INFO
+            $table->string('name');
+            $table->date('start_date');
+            $table->date('end_date');
+            $table->date('availability_deadline');
+
+            // ✅ CORRECTED FOREIGN KEYS
+            $table->foreignId('club_id')->constrained('clubs')->onDelete('restrict');
+            $table->foreignId('tournament_type_id')->constrained('tournament_types')->onDelete('restrict'); // ✅ FIXED
+            $table->foreignId('zone_id')->constrained('zones')->onDelete('restrict');
+
+            // ✅ CONTENT & STATUS
+            $table->text('notes')->nullable();
+            $table->enum('status', [
+                'draft',
+                'open',
+                'closed',
+                'assigned',
+                'completed',
+                'cancelled'
+            ])->default('draft');
+
+            // ✅ DOCUMENT GENERATION FIELDS
+            $table->text('convocation_letter')->nullable();
+            $table->text('club_letter')->nullable();
+            $table->timestamp('letters_generated_at')->nullable();
+
+            // ✅ FILE PATHS
+            $table->string('convocation_file_path')->nullable();
+            $table->string('convocation_file_name')->nullable();
+            $table->timestamp('convocation_generated_at')->nullable();
+
+            $table->string('club_letter_file_path')->nullable();
+            $table->string('club_letter_file_name')->nullable();
+            $table->timestamp('club_letter_generated_at')->nullable();
+
+            // ✅ DOCUMENT VERSIONING
+            $table->foreignId('documents_last_updated_by')->nullable()->constrained('users')->onDelete('set null');
+            $table->integer('document_version')->default(1);
+
+            $table->timestamps();
+
+            // ✅ INDEXES
+            $table->index(['zone_id', 'status']);
+            $table->index(['start_date', 'status']);
+            $table->index(['tournament_type_id', 'status']); // ✅ CORRECTED INDEX
+            $table->index(['club_id', 'status']);
+            $table->index(['availability_deadline', 'status']);
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::dropIfExists('tournaments');
+    }
+};
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::create('tournaments', function (Blueprint $table) {
+            $table->id();
+            $table->string('name');
+            $table->date('start_date');
+            $table->date('end_date');
+            $table->date('availability_deadline');
+            $table->foreignId('club_id')->constrained('clubs');
+            $table->foreignId('tournament_category_id')->constrained('tournament_categories');
+            $table->foreignId('zone_id')->constrained('zones');
+            $table->text('notes')->nullable();
+            $table->enum('status', ['draft', 'open', 'closed', 'assigned', 'completed'])->default('draft');
+
+            // Document generation fields
+            $table->text('convocation_letter')->nullable();
+            $table->text('club_letter')->nullable();
+            $table->timestamp('letters_generated_at')->nullable();
+            $table->string('convocation_file_path')->nullable();
+            $table->string('convocation_file_name')->nullable();
+            $table->timestamp('convocation_generated_at')->nullable();
+            $table->string('club_letter_file_path')->nullable();
+            $table->string('club_letter_file_name')->nullable();
+            $table->timestamp('club_letter_generated_at')->nullable();
+            $table->foreignId('documents_last_updated_by')->nullable()->constrained('users');
+            $table->integer('document_version')->default(1);
+
+            $table->timestamps();
+
+            $table->index(['zone_id', 'status']);
+            $table->index(['start_date', 'status']);
+            $table->index(['tournament_category_id', 'status']);
+            $table->index(['club_id', 'status']);
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::dropIfExists('tournaments');
+    }
+};
+<?php
+/**
+ * FASE 2: CONSOLIDAMENTO TOURNAMENT TYPES
+ *
+ * File: database/migrations/2025_07_12_000000_consolidate_tournament_types.php
+ *
+ * Standardizza su tournament_types table come da handoff document
+ */
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        // 1. Rinomina tournament_categories → tournament_types
+        if (Schema::hasTable('tournament_categories') && !Schema::hasTable('tournament_types')) {
+            Schema::rename('tournament_categories', 'tournament_types');
+        }
+
+        // 2. Aggiorna foreign key in tournaments table
+        if (Schema::hasTable('tournaments')) {
+            Schema::table('tournaments', function (Blueprint $table) {
+                // Drop existing foreign key
+                $table->dropForeign(['tournament_category_id']);
+
+                // Rename column
+                $table->renameColumn('tournament_category_id', 'tournament_type_id');
+            });
+
+            // Recreate foreign key with new reference
+            Schema::table('tournaments', function (Blueprint $table) {
+                $table->foreign('tournament_type_id')
+                      ->references('id')
+                      ->on('tournament_types')
+                      ->onDelete('restrict');
+            });
+        }
+
+        // 3. Aggiorna altri riferimenti se esistono
+        $this->updateOtherReferences();
+
+        echo "✅ CONSOLIDAMENTO COMPLETATO: tournament_categories → tournament_types\n";
+        echo "✅ FOREIGN KEY AGGIORNATA: tournament_category_id → tournament_type_id\n";
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        // Processo inverso per rollback
+        if (Schema::hasTable('tournaments')) {
+            Schema::table('tournaments', function (Blueprint $table) {
+                $table->dropForeign(['tournament_type_id']);
+                $table->renameColumn('tournament_type_id', 'tournament_category_id');
+            });
+
+            Schema::table('tournaments', function (Blueprint $table) {
+                $table->foreign('tournament_category_id')
+                      ->references('id')
+                      ->on('tournament_categories')
+                      ->onDelete('restrict');
+            });
+        }
+
+        if (Schema::hasTable('tournament_types')) {
+            Schema::rename('tournament_types', 'tournament_categories');
+        }
+    }
+
+    /**
+     * Update other table references if they exist
+     */
+    private function updateOtherReferences(): void
+    {
+        // Letter templates table (se esiste)
+        if (Schema::hasTable('letter_templates') && Schema::hasColumn('letter_templates', 'tournament_category_id')) {
+            Schema::table('letter_templates', function (Blueprint $table) {
+                $table->dropForeign(['tournament_category_id']);
+                $table->renameColumn('tournament_category_id', 'tournament_type_id');
+                $table->foreign('tournament_type_id')->references('id')->on('tournament_types');
+            });
+        }
+
+        // Institutional emails table (se esiste)
+        if (Schema::hasTable('institutional_emails') && Schema::hasColumn('institutional_emails', 'tournament_category_id')) {
+            Schema::table('institutional_emails', function (Blueprint $table) {
+                $table->dropForeign(['tournament_category_id']);
+                $table->renameColumn('tournament_category_id', 'tournament_type_id');
+                $table->foreign('tournament_type_id')->references('id')->on('tournament_types');
+            });
+        }
+
+        // Altri riferimenti si possono aggiungere qui
+    }
+};
+
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        //
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        //
+    }
+};
+<?php
+
 namespace App\Http\Middleware;
 
 use Closure;
@@ -435,7 +693,7 @@ class AssignmentController extends Controller
         $isNationalAdmin = $user->user_type === 'national_admin';
 
         $query = Assignment::with([
-            'user:id,name,email,level',
+            'user:id,name,email,level,referee_code,zone_id',
             'tournament:id,name,start_date,end_date,club_id,tournament_type_id',
             'tournament.club:id,name',
             'tournament.tournamentType:id,name',
@@ -548,7 +806,7 @@ class AssignmentController extends Controller
                 ->get();
 
             // Altri arbitri della zona NON già assegnati
-            $otherReferees = User::with(['referee', 'zone'])
+            $otherReferees = User::with(['zone'])
                 ->where('user_type', 'referee')
                 ->where('is_active', true)
                 ->where('zone_id', $user->zone_id)
@@ -561,7 +819,7 @@ class AssignmentController extends Controller
         } else {
             // Se nessun torneo selezionato, tutti gli arbitri della zona
             $availableReferees = collect();
-            $otherReferees = User::with(['referee', 'zone'])
+            $otherReferees = User::with(['zone'])
                 ->where('user_type', 'referee')
                 ->where('is_active', true)
                 ->where('zone_id', $user->zone_id)
@@ -762,9 +1020,7 @@ class AssignmentController extends Controller
         return User::with(['referee', 'zone'])
             ->where('user_type', 'referee')
             ->where('is_active', true)
-            ->whereHas('referee', function ($q) {
-                $q->whereIn('level', ['nazionale', 'internazionale']);
-            })
+->whereIn('level', ['nazionale', 'internazionale'])
             ->whereNotIn('id', $excludeIds)
             ->orderBy('name')
             ->get();
@@ -1844,7 +2100,7 @@ class RefereeController extends Controller
             ? Zone::orderBy('name')->get()
             : Zone::where('id', $user->zone_id)->get();
 
-            $levels = [
+        $levels = [
             'aspirante' => 'Aspirante',
             'primo_livello' => 'Primo Livello',
             'regionale' => 'Regionale',
@@ -1892,37 +2148,20 @@ class RefereeController extends Controller
         try {
             \DB::beginTransaction();
 
-            // 1. Crea l'utente
+            $refereeCode = 'REF' . str_pad($user->id, 4, '0', STR_PAD_LEFT);
+            // ✅ CREA SOLO L'USER con TUTTI i dati:
             $user = User::create([
                 'name' => $request->name,
                 'email' => $request->email,
-                'password' => bcrypt('password123'), // Password temporanea
+                'password' => bcrypt('password123'),
                 'user_type' => 'referee',
                 'zone_id' => $request->zone_id,
                 'phone' => $request->phone,
+                'level' => $request->level,           // ← AGGIUNGI
+                'referee_code' => $refereeCode,      // ← AGGIUNGI
+                'notes' => $request->notes,          // ← AGGIUNGI
                 'is_active' => $request->boolean('is_active', true),
                 'email_verified_at' => now(),
-            ]);
-
-            // 2. Genera codice arbitro automaticamente
-            $refereeCode = 'REF' . str_pad($user->id, 4, '0', STR_PAD_LEFT);
-
-            // 3. Crea il referee collegato
-            $referee = Referee::create([
-                'user_id' => $user->id,
-                'zone_id' => $request->zone_id,
-                'referee_code' => $refereeCode,
-                'level' => $request->level,
-                'category' => 'misto', // Default
-                'certified_date' => now(),
-                'bio' => 'Nuovo arbitro creato dall\'amministrazione',
-                'experience_years' => 0,
-                'specializations' => json_encode(['stroke_play']),
-                'languages' => json_encode(['it']),
-                'notes' => $request->notes,
-                'profile_completed_at' => now(), // Forza completamento
-                'created_at' => now(),
-                'updated_at' => now(),
             ]);
 
             \DB::commit();
@@ -1987,23 +2226,22 @@ class RefereeController extends Controller
      */
 public function edit($id)
 {
-    // $id è l'ID dell'User, non del Referee
+    // ✅ COME ERA PRIMA - trova User, crea Referee se serve
     $user = User::where('user_type', 'referee')->findOrFail($id);
     $referee = $user->referee;
 
-    // Se l'user non ha un referee collegato, crealo
     if (!$referee) {
         $referee = Referee::create([
             'user_id' => $user->id,
             'zone_id' => $user->zone_id,
-            'referee_code' => 'REF' . str_pad($user->id, 4, '0', STR_PAD_LEFT),
+            'referee_code' => $user->referee_code ?: 'REF' . str_pad($user->id, 4, '0', STR_PAD_LEFT),
             'level' => $user->level ?: 'primo_livello',
             'category' => 'misto',
             'certified_date' => now(),
         ]);
     }
 
-    // ✅ AGGIUNGI QUESTO - Carica la relazione user
+    // ✅ CARICA LA RELAZIONE USER
     $referee->load('user');
 
     $levels = [
@@ -2373,57 +2611,50 @@ class TournamentController extends Controller
             ->with('success', 'Torneo creato con successo!');
     }
 
-/**
- * Display the specified tournament.
- */
-public function show(Tournament $tournament)
-{
-    // Check access
-    $this->checkTournamentAccess($tournament);
+    /**
+     * Display the specified tournament for admin view
+     */
+    public function show(Tournament $tournament)
+    {
+        $user = auth()->user();
 
-    // Load relationships - CORRETTO ✅
-    $tournament->load([
-        'tournamentType', // ← FIX: era tournamentCategory
-        'zone',
-        'club',
-        'assignments.user', // ← FIX: rimuovo .referee
-        'availabilities.user' // ← FIX: rimuovo .referee
-    ]);
+        // Check permissions (zone admin can only see their zone tournaments)
+        if ($user->user_type === 'admin' && $user->zone_id !== $tournament->zone_id) {
+            abort(403, 'Non hai i permessi per visualizzare questo torneo.');
+        }
 
-    // Get statistics
-    $stats = [
-        'total_availabilities' => $tournament->availabilities()->count(),
-        'total_assignments' => $tournament->assignments()->count(),
-        'required_referees' => $tournament->required_referees,
-        'max_referees' => $tournament->max_referees,
-        'days_until_deadline' => $tournament->days_until_deadline,
-    ];
+        // ✅ FIXED: Load tournamentType relationship
+        $tournament->load([
+            'tournamentType',
+            'zone',
+            'club',
+            'assignments.referee',
+            'availabilities.referee'
+        ]);
 
-    // Get referees data using hasMany relationships - CORRETTO ✅
-    $availableReferees = $tournament->availabilities()
-        ->with('user.zone')
-        ->whereNotIn('user_id', $tournament->assignments()->pluck('user_id'))
-        ->get()
-        ->pluck('user'); // Estrae gli User dagli Availability
+        // Get statistics
+        $stats = [
+            'total_assignments' => $tournament->assignments()->count(),
+            'total_availabilities' => $tournament->availabilities()->count(),
+            'total_referees' => $tournament->availabilities()->count(),
+            'assigned_referees' => $tournament->assignments()->count(),
+            // ✅ FIXED: Use tournamentType relationship
+            'required_referees' => $tournament->required_referees ?? $tournament->tournamentType->min_referees ?? 1,
+            'max_referees' => $tournament->max_referees ?? $tournament->tournamentType->max_referees ?? 4,
+            'days_until_deadline' => $tournament->days_until_deadline,
+            'is_editable' => method_exists($tournament, 'isEditable') ? $tournament->isEditable() : true,
+        ];
 
-    $assignedReferees = $tournament->assignments()
-        ->with('user.zone')
-        ->get()
-        ->map(function($assignment) {
-            // Aggiungi i dati dell'assignment all'user per la view
-            $user = $assignment->user;
-            $user->assignment = $assignment; // role, is_confirmed, etc.
-            return $user;
-        });
+        $assignedReferees = $tournament->assignments()->with('user')->get();
+        $availableReferees = $tournament->availabilities()->with('user')->get();
 
-    return view('admin.tournaments.show', compact(
-        'tournament',
-        'stats',
-        'availableReferees',
-        'assignedReferees' // ← Ora questa variabile esiste!
-    ));
-}
-
+        return view('admin.tournaments.show', compact(
+            'tournament',
+            'assignedReferees', // ← AGGIUNGI QUESTO
+            'availableReferees',  // ← AGGIUNGI
+            'stats'               // ← AGGIUNGI
+        ));
+    }
 
     /**
      * Show the form for editing the specified tournament.
@@ -2674,11 +2905,6 @@ public function show(Tournament $tournament)
     {
         $this->checkTournamentAccess($tournament);
     }
-
-    /**
-     * Display a listing of tournaments for admin management
-     */
-
 
     /**
      * Display a public listing of tournaments (for all authenticated users including referees)
@@ -9262,28 +9488,11 @@ class Tournament extends Model
      *
      * @var array<int, string>
      */
-    protected $fillable = [
-        'name',
-        'start_date',
-        'end_date',
-        'availability_deadline',
-        'club_id',
-        'tournament_type_id', // FIXED: Changed from tournament_category_id
-        'zone_id',
-        'notes',
-        'status',
-        'convocation_letter',
-        'club_letter',
-        'letters_generated_at',
-        'convocation_file_path',
-        'convocation_file_name',
-        'convocation_generated_at',
-        'club_letter_file_path',
-        'club_letter_file_name',
-        'club_letter_generated_at',
-        'documents_last_updated_by',
-        'document_version',
-    ];
+protected $fillable = [
+    'name', 'start_date', 'end_date', 'availability_deadline',
+    'club_id', 'tournament_type_id', 'zone_id', // ✅ tournament_type_id
+    'notes', 'status', // ... rest of fields
+];
 
     /**
      * The attributes that should be cast.
@@ -9671,10 +9880,24 @@ class TournamentType extends Model
         parent::boot();
 
         static::saving(function ($model) {
+            // ✅ FIXED: Gestisce correttamente sia array che stringa JSON
+            $settings = $model->settings;
+
+            // Se settings è una stringa JSON, convertila in array
+            if (is_string($settings)) {
+                $settings = json_decode($settings, true) ?: [];
+            }
+
+            // Se settings è null, usa array vuoto
+            if (!is_array($settings)) {
+                $settings = [];
+            }
+
             // Sync physical columns to JSON settings
-            $settings = $model->settings ?? [];
             $settings['min_referees'] = $model->min_referees;
             $settings['max_referees'] = $model->max_referees;
+
+            // Riassegna come array (il cast lo convertirà in JSON automaticamente)
             $model->settings = $settings;
         });
     }
@@ -9724,7 +9947,9 @@ class TournamentType extends Model
      */
     public function getRequiredRefereeLevelAttribute(): string
     {
-        return $this->settings['required_referee_level'] ?? $this->required_level ?? 'aspirante';
+        // ✅ FIXED: Gestisce correttamente l'accesso a settings
+        $settings = $this->getSettingsAsArray();
+        return $settings['required_referee_level'] ?? $this->required_level ?? 'aspirante';
     }
 
     /**
@@ -9732,7 +9957,8 @@ class TournamentType extends Model
      */
     public function getVisibilityZonesAttribute()
     {
-        return $this->settings['visibility_zones'] ?? ($this->is_national ? 'all' : 'own');
+        $settings = $this->getSettingsAsArray();
+        return $settings['visibility_zones'] ?? ($this->is_national ? 'all' : 'own');
     }
 
     /**
@@ -9756,7 +9982,8 @@ class TournamentType extends Model
      */
     public function getNotificationTemplatesAttribute(): array
     {
-        return $this->settings['notification_templates'] ?? [];
+        $settings = $this->getSettingsAsArray();
+        return $settings['notification_templates'] ?? [];
     }
 
     /**
@@ -9764,7 +9991,22 @@ class TournamentType extends Model
      */
     public function getSpecialRequirementsAttribute(): ?string
     {
-        return $this->settings['special_requirements'] ?? null;
+        $settings = $this->getSettingsAsArray();
+        return $settings['special_requirements'] ?? null;
+    }
+
+    /**
+     * ✅ NEW: Helper method to get settings as array safely
+     */
+    private function getSettingsAsArray(): array
+    {
+        $settings = $this->settings;
+
+        if (is_string($settings)) {
+            return json_decode($settings, true) ?: [];
+        }
+
+        return is_array($settings) ? $settings : [];
     }
 
     /**
@@ -9772,7 +10014,7 @@ class TournamentType extends Model
      */
     public function updateSettings(array $settings): void
     {
-        $currentSettings = $this->settings ?? [];
+        $currentSettings = $this->getSettingsAsArray();
         $newSettings = array_merge($currentSettings, $settings);
 
         // Update physical columns if provided in settings
@@ -9855,20 +10097,12 @@ class User extends Authenticatable
      *
      * @var array<int, string>
      */
-    protected $fillable = [
-        'name',
-        'email',
-        'password',
-        'referee_code',
-        'level',
-        'category',
-        'zone_id',
-        'phone',
-        'notes',
-        'is_active',
-        'user_type',
-        'certified_date',
-    ];
+protected $fillable = [
+    'name', 'email', 'password', 'user_type', 'is_active',
+    // ✅ ADD REFEREE CORE FIELDS:
+    'referee_code', 'level', 'category', 'zone_id', 'certified_date', 'phone', 'city',
+    'notes', 'last_login_at'
+];
 
     /**
      * The attributes that should be hidden for serialization.

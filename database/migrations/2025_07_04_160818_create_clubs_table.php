@@ -17,7 +17,7 @@ return new class extends Migration
             $table->string('code', 250)->unique();
             $table->foreignId('zone_id')->constrained('zones');
             $table->string('address')->nullable();
-            $table->string('city');
+            $table->string('city')->nullable();
             $table->string('postal_code', 10)->nullable();
             $table->string('province', 5)->nullable();
             $table->string('region')->nullable();

@@ -36,7 +36,7 @@ return new class extends Migration
             $table->string('subject');
             $table->text('body');
             $table->foreignId('zone_id')->nullable()->constrained('zones');
-            $table->foreignId('tournament_category_id')->nullable()->constrained('tournament_categories');
+            $table->foreignId('tournament_type_id')->nullable()->constrained('tournament_types');
             $table->boolean('is_active')->default(true);
             $table->boolean('is_default')->default(false);
             $table->json('variables')->nullable();
@@ -44,7 +44,7 @@ return new class extends Migration
 
             $table->index(['type', 'is_active']);
             $table->index(['zone_id', 'type']);
-            $table->index(['tournament_category_id', 'type']);
+            $table->index(['tournament_type_id', 'type']);
         });
     }
 

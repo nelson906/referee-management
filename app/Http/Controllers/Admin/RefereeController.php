@@ -65,7 +65,7 @@ class RefereeController extends Controller
             ? Zone::orderBy('name')->get()
             : Zone::where('id', $user->zone_id)->get();
 
-            $levels = [
+        $levels = [
             'aspirante' => 'Aspirante',
             'primo_livello' => 'Primo Livello',
             'regionale' => 'Regionale',
@@ -113,37 +113,20 @@ class RefereeController extends Controller
         try {
             \DB::beginTransaction();
 
-            // 1. Crea l'utente
+            $refereeCode = 'REF' . str_pad($user->id, 4, '0', STR_PAD_LEFT);
+            // ✅ CREA SOLO L'USER con TUTTI i dati:
             $user = User::create([
                 'name' => $request->name,
                 'email' => $request->email,
-                'password' => bcrypt('password123'), // Password temporanea
+                'password' => bcrypt('password123'),
                 'user_type' => 'referee',
                 'zone_id' => $request->zone_id,
                 'phone' => $request->phone,
+                'level' => $request->level,           // ← AGGIUNGI
+                'referee_code' => $refereeCode,      // ← AGGIUNGI
+                'notes' => $request->notes,          // ← AGGIUNGI
                 'is_active' => $request->boolean('is_active', true),
                 'email_verified_at' => now(),
-            ]);
-
-            // 2. Genera codice arbitro automaticamente
-            $refereeCode = 'REF' . str_pad($user->id, 4, '0', STR_PAD_LEFT);
-
-            // 3. Crea il referee collegato
-            $referee = Referee::create([
-                'user_id' => $user->id,
-                'zone_id' => $request->zone_id,
-                'referee_code' => $refereeCode,
-                'level' => $request->level,
-                'category' => 'misto', // Default
-                'certified_date' => now(),
-                'bio' => 'Nuovo arbitro creato dall\'amministrazione',
-                'experience_years' => 0,
-                'specializations' => json_encode(['stroke_play']),
-                'languages' => json_encode(['it']),
-                'notes' => $request->notes,
-                'profile_completed_at' => now(), // Forza completamento
-                'created_at' => now(),
-                'updated_at' => now(),
             ]);
 
             \DB::commit();
@@ -208,23 +191,22 @@ class RefereeController extends Controller
      */
 public function edit($id)
 {
-    // $id è l'ID dell'User, non del Referee
+    // ✅ COME ERA PRIMA - trova User, crea Referee se serve
     $user = User::where('user_type', 'referee')->findOrFail($id);
     $referee = $user->referee;
 
-    // Se l'user non ha un referee collegato, crealo
     if (!$referee) {
         $referee = Referee::create([
             'user_id' => $user->id,
             'zone_id' => $user->zone_id,
-            'referee_code' => 'REF' . str_pad($user->id, 4, '0', STR_PAD_LEFT),
+            'referee_code' => $user->referee_code ?: 'REF' . str_pad($user->id, 4, '0', STR_PAD_LEFT),
             'level' => $user->level ?: 'primo_livello',
             'category' => 'misto',
             'certified_date' => now(),
         ]);
     }
 
-    // ✅ AGGIUNGI QUESTO - Carica la relazione user
+    // ✅ CARICA LA RELAZIONE USER
     $referee->load('user');
 
     $levels = [

@@ -71,11 +71,11 @@
                         @foreach($tournamentTypes as $type)
                             <option value="{{ $type->id }}"
                                 {{ old('tournament_type_id') == $type->id ? 'selected' : '' }}
-                                data-min-referees="{{ $category->min_referees }}"
-                                data-max-referees="{{ $category->max_referees }}"
-                                data-national="{{ $category->is_national ? '1' : '0' }}">
+                                data-min-referees="{{ $type->min_referees }}"
+                                data-max-referees="{{ $type->max_referees }}"
+                                data-national="{{ $type->is_national ? '1' : '0' }}">
                                 {{ $type->name }}
-                                @if($category->is_national)
+                                @if($type->is_national)
                                     (Nazionale)
                                 @endif
                             </option>

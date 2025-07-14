@@ -17,28 +17,11 @@ class Tournament extends Model
      *
      * @var array<int, string>
      */
-    protected $fillable = [
-        'name',
-        'start_date',
-        'end_date',
-        'availability_deadline',
-        'club_id',
-        'tournament_type_id', // FIXED: Changed from tournament_category_id
-        'zone_id',
-        'notes',
-        'status',
-        'convocation_letter',
-        'club_letter',
-        'letters_generated_at',
-        'convocation_file_path',
-        'convocation_file_name',
-        'convocation_generated_at',
-        'club_letter_file_path',
-        'club_letter_file_name',
-        'club_letter_generated_at',
-        'documents_last_updated_by',
-        'document_version',
-    ];
+protected $fillable = [
+    'name', 'start_date', 'end_date', 'availability_deadline',
+    'club_id', 'tournament_type_id', 'zone_id', // ✅ tournament_type_id
+    'notes', 'status', // ... rest of fields
+];
 
     /**
      * The attributes that should be cast.

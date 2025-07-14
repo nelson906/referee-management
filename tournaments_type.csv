@@ -1,0 +1,11 @@
+id,name,short_name,is_national,required_level,referees_needed,description,is_active,created_at,updated_at
+1,T18,T18,0,1_livello,1,"Torneo 18 buche",1,"2025-07-03 14:11:54","2025-07-03 14:11:55"
+2,S14,S14,0,1_livello,1,"Torneo 14 buche",1,"2025-07-03 14:11:54","2025-07-03 14:11:56"
+3,"Gara Giovanile","Gara Giovanile",0,1_livello,1,"Gara per giovani atleti",1,"2025-07-03 14:11:54","2025-07-03 14:11:56"
+4,GN-36,GN-36,0,1_livello,1,"Gara Nazionale 36 buche",1,"2025-07-03 14:11:56","2025-07-03 14:11:56"
+5,GN-54,GN-54,0,1_livello,1,"Gara Nazionale 54 buche",1,"2025-07-03 14:11:56","2025-07-03 14:11:56"
+6,GN-72,GN-72,1,1_livello,1,"Gara Nazionale 72 buche",1,"2025-07-03 14:11:56","2025-07-03 14:11:56"
+7,GN-72/54,GN-72/54,1,1_livello,1,"Gara Nazionale 72/54 buche",1,"2025-07-03 14:11:56","2025-07-03 14:11:56"
+8,CI,CI,1,1_livello,1,"Campionato Italiano",1,"2025-07-03 14:11:56","2025-07-03 14:11:56"
+9,CNZ,CNZ,1,1_livello,1,"Campionato Nazionale",1,"2025-07-03 14:11:56","2025-07-03 14:11:56"
+10,TNZ,TNZ,1,1_livello,1,"Torneo Nazionale",1,"2025-07-03 14:11:56","2025-07-03 14:11:56"

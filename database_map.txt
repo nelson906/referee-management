@@ -1,0 +1,41 @@
+ `arbitri`.`id`	-->	'users'..`id`	 `referees`.`user_id`
+ `arbitri`.`Nome`	-->	'users'..`name`
+ `arbitri`.`Cognome`	-->	'users'..`name`
+ `arbitri`.`Password`	-->	'users'..password,`''users'..referee_code`
+ `arbitri`.`Role`	-->	'users'..`user_type`
+ `arbitri`.`Arbitro`	-->	'users'..`is_active`(A=isactive)
+ `arbitri`.`Livello_2025`	-->	'users'..`level`(aspirante,1_livello,Regionale,Nazionale,Internazionale,Archivio)
+ `arbitri`.`Citta`	-->	'users'..`city`
+ `arbitri`.`Pr_abit`	-->	`referees`.`address`
+ `arbitri`.`Cellulare`	-->	'users'..`phone`
+ `arbitri`.`Email`	-->	'users'..`email`
+ `arbitri`.`Prima_Nomina`	-->	`referees`.`first_certification_date`
+ `arbitri`.`Ultimo_Esame`	-->	`referees`.`last_renewal_date`
+ `arbitri`.`Zona`	-->	'users'..`zone_id`
+
+'gare_2025'.`id`	-->	`tournaments`.`id`
+'gare_2025'. `Nome_gare`	-->	 `tournaments`.`name`
+'gare_2025'. `Tipo`	-->	 `tournaments`.`tournament_type_id`
+'gare_2025'. `Circolo`	-->	 `tournaments`.`club_id`
+'gare_2025'. `Disponibili`	-->	avalaibility (name sepated by comma)
+'gare_2025'. `StartTime`	-->	 `tournaments`.`start_date`
+'gare_2025'. `EndTime`	-->	 `tournaments`.`end_date`
+'gare_2025'. `TD`	-->	 `assignments`.`role`
+'gare_2025'. `Arbitri`	-->	 `assignments`.`role`
+'gare_2025'. `Osservatori`	-->	 `assignments`.`role`
+'gare_2025'. `Comitato`	-->	assignment (names separated by commas)
+'gare_2025'. `Zona`	-->	 `tournaments`.`zone_id`
+
+'circoli'.`Id`	-->	`clubs`.`id`
+'circoli'. `Circolo_Id`	-->	 `clubs`.`code`
+'circoli'. `Circolo_Nome`	-->	 `clubs`.`name`
+'circoli'. `Indirizzo`	-->	 `clubs`.`address`
+'circoli'. `CAP`	-->	 `clubs`.`postal_code`
+'circoli'. `Città`	-->	 `clubs`.`city`
+'circoli'. `Provincia`	-->	 `clubs`.`province`
+'circoli'. `Regione`	-->	 `clubs`.`region`
+'circoli'. `Email`	-->	 `clubs`.`email`
+'circoli'. `Telefono`	-->	 `clubs`.`phone`
+'circoli'. `Web`	-->	 `clubs`.`website`
+'circoli'. `SedeGara`	-->	 `clubs`.`is_active`
+'circoli'. `Zona`	-->	 `clubs`.`zone_id`

@@ -12,20 +12,20 @@ return new class extends Migration
     public function up(): void
     {
         // Create zones table first (needed for users foreign key)
-            Schema::create('zones', function (Blueprint $table) {
-                $table->id();
-                $table->string('name');
-                $table->text('description')->nullable();
-                $table->boolean('is_national')->default(false);
-                $table->string('header_document_path')->nullable();
-                $table->timestamp('header_updated_at')->nullable();
-                $table->unsignedBigInteger('header_updated_by')->nullable();
-                $table->timestamps();
+        Schema::create('zones', function (Blueprint $table) {
+            $table->id();
+            $table->string('name');
+            $table->text('description')->nullable();
+            $table->boolean('is_national')->default(false);
+            $table->string('header_document_path')->nullable();
+            $table->timestamp('header_updated_at')->nullable();
+            $table->unsignedBigInteger('header_updated_by')->nullable();
+            $table->timestamps();
 
-                // Indexes
-                $table->index('is_national');
-                $table->index('name');
-            });
+            // Indexes
+            $table->index('is_national');
+            $table->index('name');
+        });
 
         // Create users table with all fields from the start
         Schema::create('users', function (Blueprint $table) {
@@ -33,6 +33,10 @@ return new class extends Migration
             $table->string('name');
             $table->string('email')->unique();
             $table->enum('user_type', ['super_admin', 'national_admin', 'admin', 'referee'])->default('referee');
+            $table->enum('level', ['Aspirante', '1_livello', 'Regionale', 'Nazionale', 'Internazionale', 'Archivio'])->default('1_livello');
+            $table->string('referee_code');
+            $table->string(column: 'category')->nullable();
+            $table->string(column: 'certified_date')->nullable();
             $table->foreignId('zone_id')->nullable()->constrained('zones');
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');

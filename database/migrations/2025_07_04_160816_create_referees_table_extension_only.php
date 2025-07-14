@@ -8,39 +8,53 @@ return new class extends Migration
 {
     /**
      * Run the migrations.
+     * REFEREES TABLE - Extension Only (NO Duplicates with Users)
      */
     public function up(): void
     {
         Schema::create('referees', function (Blueprint $table) {
             $table->id();
+
+            // ✅ LINK TO USER (Single Source of Truth)
             $table->foreignId('user_id')->unique()->constrained('users')->onDelete('cascade');
-            $table->foreignId('zone_id')->nullable()->constrained('zones');
-            $table->string('referee_code', 20)->unique();
-            $table->enum('level', ['aspirante', 'primo_livello', 'regionale', 'nazionale', 'internazionale']);
-            $table->enum('category', ['maschile', 'femminile', 'misto'])->nullable();
-            $table->date('certified_date')->nullable();
+
+            // ✅ EXTENDED ADDRESS INFO
             $table->string('address')->nullable();
             $table->string('postal_code', 10)->nullable();
             $table->string('tax_code', 16)->nullable();
-            $table->timestamp('profile_completed_at')->nullable();
 
-            // Additional referee-specific fields
+            // ✅ CERTIFICATION DETAILS
             $table->string('badge_number')->nullable();
             $table->date('first_certification_date')->nullable();
             $table->date('last_renewal_date')->nullable();
             $table->date('expiry_date')->nullable();
+
+            // ✅ REFEREE PROFILE DATA
+            $table->text('bio')->nullable();
+            $table->integer('experience_years')->default(0);
             $table->json('qualifications')->nullable();
             $table->json('languages')->nullable();
+            $table->json('specializations')->nullable();
+
+            // ✅ AVAILABILITY & PREFERENCES
             $table->boolean('available_for_international')->default(false);
-            $table->text('specializations')->nullable();
+            $table->json('preferences')->nullable();
+
+            // ✅ STATISTICS
             $table->integer('total_tournaments')->default(0);
             $table->integer('tournaments_current_year')->default(0);
+
+            // ✅ PROFILE STATUS
+            $table->timestamp('profile_completed_at')->nullable();
 
             $table->timestamps();
             $table->softDeletes();
 
-            $table->index(['zone_id', 'level']);
+            // ✅ INDEXES
+            $table->index('user_id');
             $table->index('expiry_date');
+            $table->index('available_for_international');
+            $table->index('profile_completed_at');
         });
     }
 

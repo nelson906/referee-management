@@ -37,7 +37,7 @@
 
         {{-- Form --}}
         <div class="bg-white rounded-lg shadow p-6">
-            <form method="POST" action="{{ route('admin.referees.update', $user ?? $referee->user) }}" class="space-y-6">
+            <form method="POST" action="{{ route('admin.referees.update', $referee->user) }}" class="space-y-6">
                 @csrf
                 @method('PUT')
 

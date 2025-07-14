@@ -20,20 +20,12 @@ class User extends Authenticatable
      *
      * @var array<int, string>
      */
-    protected $fillable = [
-        'name',
-        'email',
-        'password',
-        'referee_code',
-        'level',
-        'category',
-        'zone_id',
-        'phone',
-        'notes',
-        'is_active',
-        'user_type',
-        'certified_date',
-    ];
+protected $fillable = [
+    'name', 'email', 'password', 'user_type', 'is_active',
+    // ✅ ADD REFEREE CORE FIELDS:
+    'referee_code', 'level', 'category', 'zone_id', 'certified_date', 'phone', 'city',
+    'notes', 'last_login_at'
+];
 
     /**
      * The attributes that should be hidden for serialization.

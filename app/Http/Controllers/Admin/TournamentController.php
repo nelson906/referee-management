@@ -243,57 +243,50 @@ class TournamentController extends Controller
             ->with('success', 'Torneo creato con successo!');
     }
 
-/**
- * Display the specified tournament.
- */
-public function show(Tournament $tournament)
-{
-    // Check access
-    $this->checkTournamentAccess($tournament);
+    /**
+     * Display the specified tournament for admin view
+     */
+    public function show(Tournament $tournament)
+    {
+        $user = auth()->user();
 
-    // Load relationships - CORRETTO ✅
-    $tournament->load([
-        'tournamentType', // ← FIX: era tournamentCategory
-        'zone',
-        'club',
-        'assignments.user', // ← FIX: rimuovo .referee
-        'availabilities.user' // ← FIX: rimuovo .referee
-    ]);
+        // Check permissions (zone admin can only see their zone tournaments)
+        if ($user->user_type === 'admin' && $user->zone_id !== $tournament->zone_id) {
+            abort(403, 'Non hai i permessi per visualizzare questo torneo.');
+        }
 
-    // Get statistics
-    $stats = [
-        'total_availabilities' => $tournament->availabilities()->count(),
-        'total_assignments' => $tournament->assignments()->count(),
-        'required_referees' => $tournament->required_referees,
-        'max_referees' => $tournament->max_referees,
-        'days_until_deadline' => $tournament->days_until_deadline,
-    ];
+        // ✅ FIXED: Load tournamentType relationship
+        $tournament->load([
+            'tournamentType',
+            'zone',
+            'club',
+            'assignments.referee',
+            'availabilities.referee'
+        ]);
 
-    // Get referees data using hasMany relationships - CORRETTO ✅
-    $availableReferees = $tournament->availabilities()
-        ->with('user.zone')
-        ->whereNotIn('user_id', $tournament->assignments()->pluck('user_id'))
-        ->get()
-        ->pluck('user'); // Estrae gli User dagli Availability
+        // Get statistics
+        $stats = [
+            'total_assignments' => $tournament->assignments()->count(),
+            'total_availabilities' => $tournament->availabilities()->count(),
+            'total_referees' => $tournament->availabilities()->count(),
+            'assigned_referees' => $tournament->assignments()->count(),
+            // ✅ FIXED: Use tournamentType relationship
+            'required_referees' => $tournament->required_referees ?? $tournament->tournamentType->min_referees ?? 1,
+            'max_referees' => $tournament->max_referees ?? $tournament->tournamentType->max_referees ?? 4,
+            'days_until_deadline' => $tournament->days_until_deadline,
+            'is_editable' => method_exists($tournament, 'isEditable') ? $tournament->isEditable() : true,
+        ];
 
-    $assignedReferees = $tournament->assignments()
-        ->with('user.zone')
-        ->get()
-        ->map(function($assignment) {
-            // Aggiungi i dati dell'assignment all'user per la view
-            $user = $assignment->user;
-            $user->assignment = $assignment; // role, is_confirmed, etc.
-            return $user;
-        });
+        $assignedReferees = $tournament->assignments()->with('user')->get();
+        $availableReferees = $tournament->availabilities()->with('user')->get();
 
-    return view('admin.tournaments.show', compact(
-        'tournament',
-        'stats',
-        'availableReferees',
-        'assignedReferees' // ← Ora questa variabile esiste!
-    ));
-}
-
+        return view('admin.tournaments.show', compact(
+            'tournament',
+            'assignedReferees', // ← AGGIUNGI QUESTO
+            'availableReferees',  // ← AGGIUNGI
+            'stats'               // ← AGGIUNGI
+        ));
+    }
 
     /**
      * Show the form for editing the specified tournament.
@@ -544,11 +537,6 @@ public function show(Tournament $tournament)
     {
         $this->checkTournamentAccess($tournament);
     }
-
-    /**
-     * Display a listing of tournaments for admin management
-     */
-
 
     /**
      * Display a public listing of tournaments (for all authenticated users including referees)

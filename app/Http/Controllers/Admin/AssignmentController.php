@@ -22,7 +22,7 @@ class AssignmentController extends Controller
         $isNationalAdmin = $user->user_type === 'national_admin';
 
         $query = Assignment::with([
-            'user:id,name,email,level',
+            'user:id,name,email,level,referee_code,zone_id',
             'tournament:id,name,start_date,end_date,club_id,tournament_type_id',
             'tournament.club:id,name',
             'tournament.tournamentType:id,name',
@@ -135,7 +135,7 @@ class AssignmentController extends Controller
                 ->get();
 
             // Altri arbitri della zona NON già assegnati
-            $otherReferees = User::with(['referee', 'zone'])
+            $otherReferees = User::with(['zone'])
                 ->where('user_type', 'referee')
                 ->where('is_active', true)
                 ->where('zone_id', $user->zone_id)
@@ -148,7 +148,7 @@ class AssignmentController extends Controller
         } else {
             // Se nessun torneo selezionato, tutti gli arbitri della zona
             $availableReferees = collect();
-            $otherReferees = User::with(['referee', 'zone'])
+            $otherReferees = User::with(['zone'])
                 ->where('user_type', 'referee')
                 ->where('is_active', true)
                 ->where('zone_id', $user->zone_id)
@@ -349,9 +349,7 @@ class AssignmentController extends Controller
         return User::with(['referee', 'zone'])
             ->where('user_type', 'referee')
             ->where('is_active', true)
-            ->whereHas('referee', function ($q) {
-                $q->whereIn('level', ['nazionale', 'internazionale']);
-            })
+->whereIn('level', ['nazionale', 'internazionale'])
             ->whereNotIn('id', $excludeIds)
             ->orderBy('name')
             ->get();

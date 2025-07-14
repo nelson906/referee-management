@@ -1,5 +1,12 @@
 <?php
 
+/**
+ * ========================================
+ * SettingsSeeder.php - VERSIONE AGGIORNATA
+ * ========================================
+ * Aggiornato per coerenza con la nuova struttura
+ */
+
 namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
@@ -12,6 +19,8 @@ class SettingsSeeder extends Seeder
      */
     public function run(): void
     {
+        $this->command->info('⚙️ Seeding application settings...');
+
         $settings = [
             // Application Settings
             [
@@ -25,7 +34,7 @@ class SettingsSeeder extends Seeder
             ],
             [
                 'key' => 'app_version',
-                'value' => '1.0.0',
+                'value' => '2.0.0',
                 'type' => 'string',
                 'description' => 'Versione dell\'applicazione',
                 'group' => 'application',
@@ -51,61 +60,16 @@ class SettingsSeeder extends Seeder
                 'is_editable' => true,
             ],
             [
-                'key' => 'session_lifetime',
-                'value' => '120',
-                'type' => 'integer',
-                'description' => 'Durata della sessione in minuti',
+                'key' => 'app_environment',
+                'value' => 'production',
+                'type' => 'string',
+                'description' => 'Ambiente applicazione (development/production)',
                 'group' => 'application',
                 'is_public' => false,
                 'is_editable' => true,
             ],
 
             // Mail Settings
-            [
-                'key' => 'mail_driver',
-                'value' => 'smtp',
-                'type' => 'string',
-                'description' => 'Driver per l\'invio email',
-                'group' => 'mail',
-                'is_public' => false,
-                'is_editable' => true,
-            ],
-            [
-                'key' => 'mail_host',
-                'value' => 'localhost',
-                'type' => 'string',
-                'description' => 'Host SMTP',
-                'group' => 'mail',
-                'is_public' => false,
-                'is_editable' => true,
-            ],
-            [
-                'key' => 'mail_port',
-                'value' => '587',
-                'type' => 'integer',
-                'description' => 'Porta SMTP',
-                'group' => 'mail',
-                'is_public' => false,
-                'is_editable' => true,
-            ],
-            [
-                'key' => 'mail_username',
-                'value' => '',
-                'type' => 'string',
-                'description' => 'Username SMTP',
-                'group' => 'mail',
-                'is_public' => false,
-                'is_editable' => true,
-            ],
-            [
-                'key' => 'mail_encryption',
-                'value' => 'tls',
-                'type' => 'string',
-                'description' => 'Tipo di crittografia SMTP',
-                'group' => 'mail',
-                'is_public' => false,
-                'is_editable' => true,
-            ],
             [
                 'key' => 'mail_from_address',
                 'value' => 'noreply@golfreferee.it',
@@ -124,88 +88,21 @@ class SettingsSeeder extends Seeder
                 'is_public' => false,
                 'is_editable' => true,
             ],
-
-            // System Settings
             [
-                'key' => 'system_debug',
-                'value' => '0',
-                'type' => 'boolean',
-                'description' => 'Modalità debug',
-                'group' => 'system',
-                'is_public' => false,
-                'is_editable' => true,
-            ],
-            [
-                'key' => 'system_maintenance',
-                'value' => '0',
-                'type' => 'boolean',
-                'description' => 'Modalità manutenzione',
-                'group' => 'system',
-                'is_public' => true,
-                'is_editable' => true,
-            ],
-            [
-                'key' => 'cache_driver',
-                'value' => 'file',
+                'key' => 'mail_reply_to',
+                'value' => 'support@golfreferee.it',
                 'type' => 'string',
-                'description' => 'Driver cache',
-                'group' => 'system',
+                'description' => 'Indirizzo email per risposte',
+                'group' => 'mail',
                 'is_public' => false,
                 'is_editable' => true,
             ],
             [
-                'key' => 'log_level',
-                'value' => 'info',
-                'type' => 'string',
-                'description' => 'Livello di logging',
-                'group' => 'system',
-                'is_public' => false,
-                'is_editable' => true,
-            ],
-            [
-                'key' => 'api_rate_limit',
-                'value' => '1000',
-                'type' => 'integer',
-                'description' => 'Limite richieste API per ora',
-                'group' => 'system',
-                'is_public' => false,
-                'is_editable' => true,
-            ],
-            [
-                'key' => 'max_upload_size',
-                'value' => '10',
-                'type' => 'integer',
-                'description' => 'Dimensione massima upload in MB',
-                'group' => 'system',
-                'is_public' => false,
-                'is_editable' => true,
-            ],
-
-            // Backup Settings
-            [
-                'key' => 'backup_enabled',
-                'value' => '1',
+                'key' => 'mail_notifications_enabled',
+                'value' => 'true',
                 'type' => 'boolean',
-                'description' => 'Backup automatici abilitati',
-                'group' => 'backup',
-                'is_public' => false,
-                'is_editable' => true,
-            ],
-            [
-                'key' => 'backup_frequency',
-                'value' => 'daily',
-                'type' => 'string',
-                'description' => 'Frequenza backup automatici',
-                'group' => 'backup',
-                'is_public' => false,
-                'is_editable' => true,
-            ],
-            [
-                'key' => 'backup_retention_days',
-                'value' => '30',
-                'type' => 'integer',
-                'description' => 'Giorni di conservazione backup',
-                'group' => 'backup',
+                'description' => 'Abilita notifiche email',
+                'group' => 'mail',
                 'is_public' => false,
                 'is_editable' => true,
             ],
@@ -239,40 +136,58 @@ class SettingsSeeder extends Seeder
                 'is_editable' => true,
             ],
             [
-                'key' => 'tournament_notification_days',
+                'key' => 'tournament_assignment_deadline_days',
                 'value' => '3',
                 'type' => 'integer',
-                'description' => 'Giorni prima per notifica reminder arbitri',
+                'description' => 'Giorni prima dell\'evento per completare assegnazioni',
+                'group' => 'tournaments',
+                'is_public' => false,
+                'is_editable' => true,
+            ],
+            [
+                'key' => 'tournament_reminder_days',
+                'value' => '14,7,3',
+                'type' => 'string',
+                'description' => 'Giorni prima per invio promemoria (separati da virgola)',
                 'group' => 'tournaments',
                 'is_public' => false,
                 'is_editable' => true,
             ],
 
-            // Notification Settings
+            // Referee Settings
             [
-                'key' => 'notifications_email_enabled',
-                'value' => '1',
-                'type' => 'boolean',
-                'description' => 'Notifiche email abilitate',
-                'group' => 'notifications',
+                'key' => 'referee_levels',
+                'value' => json_encode(['aspirante', 'primo_livello', 'regionale', 'nazionale', 'internazionale']),
+                'type' => 'json',
+                'description' => 'Livelli arbitri disponibili',
+                'group' => 'referees',
+                'is_public' => true,
+                'is_editable' => false,
+            ],
+            [
+                'key' => 'referee_categories',
+                'value' => json_encode(['maschile', 'femminile', 'misto']),
+                'type' => 'json',
+                'description' => 'Categorie arbitri disponibili',
+                'group' => 'referees',
+                'is_public' => true,
+                'is_editable' => false,
+            ],
+            [
+                'key' => 'referee_code_prefix',
+                'value' => 'ARB',
+                'type' => 'string',
+                'description' => 'Prefisso per codici arbitro',
+                'group' => 'referees',
                 'is_public' => false,
                 'is_editable' => true,
             ],
             [
-                'key' => 'notifications_sms_enabled',
-                'value' => '0',
-                'type' => 'boolean',
-                'description' => 'Notifiche SMS abilitate',
-                'group' => 'notifications',
-                'is_public' => false,
-                'is_editable' => true,
-            ],
-            [
-                'key' => 'notifications_auto_assignment',
-                'value' => '1',
-                'type' => 'boolean',
-                'description' => 'Notifica automatica assegnazioni',
-                'group' => 'notifications',
+                'key' => 'referee_renewal_period_years',
+                'value' => '3',
+                'type' => 'integer',
+                'description' => 'Anni di validità qualifica arbitro',
+                'group' => 'referees',
                 'is_public' => false,
                 'is_editable' => true,
             ],
@@ -297,42 +212,156 @@ class SettingsSeeder extends Seeder
                 'is_editable' => true,
             ],
             [
-                'key' => 'security_lockout_duration',
-                'value' => '15',
+                'key' => 'security_session_timeout',
+                'value' => '120',
                 'type' => 'integer',
-                'description' => 'Durata blocco account in minuti',
+                'description' => 'Timeout sessione in minuti',
                 'group' => 'security',
                 'is_public' => false,
                 'is_editable' => true,
             ],
             [
-                'key' => 'security_2fa_enabled',
-                'value' => '0',
+                'key' => 'security_two_factor_enabled',
+                'value' => 'false',
                 'type' => 'boolean',
-                'description' => 'Autenticazione a due fattori',
+                'description' => 'Abilita autenticazione a due fattori',
                 'group' => 'security',
                 'is_public' => false,
                 'is_editable' => true,
             ],
 
-            // Integration Settings
+            // System Settings
             [
-                'key' => 'integration_calendar_sync',
-                'value' => '1',
+                'key' => 'system_maintenance_mode',
+                'value' => 'false',
                 'type' => 'boolean',
-                'description' => 'Sincronizzazione calendario esterno',
-                'group' => 'integrations',
+                'description' => 'Modalità manutenzione',
+                'group' => 'system',
                 'is_public' => false,
                 'is_editable' => true,
             ],
             [
-                'key' => 'integration_handicap_system',
-                'value' => '0',
+                'key' => 'system_debug_enabled',
+                'value' => 'false',
                 'type' => 'boolean',
-                'description' => 'Integrazione sistema handicap',
-                'group' => 'integrations',
+                'description' => 'Abilita modalità debug',
+                'group' => 'system',
                 'is_public' => false,
                 'is_editable' => true,
+            ],
+            [
+                'key' => 'system_backup_frequency',
+                'value' => 'daily',
+                'type' => 'string',
+                'description' => 'Frequenza backup automatico',
+                'group' => 'system',
+                'is_public' => false,
+                'is_editable' => true,
+            ],
+            [
+                'key' => 'system_log_level',
+                'value' => 'warning',
+                'type' => 'string',
+                'description' => 'Livello di logging (debug/info/warning/error)',
+                'group' => 'system',
+                'is_public' => false,
+                'is_editable' => true,
+            ],
+
+            // UI Settings
+            [
+                'key' => 'ui_items_per_page',
+                'value' => '25',
+                'type' => 'integer',
+                'description' => 'Elementi per pagina nelle liste',
+                'group' => 'ui',
+                'is_public' => true,
+                'is_editable' => true,
+            ],
+            [
+                'key' => 'ui_date_format',
+                'value' => 'd/m/Y',
+                'type' => 'string',
+                'description' => 'Formato data visualizzazione',
+                'group' => 'ui',
+                'is_public' => true,
+                'is_editable' => true,
+            ],
+            [
+                'key' => 'ui_datetime_format',
+                'value' => 'd/m/Y H:i',
+                'type' => 'string',
+                'description' => 'Formato data e ora visualizzazione',
+                'group' => 'ui',
+                'is_public' => true,
+                'is_editable' => true,
+            ],
+            [
+                'key' => 'ui_theme',
+                'value' => 'default',
+                'type' => 'string',
+                'description' => 'Tema interfaccia utente',
+                'group' => 'ui',
+                'is_public' => true,
+                'is_editable' => true,
+            ],
+
+            // Notification Settings
+            [
+                'key' => 'notifications_enabled',
+                'value' => 'true',
+                'type' => 'boolean',
+                'description' => 'Abilita sistema notifiche',
+                'group' => 'notifications',
+                'is_public' => false,
+                'is_editable' => true,
+            ],
+            [
+                'key' => 'notifications_channels',
+                'value' => json_encode(['email', 'database']),
+                'type' => 'json',
+                'description' => 'Canali notifica disponibili',
+                'group' => 'notifications',
+                'is_public' => false,
+                'is_editable' => true,
+            ],
+            [
+                'key' => 'notifications_default_channel',
+                'value' => 'email',
+                'type' => 'string',
+                'description' => 'Canale notifica predefinito',
+                'group' => 'notifications',
+                'is_public' => false,
+                'is_editable' => true,
+            ],
+
+            // API Settings
+            [
+                'key' => 'api_enabled',
+                'value' => 'false',
+                'type' => 'boolean',
+                'description' => 'Abilita API REST',
+                'group' => 'api',
+                'is_public' => false,
+                'is_editable' => true,
+            ],
+            [
+                'key' => 'api_rate_limit',
+                'value' => '60',
+                'type' => 'integer',
+                'description' => 'Limite richieste API per minuto',
+                'group' => 'api',
+                'is_public' => false,
+                'is_editable' => true,
+            ],
+            [
+                'key' => 'api_version',
+                'value' => 'v1',
+                'type' => 'string',
+                'description' => 'Versione API attuale',
+                'group' => 'api',
+                'is_public' => false,
+                'is_editable' => false,
             ],
         ];
 
@@ -342,5 +371,11 @@ class SettingsSeeder extends Seeder
                 $setting
             );
         }
+
+        $this->command->info('✅ Application settings created successfully (' . count($settings) . ' settings)');
+
+        // Log dei gruppi creati
+        $groups = collect($settings)->pluck('group')->unique()->sort();
+        $this->command->info('📋 Setting groups: ' . $groups->implode(', '));
     }
 }
