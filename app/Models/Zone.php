@@ -197,7 +197,7 @@ class Zone extends Model
         return $this->tournaments()
             ->with('tournamentType')
             ->get()
-            ->groupBy('tournamentCategory.name')
+            ->groupBy('tournamentType.name')
             ->map(function ($tournaments) {
                 return $tournaments->count();
             })

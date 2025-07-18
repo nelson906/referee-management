@@ -135,7 +135,7 @@ class DashboardController extends Controller
         // Filter tournaments that need more referees
         return $query->get()->filter(function ($tournament) {
             $assignedReferees = $tournament->assignments()->count();
-            $requiredReferees = $tournament->tournamentCategory->max_referees ?? 1;
+            $requiredReferees = $tournament->tournamentType->max_referees ?? 1;
             return $assignedReferees < $requiredReferees;
         })->take(10);
     }

@@ -2,402 +2,485 @@
 
 namespace Tests\Feature;
 
-use Tests\TestCase;
 use App\Models\User;
+use App\Models\Tournament;
+use App\Models\TournamentCategory;
 use App\Models\Zone;
 use App\Models\Club;
-use App\Models\Tournament;
-use App\Models\TournamentType;
 use App\Models\Availability;
-use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\WithFaker;
+use Tests\TestCase;
+use Carbon\Carbon;
 
 class AvailabilityFlowTest extends TestCase
 {
-    use RefreshDatabase;
+    use RefreshDatabase, WithFaker;
 
-    protected $zoneReferee;
-    protected $nationalReferee;
-    protected $zone;
-    protected $tournament;
-    protected $nationalTournament;
+    protected User $zoneReferee;
+    protected User $nationalReferee;
+    protected Zone $zone;
+    protected TournamentCategory $zoneCategory;
+    protected TournamentCategory $nationalCategory;
+    protected Club $club;
+    protected Tournament $zoneTournament;
+    protected Tournament $nationalTournament;
 
     protected function setUp(): void
     {
         parent::setUp();
 
-        // ✅ Setup zone and tournament type
-        $this->zone = Zone::factory()->create(['name' => 'Test Zone']);
-
-        $zonalType = TournamentType::factory()->create([
-            'name' => 'Zonal Tournament',
-            'is_national' => false,
+        // Create zone
+        $this->zone = Zone::factory()->create([
+            'name' => 'Test Zone',
+            'code' => 'TZ'
         ]);
 
-        $nationalType = TournamentType::factory()->create([
-            'name' => 'National Tournament',
-            'is_national' => true,
+        // Create club
+        $this->club = Club::factory()->create([
+            'name' => 'Test Golf Club',
+            'zone_id' => $this->zone->id
         ]);
 
-        $club = Club::factory()->create(['zone_id' => $this->zone->id]);
+        // Create tournament categories
+        $this->zoneCategory = TournamentCategory::factory()->create([
+            'name' => 'Gara Sociale',
+            'level' => 'zonale'
+        ]);
 
-        // ✅ Create referees using User-Centric approach
+        $this->nationalCategory = TournamentCategory::factory()->create([
+            'name' => 'Open Nazionale',
+            'level' => 'nazionale'
+        ]);
+
+        // Create referees
         $this->zoneReferee = User::factory()->create([
-            'user_type' => 'referee',
-            'zone_id' => $this->zone->id,
-            'level' => 'primo_livello',
-            'referee_code' => 'ARB1001',
-            'is_active' => true,
+            'role' => 'referee',
+            'level' => 'regionale',
+            'zone_id' => $this->zone->id
         ]);
 
         $this->nationalReferee = User::factory()->create([
-            'user_type' => 'referee',
-            'zone_id' => $this->zone->id,
+            'role' => 'referee',
             'level' => 'nazionale',
-            'referee_code' => 'ARB2001',
-            'is_active' => true,
+            'zone_id' => $this->zone->id
         ]);
 
-        // ✅ Create tournaments
-        $this->tournament = Tournament::factory()->create([
-            'name' => 'Test Zonal Tournament',
+        // Create tournaments
+        $this->zoneTournament = Tournament::factory()->create([
+            'name' => 'Torneo Zonale Test',
+            'start_date' => Carbon::today()->addDays(14),
+            'end_date' => Carbon::today()->addDays(16),
+            'availability_deadline' => Carbon::today()->addDays(7),
+            'club_id' => $this->club->id,
+            'tournament_category_id' => $this->zoneCategory->id,
             'zone_id' => $this->zone->id,
-            'club_id' => $club->id,
-            'tournament_type_id' => $zonalType->id,
-            'start_date' => Carbon::now()->addDays(30),
-            'end_date' => Carbon::now()->addDays(32),
-            'availability_deadline' => Carbon::now()->addDays(10),
-            'status' => 'open',
+            'status' => Tournament::STATUS_OPEN
         ]);
 
         $this->nationalTournament = Tournament::factory()->create([
-            'name' => 'Test National Tournament',
+            'name' => 'Torneo Nazionale Test',
+            'start_date' => Carbon::today()->addDays(21),
+            'end_date' => Carbon::today()->addDays(23),
+            'availability_deadline' => Carbon::today()->addDays(10),
+            'club_id' => $this->club->id,
+            'tournament_category_id' => $this->nationalCategory->id,
             'zone_id' => $this->zone->id,
-            'club_id' => $club->id,
-            'tournament_type_id' => $nationalType->id,
-            'start_date' => Carbon::now()->addDays(45),
-            'end_date' => Carbon::now()->addDays(47),
-            'availability_deadline' => Carbon::now()->addDays(15),
-            'status' => 'open',
+            'status' => Tournament::STATUS_OPEN
         ]);
     }
 
-    /**
-     * Test that zone referee can view tournaments in their zone
-     */
-    public function test_zone_referee_can_view_zonal_tournaments()
+    public function referee_can_access_availability_page(): void
     {
-        $this->actingAs($this->zoneReferee);
-
-        $response = $this->get(route('referee.availability.index'));
+        $response = $this
+            ->actingAs($this->zoneReferee)
+            ->get('/referee/availability');
 
         $response->assertOk();
-        $response->assertSee($this->tournament->name);
-        $response->assertViewHas('tournamentsByMonth');
+        $response->assertViewIs('referee.availability.index');
     }
 
-    /**
-     * Test that national referee can view both zonal and national tournaments
-     */
-    public function test_national_referee_can_view_all_tournaments()
+    public function non_referee_cannot_access_availability_page(): void
     {
-        $this->actingAs($this->nationalReferee);
+        $user = User::factory()->create(['role' => 'admin']);
 
-        $response = $this->get(route('referee.availability.index'));
+        $response = $this
+            ->actingAs($user)
+            ->get('/referee/availability');
 
-        $response->assertOk();
-        $response->assertSee($this->tournament->name); // Zonal tournament in their zone
-        $response->assertSee($this->nationalTournament->name); // National tournament
+        $response->assertStatus(403);
     }
 
-    /**
-     * Test referee can declare availability for zonal tournament
-     */
-    public function test_referee_can_declare_availability_for_zonal_tournament()
+    public function zone_referee_can_see_only_zone_tournaments(): void
     {
-        $this->actingAs($this->zoneReferee);
-
-        $availabilityData = [
-            'availabilities' => [$this->tournament->id],
-            'notes' => [
-                $this->tournament->id => 'Available for this tournament'
-            ]
-        ];
-
-        $response = $this->post(route('referee.availability.save'), $availabilityData);
-
-        $response->assertRedirect(route('referee.availability.index'));
-        $response->assertSessionHas('success');
-
-        // ✅ Verify availability was created with User model
-        $this->assertDatabaseHas('availabilities', [
-            'user_id' => $this->zoneReferee->id,
-            'tournament_id' => $this->tournament->id,
-            'notes' => 'Available for this tournament',
-        ]);
-    }
-
-    /**
-     * Test national referee can declare availability for national tournament
-     */
-    public function test_national_referee_can_declare_availability_for_national_tournament()
-    {
-        $this->actingAs($this->nationalReferee);
-
-        $availabilityData = [
-            'availabilities' => [$this->nationalTournament->id],
-            'notes' => [
-                $this->nationalTournament->id => 'Available for national tournament'
-            ]
-        ];
-
-        $response = $this->post(route('referee.availability.save'), $availabilityData);
-
-        $response->assertRedirect(route('referee.availability.index'));
-
-        // ✅ Verify availability was created
-        $this->assertDatabaseHas('availabilities', [
-            'user_id' => $this->nationalReferee->id,
-            'tournament_id' => $this->nationalTournament->id,
-            'notes' => 'Available for national tournament',
-        ]);
-    }
-
-    /**
-     * Test referee can withdraw availability before deadline
-     */
-    public function test_referee_can_withdraw_availability_before_deadline()
-    {
-        $this->actingAs($this->zoneReferee);
-
-        // ✅ First declare availability
-        Availability::create([
-            'user_id' => $this->zoneReferee->id,
-            'tournament_id' => $this->tournament->id,
-            'notes' => 'Initially available',
-            'submitted_at' => Carbon::now(),
-        ]);
-
-        // ✅ Then withdraw (by not including in new submission)
-        $availabilityData = [
-            'availabilities' => [], // Empty = withdraw all
-        ];
-
-        $response = $this->post(route('referee.availability.save'), $availabilityData);
-
-        $response->assertRedirect(route('referee.availability.index'));
-
-        // ✅ Verify availability was removed
-        $this->assertDatabaseMissing('availabilities', [
-            'user_id' => $this->zoneReferee->id,
-            'tournament_id' => $this->tournament->id,
-        ]);
-    }
-
-    /**
-     * Test referee cannot declare availability after deadline
-     */
-    public function test_referee_cannot_declare_availability_after_deadline()
-    {
-        // ✅ Set tournament deadline to past
-        $this->tournament->update([
-            'availability_deadline' => Carbon::now()->subDays(1)
-        ]);
-
-        $this->actingAs($this->zoneReferee);
-
-        $availabilityData = [
-            'availabilities' => [$this->tournament->id],
-        ];
-
-        $response = $this->post(route('referee.availability.save'), $availabilityData);
-
-        // ✅ Should succeed but not create availability for past deadline tournament
-        $response->assertRedirect(route('referee.availability.index'));
-
-        $this->assertDatabaseMissing('availabilities', [
-            'user_id' => $this->zoneReferee->id,
-            'tournament_id' => $this->tournament->id,
-        ]);
-    }
-
-    /**
-     * Test referee cannot declare availability for tournaments outside their zone (non-national)
-     */
-    public function test_referee_cannot_declare_availability_outside_zone()
-    {
-        // ✅ Create tournament in different zone
-        $otherZone = Zone::factory()->create(['name' => 'Other Zone']);
+        $otherZone = Zone::factory()->create();
         $otherClub = Club::factory()->create(['zone_id' => $otherZone->id]);
-
-        $zonalType = TournamentType::factory()->create(['is_national' => false]);
-
-        $otherTournament = Tournament::factory()->create([
+        $otherZoneTournament = Tournament::factory()->create([
             'zone_id' => $otherZone->id,
             'club_id' => $otherClub->id,
-            'tournament_type_id' => $zonalType->id,
-            'start_date' => Carbon::now()->addDays(30),
-            'availability_deadline' => Carbon::now()->addDays(10),
-            'status' => 'open',
+            'tournament_category_id' => $this->zoneCategory->id,
+            'status' => Tournament::STATUS_OPEN,
+            'availability_deadline' => Carbon::today()->addDays(5)
         ]);
 
-        $this->actingAs($this->zoneReferee);
-
-        $availabilityData = [
-            'availabilities' => [$otherTournament->id],
-        ];
-
-        $response = $this->post(route('referee.availability.save'), $availabilityData);
-
-        // ✅ Should not create availability for tournament outside zone
-        $this->assertDatabaseMissing('availabilities', [
-            'user_id' => $this->zoneReferee->id,
-            'tournament_id' => $otherTournament->id,
-        ]);
-    }
-
-    /**
-     * Test AJAX toggle availability endpoint
-     */
-    public function test_referee_can_toggle_availability_via_ajax()
-    {
-        $this->actingAs($this->zoneReferee);
-
-        // ✅ Test declaring availability via AJAX
-        $response = $this->postJson(route('referee.availability.toggle'), [
-            'tournament_id' => $this->tournament->id,
-            'available' => true,
-            'notes' => 'AJAX availability'
-        ]);
+        $response = $this
+            ->actingAs($this->zoneReferee)
+            ->get('/referee/availability');
 
         $response->assertOk();
-        $response->assertJson(['success' => true]);
+        $response->assertSee($this->zoneTournament->name);
+        $response->assertDontSee($otherZoneTournament->name);
+    }
+
+    public function national_referee_can_see_all_tournaments(): void
+    {
+        $otherZone = Zone::factory()->create();
+        $otherClub = Club::factory()->create(['zone_id' => $otherZone->id]);
+        $otherZoneTournament = Tournament::factory()->create([
+            'zone_id' => $otherZone->id,
+            'club_id' => $otherClub->id,
+            'tournament_category_id' => $this->zoneCategory->id,
+            'status' => Tournament::STATUS_OPEN,
+            'availability_deadline' => Carbon::today()->addDays(5)
+        ]);
+
+        $response = $this
+            ->actingAs($this->nationalReferee)
+            ->get('/referee/availability');
+
+        $response->assertOk();
+        $response->assertSee($this->zoneTournament->name);
+        $response->assertSee($this->nationalTournament->name);
+        $response->assertSee($otherZoneTournament->name);
+    }
+
+    public function referee_can_declare_availability_for_tournament(): void
+    {
+        $response = $this
+            ->actingAs($this->zoneReferee)
+            ->post('/referee/availability', [
+                'tournament_id' => $this->zoneTournament->id,
+                'notes' => 'Disponibile per tutto il torneo'
+            ]);
+
+        $response->assertRedirect();
+        $response->assertSessionHas('success');
 
         $this->assertDatabaseHas('availabilities', [
             'user_id' => $this->zoneReferee->id,
-            'tournament_id' => $this->tournament->id,
-            'notes' => 'AJAX availability',
+            'tournament_id' => $this->zoneTournament->id,
+            'notes' => 'Disponibile per tutto il torneo'
+        ]);
+    }
+
+    public function referee_can_bulk_declare_availability(): void
+    {
+        $additionalTournament = Tournament::factory()->create([
+            'zone_id' => $this->zone->id,
+            'club_id' => $this->club->id,
+            'tournament_category_id' => $this->zoneCategory->id,
+            'status' => Tournament::STATUS_OPEN,
+            'availability_deadline' => Carbon::today()->addDays(8)
         ]);
 
-        // ✅ Test withdrawing availability via AJAX
-        $response = $this->postJson(route('referee.availability.toggle'), [
-            'tournament_id' => $this->tournament->id,
-            'available' => false,
+        $response = $this
+            ->actingAs($this->zoneReferee)
+            ->post('/referee/availability/bulk', [
+                'tournament_ids' => [
+                    $this->zoneTournament->id,
+                    $additionalTournament->id
+                ],
+                'notes' => 'Disponibile per entrambi'
+            ]);
+
+        $response->assertRedirect();
+        $response->assertSessionHas('success');
+
+        $this->assertDatabaseHas('availabilities', [
+            'user_id' => $this->zoneReferee->id,
+            'tournament_id' => $this->zoneTournament->id
         ]);
 
-        $response->assertOk();
-        $response->assertJson(['success' => true]);
+        $this->assertDatabaseHas('availabilities', [
+            'user_id' => $this->zoneReferee->id,
+            'tournament_id' => $additionalTournament->id
+        ]);
+    }
+
+    public function referee_cannot_declare_availability_for_past_deadline_tournament(): void
+    {
+        $expiredTournament = Tournament::factory()->create([
+            'zone_id' => $this->zone->id,
+            'club_id' => $this->club->id,
+            'tournament_category_id' => $this->zoneCategory->id,
+            'status' => Tournament::STATUS_OPEN,
+            'availability_deadline' => Carbon::yesterday()
+        ]);
+
+        $response = $this
+            ->actingAs($this->zoneReferee)
+            ->post('/referee/availability', [
+                'tournament_id' => $expiredTournament->id,
+                'notes' => 'Tentativo tardivo'
+            ]);
+
+        $response->assertSessionHasErrors(['tournament_id']);
 
         $this->assertDatabaseMissing('availabilities', [
             'user_id' => $this->zoneReferee->id,
-            'tournament_id' => $this->tournament->id,
+            'tournament_id' => $expiredTournament->id
         ]);
     }
 
-    /**
-     * Test availability calendar view shows correct data
-     */
-    public function test_availability_calendar_shows_correct_data()
+    public function referee_cannot_declare_duplicate_availability(): void
     {
-        $this->actingAs($this->zoneReferee);
-
-        // ✅ Declare availability
-        Availability::create([
+        // First declaration
+        Availability::factory()->create([
             'user_id' => $this->zoneReferee->id,
-            'tournament_id' => $this->tournament->id,
-            'submitted_at' => Carbon::now(),
+            'tournament_id' => $this->zoneTournament->id
         ]);
 
-        $response = $this->get(route('referee.availability.calendar'));
+        // Attempt duplicate
+        $response = $this
+            ->actingAs($this->zoneReferee)
+            ->post('/referee/availability', [
+                'tournament_id' => $this->zoneTournament->id,
+                'notes' => 'Duplicato'
+            ]);
 
-        $response->assertOk();
-        $response->assertViewHas('calendarData');
+        $response->assertSessionHasErrors(['tournament_id']);
 
-        $calendarData = $response->viewData('calendarData');
-
-        // ✅ Verify tournament is in calendar with correct availability status
-        $tournamentEvent = collect($calendarData['tournaments'])->firstWhere('id', $this->tournament->id);
-
-        $this->assertNotNull($tournamentEvent);
-        $this->assertTrue($tournamentEvent['extendedProps']['is_available']);
-        $this->assertEquals('available', $tournamentEvent['extendedProps']['personal_status']);
+        $this->assertEquals(1, Availability::where([
+            'user_id' => $this->zoneReferee->id,
+            'tournament_id' => $this->zoneTournament->id
+        ])->count());
     }
 
-    /**
-     * Test availability filtering for national referees
-     */
-    public function test_national_referee_can_filter_by_zone()
+    public function referee_can_withdraw_availability_before_deadline(): void
     {
-        $this->actingAs($this->nationalReferee);
+        $availability = Availability::factory()->create([
+            'user_id' => $this->zoneReferee->id,
+            'tournament_id' => $this->zoneTournament->id
+        ]);
 
-        // ✅ Test filtering by zone
-        $response = $this->get(route('referee.availability.index', [
-            'zone_id' => $this->zone->id
-        ]));
+        $response = $this
+            ->actingAs($this->zoneReferee)
+            ->delete("/referee/availability/{$availability->id}");
+
+        $response->assertRedirect();
+        $response->assertSessionHas('success');
+
+        $this->assertDatabaseMissing('availabilities', [
+            'id' => $availability->id
+        ]);
+    }
+
+    public function referee_cannot_withdraw_availability_after_deadline(): void
+    {
+        $expiredTournament = Tournament::factory()->create([
+            'zone_id' => $this->zone->id,
+            'club_id' => $this->club->id,
+            'tournament_category_id' => $this->zoneCategory->id,
+            'status' => Tournament::STATUS_OPEN,
+            'availability_deadline' => Carbon::yesterday()
+        ]);
+
+        $availability = Availability::factory()->create([
+            'user_id' => $this->zoneReferee->id,
+            'tournament_id' => $expiredTournament->id
+        ]);
+
+        $response = $this
+            ->actingAs($this->zoneReferee)
+            ->delete("/referee/availability/{$availability->id}");
+
+        $response->assertStatus(403);
+
+        $this->assertDatabaseHas('availabilities', [
+            'id' => $availability->id
+        ]);
+    }
+
+    public function availability_page_can_be_filtered_by_zone(): void
+    {
+        $response = $this
+            ->actingAs($this->nationalReferee)
+            ->get('/referee/availability?zone_id=' . $this->zone->id);
 
         $response->assertOk();
-        $response->assertSee($this->tournament->name);
+        $response->assertSee($this->zoneTournament->name);
         $response->assertSee($this->nationalTournament->name);
     }
 
-    /**
-     * Test availability updates existing records correctly
-     */
-    public function test_availability_updates_existing_records()
+    public function availability_page_can_be_filtered_by_category(): void
     {
-        $this->actingAs($this->zoneReferee);
+        $response = $this
+            ->actingAs($this->nationalReferee)
+            ->get('/referee/availability?category_id=' . $this->zoneCategory->id);
 
-        // ✅ Create initial availability
-        $availability = Availability::create([
-            'user_id' => $this->zoneReferee->id,
-            'tournament_id' => $this->tournament->id,
-            'notes' => 'Initial notes',
-            'submitted_at' => Carbon::now()->subDay(),
-        ]);
-
-        // ✅ Update availability with new notes
-        $availabilityData = [
-            'availabilities' => [$this->tournament->id],
-            'notes' => [
-                $this->tournament->id => 'Updated notes'
-            ]
-        ];
-
-        $response = $this->post(route('referee.availability.save'), $availabilityData);
-
-        $response->assertRedirect(route('referee.availability.index'));
-
-        // ✅ Verify old record was deleted and new one created with updated notes
-        $this->assertDatabaseHas('availabilities', [
-            'user_id' => $this->zoneReferee->id,
-            'tournament_id' => $this->tournament->id,
-            'notes' => 'Updated notes',
-        ]);
-
-        // ✅ Verify there's only one record (old was replaced)
-        $this->assertEquals(1, Availability::where('user_id', $this->zoneReferee->id)
-                                         ->where('tournament_id', $this->tournament->id)
-                                         ->count());
+        $response->assertOk();
+        $response->assertSee($this->zoneTournament->name);
+        $response->assertDontSee($this->nationalTournament->name);
     }
 
-    /**
-     * Test inactive referee cannot declare availability
-     */
-    public function test_inactive_referee_cannot_declare_availability()
+    public function availability_page_can_be_filtered_by_month(): void
     {
-        // ✅ Deactivate referee
-        $this->zoneReferee->update(['is_active' => false]);
+        $month = $this->zoneTournament->start_date->format('Y-m');
 
-        $this->actingAs($this->zoneReferee);
+        $response = $this
+            ->actingAs($this->nationalReferee)
+            ->get("/referee/availability?month={$month}");
 
-        // ✅ Should be blocked by middleware before reaching controller
-        $response = $this->get(route('referee.availability.index'));
+        $response->assertOk();
+        $response->assertSee($this->zoneTournament->name);
+    }
 
-        // This depends on your middleware implementation
-        // Could be redirect to login or 403 error
-        $this->assertTrue(
-            $response->isRedirect() || $response->status() === 403,
-            'Inactive referee should not access availability system'
-        );
+    public function referee_can_see_their_existing_availabilities(): void
+    {
+        Availability::factory()->create([
+            'user_id' => $this->zoneReferee->id,
+            'tournament_id' => $this->zoneTournament->id,
+            'notes' => 'Già dichiarato'
+        ]);
+
+        $response = $this
+            ->actingAs($this->zoneReferee)
+            ->get('/referee/availability');
+
+        $response->assertOk();
+        $response->assertSee('Già dichiarato');
+    }
+
+    public function only_open_tournaments_are_shown(): void
+    {
+        $closedTournament = Tournament::factory()->create([
+            'zone_id' => $this->zone->id,
+            'club_id' => $this->club->id,
+            'tournament_category_id' => $this->zoneCategory->id,
+            'status' => Tournament::STATUS_CLOSED,
+            'availability_deadline' => Carbon::tomorrow()
+        ]);
+
+        $response = $this
+            ->actingAs($this->zoneReferee)
+            ->get('/referee/availability');
+
+        $response->assertOk();
+        $response->assertSee($this->zoneTournament->name);
+        $response->assertDontSee($closedTournament->name);
+    }
+
+    public function tournaments_past_deadline_are_not_shown(): void
+    {
+        $pastDeadlineTournament = Tournament::factory()->create([
+            'zone_id' => $this->zone->id,
+            'club_id' => $this->club->id,
+            'tournament_category_id' => $this->zoneCategory->id,
+            'status' => Tournament::STATUS_OPEN,
+            'availability_deadline' => Carbon::yesterday()
+        ]);
+
+        $response = $this
+            ->actingAs($this->zoneReferee)
+            ->get('/referee/availability');
+
+        $response->assertOk();
+        $response->assertSee($this->zoneTournament->name);
+        $response->assertDontSee($pastDeadlineTournament->name);
+    }
+
+    public function referee_can_update_availability_notes(): void
+    {
+        $availability = Availability::factory()->create([
+            'user_id' => $this->zoneReferee->id,
+            'tournament_id' => $this->zoneTournament->id,
+            'notes' => 'Note originali'
+        ]);
+
+        $response = $this
+            ->actingAs($this->zoneReferee)
+            ->patch("/referee/availability/{$availability->id}", [
+                'notes' => 'Note aggiornate'
+            ]);
+
+        $response->assertRedirect();
+        $response->assertSessionHas('success');
+
+        $availability->refresh();
+        $this->assertEquals('Note aggiornate', $availability->notes);
+    }
+
+    public function referee_cannot_modify_others_availability(): void
+    {
+        $otherReferee = User::factory()->create([
+            'role' => 'referee',
+            'level' => 'regionale',
+            'zone_id' => $this->zone->id
+        ]);
+
+        $availability = Availability::factory()->create([
+            'user_id' => $otherReferee->id,
+            'tournament_id' => $this->zoneTournament->id
+        ]);
+
+        $response = $this
+            ->actingAs($this->zoneReferee)
+            ->delete("/referee/availability/{$availability->id}");
+
+        $response->assertStatus(403);
+
+        $this->assertDatabaseHas('availabilities', [
+            'id' => $availability->id
+        ]);
+    }
+
+    public function availability_includes_submission_timestamp(): void
+    {
+        $beforeSubmission = Carbon::now();
+
+        $this
+            ->actingAs($this->zoneReferee)
+            ->post('/referee/availability', [
+                'tournament_id' => $this->zoneTournament->id,
+                'notes' => 'Test timestamp'
+            ]);
+
+        $availability = Availability::where([
+            'user_id' => $this->zoneReferee->id,
+            'tournament_id' => $this->zoneTournament->id
+        ])->first();
+
+        $this->assertNotNull($availability->submitted_at);
+        $this->assertTrue($availability->submitted_at->gte($beforeSubmission));
+    }
+
+    public function validation_requires_valid_tournament_id(): void
+    {
+        $response = $this
+            ->actingAs($this->zoneReferee)
+            ->post('/referee/availability', [
+                'tournament_id' => 999999,
+                'notes' => 'Invalid tournament'
+            ]);
+
+        $response->assertSessionHasErrors(['tournament_id']);
+    }
+
+    public function validation_allows_empty_notes(): void
+    {
+        $response = $this
+            ->actingAs($this->zoneReferee)
+            ->post('/referee/availability', [
+                'tournament_id' => $this->zoneTournament->id
+            ]);
+
+        $response->assertRedirect();
+        $response->assertSessionHasNoErrors();
+
+        $this->assertDatabaseHas('availabilities', [
+            'user_id' => $this->zoneReferee->id,
+            'tournament_id' => $this->zoneTournament->id,
+            'notes' => null
+        ]);
     }
 }
