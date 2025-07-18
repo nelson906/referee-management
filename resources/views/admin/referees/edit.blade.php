@@ -15,7 +15,7 @@
                 <h1 class="text-2xl font-bold text-gray-900">Modifica Arbitro</h1>
             </div>
             <p class="text-gray-600">
-                {{ $referee->user->name ?? ($referee->name ?? 'Nome non disponibile') }} -
+                {{ $referee->name ?? ($referee->name ?? 'Nome non disponibile') }} -
                 {{ $referee->referee_code ?? 'Codice non disponibile' }}
             </p>
         </div>
@@ -37,7 +37,7 @@
 
         {{-- Form --}}
         <div class="bg-white rounded-lg shadow p-6">
-            <form method="POST" action="{{ route('admin.referees.update', $referee->user) }}" class="space-y-6">
+            <form method="POST" action="{{ route('admin.referees.update', $referee) }}" class="space-y-6">
                 @csrf
                 @method('PUT')
 
@@ -45,7 +45,7 @@
                     {{-- Nome (dall'User) --}}
                     <div>
                         <label for="name" class="block text-sm font-medium text-gray-700 mb-1">Nome Completo *</label>
-                        <input type="text" name="name" id="name" value="{{ old('name', $referee->user->name) }}"
+                        <input type="text" name="name" id="name" value="{{ old('name', $referee->name) }}"
                             class="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500 @error('name') border-red-500 @enderror"
                             required>
                         @error('name')
@@ -57,7 +57,7 @@
                     <div>
                         <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Email *</label>
                         <input type="email" name="email" id="email"
-                            value="{{ old('email', $referee->user->email) }}"
+                            value="{{ old('email', $referee->email) }}"
                             class="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500 @error('email') border-red-500 @enderror"
                             required>
                         @error('email')
@@ -70,9 +70,9 @@
                             Codice Arbitro
                             <span class="text-gray-500 text-xs">(Generato automaticamente)</span>
                         </label>
-                        {{-- ✅ FIX: usa $referee->user->referee_code --}}
+                        {{-- ✅ FIX: usa $referee->referee_code --}}
                         <input type="text" name="referee_code" id="referee_code"
-                            value="{{ old('referee_code', $referee->user->referee_code) }}"
+                            value="{{ old('referee_code', $referee->referee_code) }}"
                             class="w-full border border-gray-300 rounded-md px-3 py-2 bg-gray-50 focus:ring-blue-500 focus:border-blue-500"
                             readonly>
                         <p class="mt-1 text-xs text-gray-500">Il codice viene generato automaticamente e non può essere
@@ -84,24 +84,22 @@
                     <div>
                         <label for="phone" class="block text-sm font-medium text-gray-700 mb-1">Telefono</label>
                         <input type="text" name="phone" id="phone"
-                            value="{{ old('phone', $referee->user->phone) }}"
+                            value="{{ old('phone', $referee->phone) }}"
                             class="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500 @error('phone') border-red-500 @enderror">
                         @error('phone')
                             <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                         @enderror
                     </div>
 
-                        {{-- Livello - CORRETTO: dal User, non dal Referee --}}
                     <div>
                         <label for="level" class="block text-sm font-medium text-gray-700 mb-1">Livello *</label>
                         <select name="level" id="level"
                             class="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500 @error('level') border-red-500 @enderror"
                             required>
                             <option value="">Seleziona livello</option>
-                            @foreach ($levels as $key => $label)
-                                {{-- ✅ FIX: usa $referee->user->level invece di $referee->level --}}
+                            @foreach(referee_levels() as $key => $label)
                                 <option value="{{ $key }}"
-                                    {{ old('level', $referee->user->level) == $key ? 'selected' : '' }}>
+                                    {{ old('level', normalize_referee_level($referee->level)) == $key ? 'selected' : '' }}>
                                     {{ $label }}
                                 </option>
                             @endforeach
@@ -119,9 +117,9 @@
                             required>
                             <option value="">Seleziona zona</option>
                             @foreach ($zones as $zone)
-                                {{-- ✅ FIX: usa $referee->user->zone_id invece di $referee->zone_id --}}
+                                {{-- ✅ FIX: usa $referee->zone_id invece di $referee->zone_id --}}
                                 <option value="{{ $zone->id }}"
-                                    {{ old('zone_id', $referee->user->zone_id) == $zone->id ? 'selected' : '' }}>
+                                    {{ old('zone_id', $referee->zone_id) == $zone->id ? 'selected' : '' }}>
                                     {{ $zone->name }}
                                 </option>
                             @endforeach
@@ -165,7 +163,7 @@
                 {{-- Stato (dall'User) --}}
                 <div class="flex items-center">
                     <input type="checkbox" name="is_active" id="is_active" value="1"
-                        {{ old('is_active', $referee->user->is_active) ? 'checked' : '' }}
+                        {{ old('is_active', $referee->is_active) ? 'checked' : '' }}
                         class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
                     <label for="is_active" class="ml-2 block text-sm text-gray-900">Arbitro attivo</label>
                 </div>

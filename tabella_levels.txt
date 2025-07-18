@@ -1,0 +1,158 @@
+# 📋 Tabella Completa: Sostituzioni $levels → referee_levels()
+
+## 🎨 **NELLE VIEW BLADE**
+
+### 1. **Dropdown/Select (foreach)**
+| ❌ CERCA | ✅ SOSTITUISCI |
+|----------|----------------|
+| `@foreach($levels as $key => $label)` | `@foreach(referee_levels() as $key => $label)` |
+| `@foreach ($levels as $key => $label)` | `@foreach(referee_levels() as $key => $label)` |
+| `@foreach( $levels as $key => $label )` | `@foreach(referee_levels() as $key => $label)` |
+
+### 2. **Mostrare label livello (accesso array)**
+| ❌ CERCA | ✅ SOSTITUISCI |
+|----------|----------------|
+| `{{ $levels[$referee->level] ?? 'N/A' }}` | `{{ referee_level_label($referee->level) }}` |
+| `{{ $levels[$user->level] ?? 'N/A' }}` | `{{ referee_level_label($user->level) }}` |
+| `{{ $levels[$item->level] ?? 'Non specificato' }}` | `{{ referee_level_label($item->level) }}` |
+| `$levels[$referee->level]` | `referee_level_label($referee->level)` |
+
+### 3. **Comparazioni per selected/checked**
+| ❌ CERCA | ✅ SOSTITUISCI |
+|----------|----------------|
+| `{{ $referee->level == $key ? 'selected' : '' }}` | `{{ normalize_referee_level($referee->level) == $key ? 'selected' : '' }}` |
+| `{{ $user->level === $key ? 'selected' : '' }}` | `{{ normalize_referee_level($user->level) === $key ? 'selected' : '' }}` |
+| `{{ old('level', $referee->level) == $key ? 'selected' : '' }}` | `{{ old('level', normalize_referee_level($referee->level)) == $key ? 'selected' : '' }}` |
+
+### 4. **Debug/Dump (rimuovi dopo fix)**
+| ❌ CERCA | ✅ SOSTITUISCI |
+|----------|----------------|
+| `{{ dd($levels) }}` | `{{ dd(referee_levels()) }}` |
+| `@dump($levels)` | `@dump(referee_levels())` |
+| `{{ var_dump($levels) }}` | `{{ var_dump(referee_levels()) }}` |
+
+### 5. **Condizioni if/unless**
+| ❌ CERCA | ✅ SOSTITUISCI |
+|----------|----------------|
+| `@if(isset($levels[$referee->level]))` | `@if(referee_level_label($referee->level) !== 'Non specificato')` |
+| `@unless(empty($levels))` | `@unless(empty(referee_levels()))` |
+
+---
+
+## 🎮 **NEI CONTROLLER**
+
+### 6. **Definizione variabile (rimuovi completamente)**
+| ❌ RIMUOVI QUESTE RIGHE |
+|-------------------------|
+| `$levels = RefereeLevelsHelper::getSelectOptions();` |
+| `$levels = RefereeLevelsHelper::getSelectOptions(true);` |
+| `$levels = config('referee.levels');` |
+| `$levels = $this->getLevels();` |
+
+### 7. **Compact (rimuovi 'levels')**
+| ❌ CERCA | ✅ SOSTITUISCI |
+|----------|----------------|
+| `compact('referees', 'zones', 'levels')` | `compact('referees', 'zones')` |
+| `compact('referee', 'levels', 'zones')` | `compact('referee', 'zones')` |
+| `compact('user', 'zones', 'levels')` | `compact('user', 'zones')` |
+| `compact('levels', 'zones')` | `compact('zones')` |
+| `compact('levels')` | `[]` o rimuovi compact |
+
+### 8. **Validazione (nei controller/requests)**
+| ❌ CERCA | ✅ SOSTITUISCI |
+|----------|----------------|
+| `'level' => 'required\|in:' . implode(',', array_keys($levels))` | `'level' => ['required', function ($attribute, $value, $fail) { if (!RefereeLevelsHelper::isValid($value)) { $fail("Livello non valido."); } }]` |
+
+---
+
+## 🔧 **NEI MODEL/HELPER**
+
+### 9. **Metodi model che restituiscono levels**
+| ❌ CERCA | ✅ SOSTITUISCI |
+|----------|----------------|
+| `public static function getLevels() { return self::LEVELS; }` | `public static function getLevels() { return RefereeLevelsHelper::getSelectOptions(); }` |
+| `const LEVELS = [...]` | Rimuovi e usa RefereeLevelsHelper |
+
+---
+
+## 🚨 **CASI SPECIALI**
+
+### 10. **Il tuo caso specifico - Span con badge**
+```blade
+❌ CERCA:
+<span class="px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
+    {{ $levels[$referee->level] ?? 'N/A' }}
+</span>
+
+✅ SOSTITUISCI:
+<span class="px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
+    {{ referee_level_label($referee->level) }}
+</span>
+```
+
+### 11. **Tabelle con livelli**
+```blade
+❌ CERCA:
+<td>{{ $levels[$item->level] ?? 'Sconosciuto' }}</td>
+
+✅ SOSTITUISCI:
+<td>{{ referee_level_label($item->level) }}</td>
+```
+
+### 12. **JavaScript che usa levels**
+```blade
+❌ CERCA:
+<script>
+const levels = @json($levels);
+</script>
+
+✅ SOSTITUISCI:
+<script>
+const levels = @json(referee_levels());
+</script>
+```
+
+---
+
+## 🔍 **COMANDI UTILI PER TROVARE I PATTERN**
+
+```bash
+# Trova tutti i $levels nelle view
+grep -rn "\$levels" resources/views/ --include="*.blade.php"
+
+# Trova compact con levels nei controller
+grep -rn "compact.*levels" app/Http/Controllers/ --include="*.php"
+
+# Trova definizioni di $levels
+grep -rn "\$levels\s*=" app/ --include="*.php"
+```
+
+---
+
+## ✅ **VERIFICA FINALE**
+
+Dopo tutte le sostituzioni, questi comandi devono restituire ZERO risultati:
+
+```bash
+# Non devono esserci più $levels nelle view
+grep -r "\$levels" resources/views/ --include="*.blade.php"
+
+# Non devono esserci più 'levels' nei compact
+grep -r "compact.*levels" app/Http/Controllers/ --include="*.php"
+```
+
+---
+
+## 🎯 **PER IL TUO CASO SPECIFICO**
+
+La tua riga:
+```blade
+{{ $levels[$referee->level] ?? 'N/A' }}
+```
+
+Diventa:
+```blade
+{{ referee_level_label($referee->level) }}
+```
+
+**Motivo**: `referee_level_label()` gestisce automaticamente i casi null/vuoti e restituisce "Non specificato" invece di 'N/A', ed è più sicuro.
