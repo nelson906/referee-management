@@ -41,7 +41,7 @@
             </button>
         </form>
     @else
-        <form action="{{ route('admin.clubs.activate', $club) }}"
+        <form action="{{ route('admin.clubs.deactivate', $club) }}"
               method="POST"
               class="inline">
             @csrf

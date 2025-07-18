@@ -19,7 +19,7 @@ use App\Http\Controllers\TournamentController;
 
 // Home redirect
 Route::get('/', function () {
-    return redirect()->route('login');
+    return view( 'welcome');
 });
 
 // Authentication Routes

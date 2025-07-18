@@ -1,0 +1,124 @@
+/Users/iMac/Sites/referee-management/resources/views/
+├── admin
+│   ├── assignments
+│   │   ├── assign-referees.blade.php
+│   │   ├── create.blade.php
+│   │   ├── edit.blade.php
+│   │   ├── index.blade.php
+│   │   ├── partials
+│   │   │   ├── referee-list.blade.php
+│   │   │   └── referee-selection-grid.blade.php
+│   │   └── show.blade.php
+│   ├── calendar
+│   ├── calendar.blade.php
+│   ├── clubs
+│   │   ├── _form.blade.php
+│   │   ├── create.blade.php
+│   │   ├── edit.blade.php
+│   │   ├── index.blade.php
+│   │   └── show.blade.php
+│   ├── dashboard.blade.php
+│   ├── referees
+│   │   ├── create.blade.php
+│   │   ├── edit.blade.php
+│   │   ├── index.blade.php
+│   │   └── show.blade.php
+│   └── tournaments
+│       ├── availabilities.blade.php
+│       ├── calendar.blade.php
+│       ├── create.blade.php
+│       ├── edit.blade.php
+│       ├── index.blade.php
+│       └── show.blade.php
+├── auth
+│   ├── confirm-password.blade.php
+│   ├── forgot-password.blade.php
+│   ├── login.blade.php
+│   ├── register.blade.php
+│   ├── reset-password.blade.php
+│   └── verify-email.blade.php
+├── components
+│   ├── application-logo.blade.php
+│   ├── auth-session-status.blade.php
+│   ├── danger-button.blade.php
+│   ├── dropdown-link.blade.php
+│   ├── dropdown.blade.php
+│   ├── input-error.blade.php
+│   ├── input-label.blade.php
+│   ├── modal.blade.php
+│   ├── nav-link.blade.php
+│   ├── primary-button.blade.php
+│   ├── responsive-nav-link.blade.php
+│   ├── secondary-button.blade.php
+│   ├── status-badge.blade.php
+│   ├── table-actions-club.blade.php
+│   ├── table-actions-referee.blade.php
+│   ├── table-actions-tournament.blade.php
+│   ├── table-actions.blade.php
+│   ├── table-header.blade.php
+│   └── text-input.blade.php
+├── dashboard.blade.php
+├── layouts
+│   ├── admin.blade.php
+│   ├── app.blade.php
+│   ├── guest.blade.php
+│   ├── navigation.blade.php
+│   ├── referee.blade.php
+│   └── super-admin.blade.php
+├── profile
+│   ├── edit.blade.php
+│   └── partials
+│       ├── delete-user-form.blade.php
+│       ├── update-password-form.blade.php
+│       └── update-profile-information-form.blade.php
+├── referee
+│   ├── assignments
+│   │   ├── index.blade.php
+│   │   └── show.blade.php
+│   ├── availability
+│   │   ├── calendar.blade.php
+│   │   └── index.blade.php
+│   ├── dashboard.blade.php
+│   ├── index.blade.php
+│   └── profile
+│       └── edit.blade.php
+├── reports
+│   ├── categories
+│   │   └── index.blade.php
+│   ├── dashboard
+│   │   └── index.blade.php
+│   ├── index.blade.php
+│   └── zone
+│       ├── referees.blade.php
+│       ├── show.blade.php
+│       ├── tournament
+│       │   └── show.blade.php
+│       └── tournaments.blade.php
+├── super-admin
+│   ├── settings
+│   │   └── index.blade.php
+│   ├── system
+│   │   └── logs.blade.php
+│   ├── tournament-types
+│   │   ├── _form.blade.php
+│   │   ├── create.blade.php
+│   │   ├── edit.blade.php
+│   │   ├── index.blade.php
+│   │   └── show.blade.php
+│   ├── users
+│   │   ├── create.blade.php
+│   │   ├── edit.blade.php
+│   │   ├── index.blade.php
+│   │   └── show.blade.php
+│   └── zone
+│       ├── create.blade.php
+│       ├── edit.blade.php
+│       ├── index.blade.php
+│       └── show.blade.php
+├── tournaments
+│   ├── calendar.blade.php
+│   ├── index.blade.php
+│   └── show.blade.php
+└── welcome.blade.php
+
+29 directories, 93 files

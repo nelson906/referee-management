@@ -135,10 +135,10 @@ class AssignmentsSeeder extends Seeder
     {
         return $referees->filter(function($referee) use ($tournament) {
             // Check level requirement
-            $requiredLevel = $tournament->tournamentType->required_level ?? 'aspirante';
-            $levels = ['aspirante', 'primo_livello', 'regionale', 'nazionale', 'internazionale'];
+            $requiredLevel = $tournament->tournamentType->required_level ?? 'Aspirante';
+            $levels = ['Aspirante', '1_livello', 'Regionale', 'Nazionale', 'Internazionale'];
 
-            $refereeLevel = $referee->level ?? 'aspirante';
+            $refereeLevel = $referee->level ?? 'Aspirante';
             $requiredIndex = array_search($requiredLevel, $levels);
             $refereeIndex = array_search($refereeLevel, $levels);
 

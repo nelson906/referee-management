@@ -273,23 +273,17 @@ class Referee extends Model
         return $this->expiry_date->lt(now());
     }
 
-    public function isProfileComplete(): bool
-    {
-        // Se è stato marcato come completato (dall'admin o dal form), è completo
-        if ($this->profile_completed_at !== null) {
-            return true;
-        }
-
-        // Controllo minimale: solo campi veramente essenziali
-        return !empty($this->user->name) &&
-            !empty($this->user->email) &&
-            !empty($this->level) &&
-            !empty($this->zone_id);
-    }
 
     // Aggiungi anche questo metodo helper:
     public function markAsCompleted()
     {
         $this->update(['profile_completed_at' => now()]);
     }
+
+    // app/Models/Referee.php - SEMPLIFICARE
+public function isProfileComplete(): bool {
+    return $this->user->hasCompletedProfile() &&
+           $this->profile_completed_at !== null;
+}
+
 }
