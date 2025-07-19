@@ -46,7 +46,7 @@ public function calendar(Request $request): View
                         'club' => $tournament->club->name ?? 'N/A',
                         'zone' => $tournament->zone->name ?? 'N/A',
                         'zone_id' => $tournament->zone_id,
-                        'category' => $tournament->tournamentCategory->name ?? 'N/A',
+                        'category' => $tournament->tournamentType->name ?? 'N/A',
                         'status' => $tournament->status,
                         'tournament_url' => route('tournaments.show', $tournament),
 
@@ -56,7 +56,7 @@ public function calendar(Request $request): View
 
                         // Type info (important for public filtering)
                         'type_id' => $tournament->tournament_type_id,
-                        'type' => $tournament->tournamentCategory,
+                        'type' => $tournament->tournamentType,
 
                         // Admin-specific (not applicable for public)
                         'availabilities_count' => 0,
@@ -127,7 +127,7 @@ public function calendar(Request $request): View
  */
 private function getEventColor($tournament): string
 {
-    return match($tournament->tournamentCategory->name ?? 'default') {
+    return match($tournament->tournamentType->name ?? 'default') {
         'Categoria A' => '#FF6B6B',
         'Categoria B' => '#4ECDC4',
         'Categoria C' => '#45B7D1',

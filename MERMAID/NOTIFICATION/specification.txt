@@ -1,0 +1,471 @@
+# Sistema di Notifiche Laravel 12 - Analisi Completa
+
+## File Coinvolti nel Sistema di Notifiche
+
+### 1. **Model Principal**
+#### `app/Models/Notification.php`
+```php
+class Notification extends Model
+{
+    protected $fillable = [
+        'subject', 'message', 'tournament_id', 'sender_id', 'attachments'
+    ];
+
+    // Relazioni
+    public function tournament() // -> Tournament
+    public function sender() // -> User
+    public function recipients() // -> Many-to-Many User via pivot
+
+    // Metodi utility
+    public function markAsRead($userId)
+    public function getReadCountAttribute()
+    public function getUnreadCountAttribute()
+}
+```
+
+### 2. **Controller Principal**
+#### `app/Http/Controllers/NotificationController.php`
+**Metodi principali:**
+- `index()` - Lista notifiche
+- `show()` - Visualizza singola notifica
+- `showAssignmentForm()` - Form invio assegnazioni
+- `sendTournamentAssignment()` - Invio notifica standard
+- `sendAssignmentWithConvocation()` - Invio con allegati
+- `sendCommitteeNotification()` - Notifiche comitato
+
+**Metodi helper privati:**
+- `sendToRecipients()` - Email agli arbitri
+- `sendToAdditionalEmails()` - Email aggiuntive
+- `sendToFixedAddresses()` - Indirizzi fissi
+- `sendToClub()` - Email al circolo
+- `createAndSendEmail()` - Metodo unificato invio
+
+### 3. **Controller Secondario**
+#### `app/Http/Controllers/AvailabilityController.php`
+**Metodi notifiche:**
+- `notify()` - Notifiche disponibilità arbitri
+- `store()` - Invio automatico al salvataggio
+- `destroy()` - Notifica rimozione disponibilità
+
+### 4. **Template Email**
+#### Directory: `resources/views/mail/`
+
+**Template disponibili:**
+- `assignment-removed.blade.php` - Rimozione assegnazione
+- `availability-removed.blade.php` - Rimozione disponibilità
+- `club-assignment.blade.php` - Assegnazione al circolo
+- `tournament-assignment.blade.php` - Assegnazione torneo
+- `availability-notification.blade.php` - Notifica disponibilità
+- `unified-assignment.blade.php` - Template unificato
+
+### 5. **Route Configuration**
+#### `routes/web.php`
+```php
+// Notifiche - Visualizzazione (Pubbliche autenticate)
+Route::get('/notifications', [NotificationController::class, 'index'])
+Route::get('/notifications/{notification}', [NotificationController::class, 'show'])
+
+// Notifiche Admin (CRUD completo)
+Route::get('/{tournament}/send-assignment', [NotificationController::class, 'showAssignmentForm'])
+Route::post('/{tournament}/send-assignment', [NotificationController::class, 'sendTournamentAssignment'])
+Route::post('/{tournament}/send-assignment-with-convocation', [NotificationController::class, 'sendAssignmentWithConvocation'])
+```
+
+### 6. **Views Frontend**
+#### Template form invio:
+- `resources/views/tournaments/send-assignment.blade.php`
+- `resources/views/tournaments/send-assignment-with-convocation.blade.php`
+
+---
+
+## Diagramma Architetturale Sistema Notifiche
+
+```mermaid
+graph TB
+    %% FRONTEND LAYER
+    subgraph "Frontend Views"
+        V1[send-assignment.blade.php]
+        V2[send-assignment-with-convocation.blade.php]
+        V3[notifications/index.blade.php]
+        V4[notifications/show.blade.php]
+    end
+
+    %% ROUTING LAYER
+    subgraph "Routes Layer"
+        R1[GET /notifications]
+        R2[GET /notifications/{id}]
+        R3[GET /{tournament}/send-assignment]
+        R4[POST /{tournament}/send-assignment]
+        R5[POST /{tournament}/send-assignment-with-convocation]
+    end
+
+    %% CONTROLLER LAYER
+    subgraph "Controllers"
+        NC[NotificationController]
+        AC[AvailabilityController]
+
+        subgraph "NotificationController Methods"
+            NC1[index]
+            NC2[show]
+            NC3[showAssignmentForm]
+            NC4[sendTournamentAssignment]
+            NC5[sendAssignmentWithConvocation]
+            NC6[sendCommitteeNotification]
+        end
+
+        subgraph "Helper Methods"
+            H1[sendToRecipients]
+            H2[sendToAdditionalEmails]
+            H3[sendToFixedAddresses]
+            H4[sendToClub]
+            H5[createAndSendEmail]
+        end
+    end
+
+    %% MODEL LAYER
+    subgraph "Models"
+        M1[Notification]
+        M2[Tournament]
+        M3[User]
+        M4[FixedAddress]
+        M5[Assignment]
+
+        subgraph "Notification Relations"
+            NR1[tournament]
+            NR2[sender]
+            NR3[recipients - pivot]
+        end
+    end
+
+    %% EMAIL LAYER
+    subgraph "Email System"
+        subgraph "Mail Templates"
+            MT1[assignment-removed.blade.php]
+            MT2[availability-removed.blade.php]
+            MT3[club-assignment.blade.php]
+            MT4[tournament-assignment.blade.php]
+            MT5[unified-assignment.blade.php]
+        end
+
+        subgraph "Laravel Mail"
+            LM1[Mail::to->send]
+            LM2[UnifiedAssignmentNotification]
+            LM3[RefereeAvailabilityNotification]
+        end
+    end
+
+    %% DATABASE LAYER
+    subgraph "Database"
+        DB1[(notifications)]
+        DB2[(notification_user - pivot)]
+        DB3[(tournaments)]
+        DB4[(users)]
+        DB5[(fixed_addresses)]
+    end
+
+    %% FLOW CONNECTIONS
+    V1 --> R3
+    V2 --> R5
+    V3 --> R1
+    V4 --> R2
+
+    R1 --> NC1
+    R2 --> NC2
+    R3 --> NC3
+    R4 --> NC4
+    R5 --> NC5
+
+    NC4 --> H1
+    NC4 --> H2
+    NC4 --> H3
+    NC4 --> H4
+    NC5 --> H5
+
+    H1 --> LM1
+    H2 --> LM1
+    H3 --> LM1
+    H4 --> LM1
+    H5 --> LM2
+
+    NC --> M1
+    M1 --> NR1
+    M1 --> NR2
+    M1 --> NR3
+
+    LM1 --> MT1
+    LM1 --> MT2
+    LM1 --> MT3
+    LM1 --> MT4
+    LM2 --> MT5
+
+    M1 --> DB1
+    NR3 --> DB2
+    M2 --> DB3
+    M3 --> DB4
+    M4 --> DB5
+
+    %% STYLING
+    classDef controller fill:#e1f5fe
+    classDef model fill:#f3e5f5
+    classDef view fill:#e8f5e8
+    classDef email fill:#fff3e0
+    classDef database fill:#fce4ec
+
+    class NC,AC,NC1,NC2,NC3,NC4,NC5,NC6,H1,H2,H3,H4,H5 controller
+    class M1,M2,M3,M4,M5,NR1,NR2,NR3 model
+    class V1,V2,V3,V4 view
+    class MT1,MT2,MT3,MT4,MT5,LM1,LM2,LM3 email
+    class DB1,DB2,DB3,DB4,DB5 database
+```
+
+---
+
+## Flusso Operativo Sistema Notifiche
+
+### 1. **Flusso Invio Assegnazione Standard**
+```
+Admin accede form → showAssignmentForm() → Valida input → sendTournamentAssignment() →
+Crea Notification record → Invia a arbitri → Invia a circolo → Invia a email aggiuntive
+```
+
+### 2. **Flusso Invio con Allegati**
+```
+Admin seleziona allegati → sendAssignmentWithConvocation() → Verifica documenti →
+Allega convocazione/lettera → Invia email differenziate (arbitri vs circolo)
+```
+
+### 3. **Flusso Notifica Disponibilità**
+```
+Arbitro modifica disponibilità → AvailabilityController → Verifica autorizzazioni →
+Invia notifica automatica → RefereeAvailabilityNotification
+```
+
+---
+
+## Caratteristiche Tecniche
+
+### **Autorizzazioni**
+- **SuperAdmin**: Accesso completo
+- **Admin**: Solo tornei della propria zona
+- **NationalAdmin**: Solo tornei nazionali
+- **Arbitri**: Solo proprie disponibilità
+
+### **Tipologie Email**
+1. **Unified Assignment** - Template principale per assegnazioni
+2. **Club Assignment** - Specifica per circoli (include lettera circolo)
+3. **Availability Notification** - Per modifiche disponibilità
+4. **Assignment Removed** - Per rimozione assegnazioni
+
+### **Gestione Allegati**
+- Convocazione SZR (solo per arbitri)
+- Lettera Circolo (solo per circolo)
+- Documenti modificati (upload)
+- Validazione automatica esistenza file
+
+### **Destinatari Supportati**
+- Arbitri assegnati al torneo
+- Indirizzi email fissi (per categoria)
+- Email aggiuntive dinamiche
+- Circolo ospitante (automatico)
+
+---
+
+## Sicurezza e Validazione
+
+### **Controlli Implementati**
+- Autorizzazione basata su ruoli
+- Validazione zone per Admin
+- Controllo esistenza allegati
+- Sanitizzazione input email
+- Prevenzione accesso cross-zone
+
+### **Logging**
+- Tracciamento invii email
+- Errori di consegna
+- Modifiche disponibilità
+- Accessi non autorizzati
+
+---
+
+---
+
+## Diagramma di Sequenza - Invio Notifica Assegnazione
+
+```mermaid
+sequenceDiagram
+    participant Admin
+    participant Web as Web Interface
+    participant NC as NotificationController
+    participant M as Models
+    participant MS as Mail System
+    participant Users as Destinatari
+
+    Admin->>Web: Accede form invio (/tournaments/{id}/send-assignment)
+    Web->>NC: showAssignmentForm()
+    NC->>M: Carica Tournament + Assignments
+    M-->>NC: Data torneo e arbitri
+    NC-->>Web: Renderizza form con dati
+    Web-->>Admin: Mostra form compilato
+
+    Admin->>Web: Compila e invia form
+    Web->>NC: sendTournamentAssignment(request)
+
+    NC->>NC: validateAssignmentRequest()
+    NC->>M: createNotificationRecord()
+    M->>M: Salva in notifications table
+
+    NC->>NC: getTournamentAssignments()
+    M-->>NC: Lista assignments attivi
+
+    par Invio agli Arbitri
+        NC->>NC: sendToRecipients()
+        loop Per ogni arbitro
+            NC->>MS: createAndSendEmail(arbitro)
+            MS->>Users: Email con template unified-assignment
+        end
+    and Invio al Circolo
+        NC->>NC: sendToClub()
+        NC->>MS: createAndSendEmail(circolo, isClub=true)
+        MS->>Users: Email club-assignment + eventuale lettera circolo
+    and Invio Email Aggiuntive
+        NC->>NC: sendToAdditionalEmails()
+        loop Per ogni email extra
+            NC->>MS: createAndSendEmail(email)
+            MS->>Users: Email standard
+        end
+    and Invio Indirizzi Fissi
+        NC->>NC: sendToFixedAddresses()
+        NC->>M: Carica FixedAddresses
+        loop Per ogni indirizzo fisso
+            NC->>MS: createAndSendEmail(fixed_address)
+            MS->>Users: Email standard
+        end
+    end
+
+    NC-->>Web: Redirect con successo
+    Web-->>Admin: Messaggio conferma invio
+```
+
+---
+
+## Diagramma Entità-Relazione Database
+
+```mermaid
+erDiagram
+    NOTIFICATIONS {
+        id bigint PK
+        subject string
+        message text
+        tournament_id bigint FK
+        sender_id bigint FK
+        attachments json
+        created_at timestamp
+        updated_at timestamp
+    }
+
+    NOTIFICATION_USER {
+        notification_id bigint FK
+        user_id bigint FK
+        read_at timestamp
+        created_at timestamp
+        updated_at timestamp
+    }
+
+    TOURNAMENTS {
+        id bigint PK
+        name string
+        start_date date
+        end_date date
+        club_id bigint FK
+        type_id bigint FK
+        status enum
+    }
+
+    USERS {
+        id bigint PK
+        name string
+        email string
+        password string
+        created_at timestamp
+        updated_at timestamp
+    }
+
+    FIXED_ADDRESSES {
+        id bigint PK
+        name string
+        email string
+        description text
+        category enum
+        is_global boolean
+        created_by bigint FK
+    }
+
+    ASSIGNMENTS {
+        id bigint PK
+        referee_id bigint FK
+        tournament_id bigint FK
+        role enum
+        assigned_by bigint FK
+        assigned_at timestamp
+        notes text
+    }
+
+    %% Relazioni
+    NOTIFICATIONS ||--|| TOURNAMENTS : "tournament_id"
+    NOTIFICATIONS ||--|| USERS : "sender_id"
+    NOTIFICATIONS ||--o{ NOTIFICATION_USER : "notification_id"
+    NOTIFICATION_USER }o--|| USERS : "user_id"
+    FIXED_ADDRESSES ||--|| USERS : "created_by"
+    ASSIGNMENTS ||--|| TOURNAMENTS : "tournament_id"
+    ASSIGNMENTS ||--|| USERS : "assigned_by"
+```
+
+---
+
+## Pattern Architetturali Utilizzati
+
+### **1. Observer Pattern**
+- **Trigger**: Creazione/modifica assegnazioni
+- **Observer**: Sistema notifiche automatiche
+- **Azione**: Invio email ai destinatari interessati
+
+### **2. Strategy Pattern**
+- **Context**: Tipo di notifica (assignment, availability, removal)
+- **Strategy**: Template email specifico
+- **Implementation**: UnifiedAssignmentNotification, RefereeAvailabilityNotification
+
+### **3. Factory Pattern**
+- **Product**: Email notifications
+- **Factory**: createAndSendEmail() method
+- **Variants**: Email con/senza allegati, diverse tipologie destinatari
+
+### **4. Chain of Responsibility**
+- **Request**: Invio notifica
+- **Handlers**: sendToRecipients → sendToClub → sendToAdditionalEmails → sendToFixedAddresses
+- **Processing**: Ogni handler gestisce la propria tipologia di destinatario
+
+---
+
+## Estensibilità Sistema
+
+### **Nuove Tipologie di Notifica**
+1. Creare nuovo template in `resources/views/mail/`
+2. Aggiungere metodo nel NotificationController
+3. Definire route specifica
+4. Implementare validazione dedicata
+
+### **Nuovi Canali di Invio**
+- **SMS**: Integrare provider SMS (Twilio, etc.)
+- **Push Notifications**: Implementare WebSocket
+- **Slack/Teams**: Webhook integration
+- **WhatsApp Business**: API integration
+
+### **Analytics e Tracking**
+- Rate di apertura email
+- Click tracking su link
+- Bounce rate management
+- Delivery status monitoring
+
+---
+
+*Sistema implementato seguendo pattern Laravel 12 con architettura MVC robusta e sicura*

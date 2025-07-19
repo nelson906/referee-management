@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class TournamentType extends Model
 {
@@ -283,4 +284,20 @@ class TournamentType extends Model
             'visibility' => $this->is_national ? 'Nazionale' : 'Zonale',
         ];
     }
+
+    /**
+     * Get the tournament type.
+     */
+    public function tournamentType(): BelongsTo
+    {
+        return $this->belongsTo(TournamentType::class, 'tournament_type_id');
+    }
+
+    // Alias per compatibilità se necessario
+    public function tournament_type(): BelongsTo
+    {
+        return $this->tournamentType();
+    }
+
+
 }

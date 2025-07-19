@@ -1,0 +1,52 @@
+sequenceDiagram
+    participant Admin
+    participant Web as Web Interface
+    participant NC as NotificationController
+    participant M as Models
+    participant MS as Mail System
+    participant Users as Destinatari
+
+    Admin->>Web: Accede form invio (/tournaments/{id}/send-assignment)
+    Web->>NC: showAssignmentForm()
+    NC->>M: Carica Tournament + Assignments
+    M-->>NC: Data torneo e arbitri
+    NC-->>Web: Renderizza form con dati
+    Web-->>Admin: Mostra form compilato
+
+    Admin->>Web: Compila e invia form
+    Web->>NC: sendTournamentAssignment(request)
+
+    NC->>NC: validateAssignmentRequest()
+    NC->>M: createNotificationRecord()
+    M->>M: Salva in notifications table
+
+    NC->>NC: getTournamentAssignments()
+    M-->>NC: Lista assignments attivi
+
+    par Invio agli Arbitri
+        NC->>NC: sendToRecipients()
+        loop Per ogni arbitro
+            NC->>MS: createAndSendEmail(arbitro)
+            MS->>Users: Email con template unified-assignment
+        end
+    and Invio al Circolo
+        NC->>NC: sendToClub()
+        NC->>MS: createAndSendEmail(circolo, isClub=true)
+        MS->>Users: Email club-assignment + eventuale lettera circolo
+    and Invio Email Aggiuntive
+        NC->>NC: sendToAdditionalEmails()
+        loop Per ogni email extra
+            NC->>MS: createAndSendEmail(email)
+            MS->>Users: Email standard
+        end
+    and Invio Indirizzi Fissi
+        NC->>NC: sendToFixedAddresses()
+        NC->>M: Carica FixedAddresses
+        loop Per ogni indirizzo fisso
+            NC->>MS: createAndSendEmail(fixed_address)
+            MS->>Users: Email standard
+        end
+    end
+
+    NC-->>Web: Redirect con successo
+    Web-->>Admin: Messaggio conferma invio

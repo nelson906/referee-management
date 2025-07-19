@@ -180,4 +180,6 @@ class Availability extends Model
             default => 'gray',
         };
     }
+
+
 }

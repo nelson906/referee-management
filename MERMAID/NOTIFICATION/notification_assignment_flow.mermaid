@@ -1,0 +1,130 @@
+graph TB
+    subgraph "Frontend Views"
+        V1[send-assignment.blade.php]
+        V2[send-assignment-with-convocation.blade.php]
+        V3[notifications/index.blade.php]
+        V4[notifications/show.blade.php]
+    end
+
+    subgraph "Routes Layer"
+        R1[GET /notifications]
+        R2[GET /notifications/id]
+        R3["GET /{tournament}/send-assignment"]
+        R4["POST /{tournament}/send-assignment"]
+        R5["POST /{tournament}/send-assignment-with-convocation"]
+    end
+
+    subgraph "Controllers"
+        NC[NotificationController]
+        AC[AvailabilityController]
+
+        subgraph "NotificationController Methods"
+            NC1[index]
+            NC2[show]
+            NC3[showAssignmentForm]
+            NC4[sendTournamentAssignment]
+            NC5[sendAssignmentWithConvocation]
+            NC6[sendCommitteeNotification]
+        end
+
+        subgraph "Helper Methods"
+            H1[sendToRecipients]
+            H2[sendToAdditionalEmails]
+            H3[sendToFixedAddresses]
+            H4[sendToClub]
+            H5[createAndSendEmail]
+        end
+    end
+
+    subgraph "Models"
+        M1[Notification]
+        M2[Tournament]
+        M3[User]
+        M4[FixedAddress]
+        M5[Assignment]
+
+        subgraph "Notification Relations"
+            NR1[tournament]
+            NR2[sender]
+            NR3[recipients - pivot]
+        end
+    end
+
+    %% EMAIL LAYER
+    subgraph "Email System"
+        subgraph "Mail Templates"
+            MT1[assignment-removed.blade.php]
+            MT2[availability-removed.blade.php]
+            MT3[club-assignment.blade.php]
+            MT4[tournament-assignment.blade.php]
+            MT5[unified-assignment.blade.php]
+        end
+
+        subgraph "Laravel Mail"
+            LM1[Mail::to->send]
+            LM2[UnifiedAssignmentNotification]
+            LM3[RefereeAvailabilityNotification]
+        end
+    end
+
+    subgraph "Database"
+        DB1[(notifications)]
+        DB2[(notification_user - pivot)]
+        DB3[(tournaments)]
+        DB4[(users)]
+        DB5[(fixed_addresses)]
+    end
+
+    V1 --> R3
+    V2 --> R5
+    V3 --> R1
+    V4 --> R2
+
+    R1 --> NC1
+    R2 --> NC2
+    R3 --> NC3
+    R4 --> NC4
+    R5 --> NC5
+
+    NC4 --> H1
+    NC4 --> H2
+    NC4 --> H3
+    NC4 --> H4
+    NC5 --> H5
+
+    H1 --> LM1
+    H2 --> LM1
+    H3 --> LM1
+    H4 --> LM1
+    H5 --> LM2
+
+    NC --> M1
+    M1 --> NR1
+    M1 --> NR2
+    M1 --> NR3
+
+    LM1 --> MT1
+    LM1 --> MT2
+    LM1 --> MT3
+    LM1 --> MT4
+    LM2 --> MT5
+
+    M1 --> DB1
+    NR3 --> DB2
+    M2 --> DB3
+    M3 --> DB4
+    M4 --> DB5
+
+    %% STYLING
+    classDef controller fill:#e1f5fe
+    classDef model fill:#f3e5f5
+    classDef view fill:#e8f5e8
+    classDef email fill:#fff3e0
+    classDef database fill:#fce4ec
+
+    class NC,AC,NC1,NC2,NC3,NC4,NC5,NC6,H1,H2,H3,H4,H5 controller
+    class M1,M2,M3,M4,M5,NR1,NR2,NR3 model
+    class V1,V2,V3,V4 view
+    class MT1,MT2,MT3,MT4,MT5,LM1,LM2,LM3 email
+    class DB1,DB2,DB3,DB4,DB5 database
+

@@ -104,7 +104,7 @@ class CalendarController extends Controller
 
             // Validate relationships
             foreach ($tournaments as $tournament) {
-                if (!$tournament->tournamentCategory) {
+                if (!$tournament->tournamentType) {
                     \Log::warning('Tournament missing category', ['tournament_id' => $tournament->id]);
                 }
                 if (!$tournament->zone) {
@@ -195,7 +195,7 @@ class CalendarController extends Controller
             // Safely get related data
             $club = $tournament->club ? $tournament->club->name : 'Club non specificato';
             $zone = $tournament->zone ? $tournament->zone->name : 'Zona non specificata';
-            $category = $tournament->tournamentCategory ? $tournament->tournamentCategory->name : 'Categoria non specificata';
+            $category = $tournament->tournamentType ? $tournament->tournamentType->name : 'Categoria non specificata';
 
             return [
                 'id' => $tournament->id,
@@ -214,7 +214,7 @@ class CalendarController extends Controller
                     'deadline' => $tournament->availability_deadline?->format('d/m/Y') ?? 'Non specificata',
                     'days_until_deadline' => $tournament->days_until_deadline ?? 0,
                     'type_id' => $tournament->tournament_type_id,
-                    'type' => $tournament->tournamentCategory,
+                    'type' => $tournament->tournamentType,
                     'availabilities_count' => $tournament->availabilities()->count(),
                     'assignments_count' => $tournament->assignments()->count(),
                     'required_referees' => $tournament->required_referees ?? 1,
@@ -306,7 +306,7 @@ class CalendarController extends Controller
      */
     private function getEventColor($tournament): string
     {
-        return match($tournament->tournamentCategory->name ?? 'default') {
+        return match($tournament->tournamentType->name ?? 'default') {
             'Categoria A' => '#FF6B6B',
             'Categoria B' => '#4ECDC4',
             'Categoria C' => '#45B7D1',
@@ -336,7 +336,7 @@ class CalendarController extends Controller
     {
         $availabilities = $tournament->availabilities()->count();
         $assignments = $tournament->assignments()->count();
-        $required = $tournament->required_referees ?? $tournament->tournamentCategory->min_referees ?? 1;
+        $required = $tournament->required_referees ?? $tournament->tournamentType->min_referees ?? 1;
         $daysUntilDeadline = $tournament->days_until_deadline ?? 999;
 
         // Urgent: Missing referees or overdue deadline

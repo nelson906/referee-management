@@ -1,0 +1,67 @@
+erDiagram
+    NOTIFICATIONS {
+        id bigint PK
+        subject string
+        message text
+        tournament_id bigint FK
+        sender_id bigint FK
+        attachments json
+        created_at timestamp
+        updated_at timestamp
+    }
+
+    NOTIFICATION_USER {
+        notification_id bigint FK
+        user_id bigint FK
+        read_at timestamp
+        created_at timestamp
+        updated_at timestamp
+    }
+
+    TOURNAMENTS {
+        id bigint PK
+        name string
+        start_date date
+        end_date date
+        club_id bigint FK
+        type_id bigint FK
+        status enum
+    }
+
+    USERS {
+        id bigint PK
+        name string
+        email string
+        password string
+        created_at timestamp
+        updated_at timestamp
+    }
+
+    FIXED_ADDRESSES {
+        id bigint PK
+        name string
+        email string
+        description text
+        category enum
+        is_global boolean
+        created_by bigint FK
+    }
+
+    ASSIGNMENTS {
+        id bigint PK
+        referee_id bigint FK
+        tournament_id bigint FK
+        role enum
+        assigned_by bigint FK
+        assigned_at timestamp
+        notes text
+    }
+
+    %% Relazioni
+    NOTIFICATIONS ||--|| TOURNAMENTS : "tournament_id"
+    NOTIFICATIONS ||--|| USERS : "sender_id"
+    NOTIFICATIONS ||--o{ NOTIFICATION_USER : "notification_id"
+    NOTIFICATION_USER }o--|| USERS : "user_id"
+    FIXED_ADDRESSES ||--|| USERS : "created_by"
+    ASSIGNMENTS ||--|| TOURNAMENTS : "tournament_id"
+    ASSIGNMENTS ||--|| USERS : "assigned_by"

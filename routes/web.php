@@ -19,7 +19,7 @@ use App\Http\Controllers\TournamentController;
 
 // Home redirect
 Route::get('/', function () {
-    return view( 'welcome');
+    return view('welcome');
 });
 
 // Authentication Routes
@@ -110,13 +110,13 @@ Route::middleware(['auth'])->group(function () {
         Route::delete('tournaments/{tournament}', [Admin\TournamentController::class, 'destroy'])->name('tournaments.destroy');
         Route::post('tournaments/{tournament}/close', [Admin\TournamentController::class, 'close'])->name('tournaments.close');
         Route::post('tournaments/{tournament}/reopen', [Admin\TournamentController::class, 'reopen'])->name('tournaments.reopen');
-    // AGGIUNGI QUESTE ROUTE MANCANTI ✅
-    Route::get('tournaments/{tournament}/availabilities', [Admin\TournamentController::class, 'availabilities'])
-        ->name('tournaments.availabilities');
+        // AGGIUNGI QUESTE ROUTE MANCANTI ✅
+        Route::get('tournaments/{tournament}/availabilities', [Admin\TournamentController::class, 'availabilities'])
+            ->name('tournaments.availabilities');
 
-    // Potresti aver bisogno anche di:
-    Route::post('tournaments/{tournament}/update-status', [Admin\TournamentController::class, 'updateStatus'])
-        ->name('tournaments.update-status');
+        // Potresti aver bisogno anche di:
+        Route::post('tournaments/{tournament}/update-status', [Admin\TournamentController::class, 'updateStatus'])
+            ->name('tournaments.update-status');
 
 
         // Referee Management
@@ -208,6 +208,10 @@ Route::middleware(['auth'])->group(function () {
             Route::post('/update', [Referee\AvailabilityController::class, 'update'])->name('update');
             Route::post('/bulk-update', [Referee\AvailabilityController::class, 'bulkUpdate'])->name('bulk-update');
             Route::post('/toggle', [Referee\AvailabilityController::class, 'toggle'])->name('toggle');
+            Route::post('/', [Referee\AvailabilityController::class, 'store'])->name('store');
+            Route::post('/bulk', [Referee\AvailabilityController::class, 'bulk'])->name('bulk');
+            Route::patch('/{availability}', [Referee\AvailabilityController::class, 'update'])->name('update');
+            Route::delete('/{availability}', [Referee\AvailabilityController::class, 'destroy'])->name('destroy');
         });
 
         // Tournament Applications
