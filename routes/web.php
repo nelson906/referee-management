@@ -90,6 +90,31 @@ Route::middleware(['auth'])->group(function () {
             Route::post('maintenance', [SuperAdmin\SystemController::class, 'toggleMaintenance'])->name('maintenance');
         });
     });
+// EMAIL ISTITUZIONALI - Gestione (SuperAdmin only)
+Route::middleware(['superadmin'])->prefix('institutional-emails')->name('institutional-emails.')->group(function () {
+    Route::get('/', [Admin\InstitutionalEmailController::class, 'index'])->name('index');
+    Route::get('/create', [Admin\InstitutionalEmailController::class, 'create'])->name('create');
+    Route::post('/', [Admin\InstitutionalEmailController::class, 'store'])->name('store');
+    Route::get('/{email}/edit', [Admin\InstitutionalEmailController::class, 'edit'])->name('edit');
+    Route::put('/{email}', [Admin\InstitutionalEmailController::class, 'update'])->name('update');
+    Route::delete('/{email}', [Admin\InstitutionalEmailController::class, 'destroy'])->name('destroy');
+    Route::post('/{email}/toggle', [Admin\InstitutionalEmailController::class, 'toggle'])->name('toggle');
+});
+// TEMPLATE LETTERE - Gestione
+Route::prefix('letter-templates')->name('letter-templates.')->group(function () {
+    Route::get('/', [Admin\LetterTemplateController::class, 'index'])->name('index');
+    Route::get('/create', [Admin\LetterTemplateController::class, 'create'])->name('create');
+    Route::post('/', [Admin\LetterTemplateController::class, 'store'])->name('store');
+    Route::get('/{template}', [Admin\LetterTemplateController::class, 'show'])->name('show');
+    Route::get('/{template}/edit', [Admin\LetterTemplateController::class, 'edit'])->name('edit');
+    Route::put('/{template}', [Admin\LetterTemplateController::class, 'update'])->name('update');
+    Route::delete('/{template}', [Admin\LetterTemplateController::class, 'destroy'])->name('destroy');
+
+    // Azioni speciali
+    Route::post('/{template}/duplicate', [Admin\LetterTemplateController::class, 'duplicate'])->name('duplicate');
+    Route::post('/{template}/toggle', [Admin\LetterTemplateController::class, 'toggle'])->name('toggle');
+    Route::get('/{template}/preview', [Admin\LetterTemplateController::class, 'preview'])->name('preview');
+});
 
     // =================================================================
     // ADMIN ROUTES (Zone Admin & CRC Admin) + Super Admin Access
@@ -232,6 +257,26 @@ Route::middleware(['auth'])->group(function () {
             Route::delete('/{document}', [Referee\DocumentController::class, 'destroy'])->name('destroy');
         });
     });
+// =================================================================
+// NOTIFICATION ROUTE
+// Inserire nella sezione Admin routes (middleware admin_or_superadmin)
+// =================================================================
+
+// NOTIFICHE - Gestione completa
+Route::prefix('notifications')->name('notifications.')->group(function () {
+
+    // Visualizzazione notifiche
+    Route::get('/', [Admin\NotificationController::class, 'index'])->name('index');
+    Route::get('/{notification}', [Admin\NotificationController::class, 'show'])->name('show');
+
+    // Gestione notifiche
+    Route::post('/{notification}/resend', [Admin\NotificationController::class, 'resend'])->name('resend');
+    Route::post('/{notification}/cancel', [Admin\NotificationController::class, 'cancel'])->name('cancel');
+
+    // Statistiche e report
+    Route::get('/stats/dashboard', [Admin\NotificationController::class, 'stats'])->name('stats');
+    Route::get('/export/csv', [Admin\NotificationController::class, 'exportCsv'])->name('export');
+});
 
     // =================================================================
     // REPORTS ROUTES (All authenticated users with proper permissions)
@@ -325,6 +370,43 @@ Route::middleware(['auth'])->group(function () {
         Route::get('tournaments/search', [Api\TournamentController::class, 'search'])->name('tournaments.search');
         Route::get('referees/search', [Api\RefereeController::class, 'search'])->name('referees.search');
     });
+});
+// =================================================================
+// ROUTE API per JavaScript (da aggiungere nella sezione API)
+// =================================================================
+
+Route::prefix('api')->middleware(['auth'])->group(function () {
+
+    // API per selezioni dinamiche nel form notifiche
+    Route::get('/institutional-emails/{zoneId}', function ($zoneId) {
+        return \App\Models\InstitutionalEmail::where('is_active', true)
+            ->where(function ($query) use ($zoneId) {
+                $query->where('zone_id', $zoneId)
+                      ->orWhere('receive_all_notifications', true);
+            })
+            ->select('id', 'name', 'email', 'category')
+            ->get()
+            ->groupBy('category');
+    })->name('api.institutional-emails');
+
+    // API per template lettere
+    Route::get('/letter-templates/{type}/{zoneId?}', function ($type, $zoneId = null) {
+        $query = \App\Models\LetterTemplate::where('is_active', true)
+            ->where('type', $type);
+
+        if ($zoneId) {
+            $query->where(function ($q) use ($zoneId) {
+                $q->where('zone_id', $zoneId)->orWhereNull('zone_id');
+            });
+        }
+
+        return $query->select('id', 'name', 'subject', 'body')->get();
+    })->name('api.letter-templates');
+
+    // API per statistiche notifiche
+    Route::get('/notifications/stats/{days?}', function ($days = 30) {
+        return \App\Models\Notification::getStatistics($days);
+    })->name('api.notification-stats');
 });
 
 // // =================================================================

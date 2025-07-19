@@ -44,7 +44,31 @@
                     @endif
                 </div>
             </div>
-
+<!-- In resources/views/layouts/navigation.blade.php -->
+@can('viewAny', App\Models\Notification::class)
+<li class="nav-item dropdown">
+    <a class="nav-link dropdown-toggle" href="#" data-toggle="dropdown">
+        📧 Notifiche
+    </a>
+    <div class="dropdown-menu">
+        <a class="dropdown-item" href="{{ route('notifications.index') }}">
+            📋 Tutte le Notifiche
+        </a>
+        <a class="dropdown-item" href="{{ route('notifications.stats') }}">
+            📊 Statistiche
+        </a>
+        <div class="dropdown-divider"></div>
+        <a class="dropdown-item" href="{{ route('letter-templates.index') }}">
+            📝 Template Lettere
+        </a>
+        @can('manage', App\Models\InstitutionalEmail::class)
+        <a class="dropdown-item" href="{{ route('institutional-emails.index') }}">
+            📮 Email Istituzionali
+        </a>
+        @endcan
+    </div>
+</li>
+@endcan
             <!-- Settings Dropdown -->
             <div class="hidden sm:flex sm:items-center sm:ms-6">
                 <x-dropdown align="right" width="48">

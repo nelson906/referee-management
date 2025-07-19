@@ -154,4 +154,6 @@ class InstitutionalEmail extends Model
     {
         return $this->zone ? $this->zone->name : 'Tutte le zone';
     }
+
+
 }
