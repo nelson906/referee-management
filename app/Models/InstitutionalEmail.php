@@ -4,17 +4,33 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class InstitutionalEmail extends Model
 {
     use HasFactory;
 
     /**
-     * The attributes that are mass assignable.
-     *
-     * @var array<int, string>
+     * Available categories for institutional emails
      */
+    public const CATEGORIES = [
+        'federazione' => 'Federazione',
+        'comitati' => 'Comitati',
+        'zone' => 'Zone',
+        'altro' => 'Altro',
+    ];
+
+    /**
+     * Available notification types
+     */
+    public const NOTIFICATION_TYPES = [
+        'assignment' => 'Assegnazioni',
+        'convocation' => 'Convocazioni',
+        'club' => 'Comunicazioni Circoli',
+        'institutional' => 'Comunicazioni Istituzionali',
+        'tournament_updates' => 'Aggiornamenti Tornei',
+        'system' => 'Notifiche Sistema',
+    ];
+
     protected $fillable = [
         'name',
         'email',
@@ -26,11 +42,6 @@ class InstitutionalEmail extends Model
         'notification_types',
     ];
 
-    /**
-     * The attributes that should be cast.
-     *
-     * @var array<string, string>
-     */
     protected $casts = [
         'is_active' => 'boolean',
         'receive_all_notifications' => 'boolean',
@@ -38,42 +49,15 @@ class InstitutionalEmail extends Model
     ];
 
     /**
-     * Categories
+     * Relationship with Zone
      */
-    const CATEGORY_FEDERATION = 'federazione';
-    const CATEGORY_COMMITTEE = 'comitato';
-    const CATEGORY_ZONE = 'zona';
-    const CATEGORY_OTHER = 'altro';
-
-    const CATEGORIES = [
-        self::CATEGORY_FEDERATION => 'Federazione',
-        self::CATEGORY_COMMITTEE => 'Comitato',
-        self::CATEGORY_ZONE => 'Zona',
-        self::CATEGORY_OTHER => 'Altro',
-    ];
-
-    /**
-     * Notification types
-     */
-    const NOTIFICATION_TYPES = [
-        'assignment' => 'Assegnazioni',
-        'availability' => 'Disponibilità',
-        'tournament_created' => 'Nuovi Tornei',
-        'tournament_updated' => 'Modifiche Tornei',
-        'referee_registered' => 'Nuovi Arbitri',
-        'reports' => 'Report',
-    ];
-
-    /**
-     * Get the zone that the institutional email belongs to.
-     */
-    public function zone(): BelongsTo
+    public function zone()
     {
         return $this->belongsTo(Zone::class);
     }
 
     /**
-     * Scope a query to only include active emails.
+     * Scope for active emails
      */
     public function scopeActive($query)
     {
@@ -81,20 +65,32 @@ class InstitutionalEmail extends Model
     }
 
     /**
-     * Scope a query to only include emails for a specific zone.
+     * Scope for specific zone
      */
-    public function scopeForZone($query, $zoneId)
+    public function scopeForZone($query, $zoneId = null)
     {
-        return $query->where(function ($q) use ($zoneId) {
-            $q->whereNull('zone_id')
-              ->orWhere('zone_id', $zoneId);
-        });
+        if ($zoneId) {
+            return $query->where(function ($q) use ($zoneId) {
+                $q->where('zone_id', $zoneId)
+                  ->orWhereNull('zone_id');
+            });
+        }
+
+        return $query->whereNull('zone_id');
     }
 
     /**
-     * Scope a query to only include emails that should receive a specific notification type.
+     * Scope for specific category
      */
-    public function scopeForNotificationType($query, string $type)
+    public function scopeOfCategory($query, $category)
+    {
+        return $query->where('category', $category);
+    }
+
+    /**
+     * Scope for notification type
+     */
+    public function scopeForNotificationType($query, $type)
     {
         return $query->where(function ($q) use ($type) {
             $q->where('receive_all_notifications', true)
@@ -103,11 +99,41 @@ class InstitutionalEmail extends Model
     }
 
     /**
-     * Get the category label
+     * Get category badge color
      */
-    public function getCategoryLabelAttribute(): string
+    public function getCategoryBadgeColorAttribute()
     {
-        return self::CATEGORIES[$this->category] ?? $this->category;
+        return match ($this->category) {
+            'federazione' => 'bg-red-100 text-red-800',
+            'comitati' => 'bg-blue-100 text-blue-800',
+            'zone' => 'bg-green-100 text-green-800',
+            'altro' => 'bg-gray-100 text-gray-800',
+            default => 'bg-gray-100 text-gray-800',
+        };
+    }
+
+    /**
+     * Get category display name
+     */
+    public function getCategoryDisplayAttribute()
+    {
+        return self::CATEGORIES[$this->category] ?? ucfirst($this->category);
+    }
+
+    /**
+     * Get all available categories
+     */
+    public static function getCategories(): array
+    {
+        return self::CATEGORIES;
+    }
+
+    /**
+     * Get all available notification types
+     */
+    public static function getNotificationTypes(): array
+    {
+        return self::NOTIFICATION_TYPES;
     }
 
     /**
@@ -115,45 +141,37 @@ class InstitutionalEmail extends Model
      */
     public function shouldReceiveNotificationType(string $type): bool
     {
+        if (!$this->is_active) {
+            return false;
+        }
+
         if ($this->receive_all_notifications) {
             return true;
         }
 
-        return in_array($type, $this->notification_types ?? []);
+        $types = $this->notification_types ?? [];
+        return in_array($type, $types);
     }
 
     /**
-     * Get notification types labels
+     * Add notification type
      */
-    public function getNotificationTypesLabelsAttribute(): array
+    public function addNotificationType(string $type): void
     {
-        if ($this->receive_all_notifications) {
-            return ['Tutte le notifiche'];
+        $types = $this->notification_types ?? [];
+        if (!in_array($type, $types)) {
+            $types[] = $type;
+            $this->update(['notification_types' => $types]);
         }
-
-        $labels = [];
-        foreach ($this->notification_types ?? [] as $type) {
-            $labels[] = self::NOTIFICATION_TYPES[$type] ?? $type;
-        }
-
-        return $labels;
     }
 
     /**
-     * Get display name with category
+     * Remove notification type
      */
-    public function getDisplayNameAttribute(): string
+    public function removeNotificationType(string $type): void
     {
-        return $this->name . ' (' . $this->category_label . ')';
+        $types = $this->notification_types ?? [];
+        $types = array_filter($types, fn($t) => $t !== $type);
+        $this->update(['notification_types' => array_values($types)]);
     }
-
-    /**
-     * Get zone display
-     */
-    public function getZoneDisplayAttribute(): string
-    {
-        return $this->zone ? $this->zone->name : 'Tutte le zone';
-    }
-
-
 }

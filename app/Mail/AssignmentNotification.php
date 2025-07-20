@@ -1,72 +1,74 @@
 <?php
-// File: app/Mail/AssignmentNotification.php
 
 namespace App\Mail;
 
+use App\Models\Notification;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
+use Illuminate\Mail\Mailables\Content;
+use Illuminate\Mail\Mailables\Envelope;
+use Illuminate\Mail\Mailables\Attachment;
 use Illuminate\Queue\SerializesModels;
-use App\Models\Assignment;
-use App\Models\Notification;
 
-class AssignmentNotification extends Mailable implements ShouldQueue
+class AssignmentNotification extends Mailable
 {
     use Queueable, SerializesModels;
 
-    public $assignment;
     public $notification;
-    public $attachments;
-    public $recipientName;
-    public $isClub;
+    public $variables;
 
     /**
      * Create a new message instance.
      */
-    public function __construct(Assignment $assignment, Notification $notification, array $attachments = [], ?string $recipientName = null, bool $isClub = false)
+    public function __construct(Notification $notification, array $variables = [])
     {
-        $this->assignment = $assignment;
         $this->notification = $notification;
-        $this->attachments = $attachments;
-        $this->recipientName = $recipientName;
-        $this->isClub = $isClub;
+        $this->variables = $variables;
     }
 
     /**
-     * Build the message.
+     * Get the message envelope.
      */
-    public function build()
+    public function envelope(): Envelope
     {
-        $mail = $this->from(config('mail.from.address'), config('mail.from.name'))
-                     ->subject($this->notification->subject)
-                     ->view('mail.assignment-notification')
-                     ->with([
-                         'assignment' => $this->assignment,
-                         'notification' => $this->notification,
-                         'recipientName' => $this->recipientName,
-                         'isClub' => $this->isClub,
-                         'tournament' => $this->assignment->tournament,
-                         'messageContent' => $this->notification->body,
-                     ]);
+        return new Envelope(
+            from: config('mail.from.address'),
+            subject: $this->notification->subject,
+        );
+    }
 
-        // Add attachments based on recipient type
-        foreach ($this->attachments as $type => $path) {
-            if (file_exists($path)) {
-                // Club gets club letter, referees get convocation
-                if ($type === 'club_letter' && $this->isClub) {
-                    $mail->attach($path, [
-                        'as' => 'lettera_circolo.docx',
-                        'mime' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-                    ]);
-                } elseif ($type === 'convocation' && !$this->isClub) {
-                    $mail->attach($path, [
-                        'as' => 'convocazione.docx',
-                        'mime' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-                    ]);
+    /**
+     * Get the message content definition.
+     */
+    public function content(): Content
+    {
+        return new Content(
+            text: 'mail.assignment-notification-text',
+            with: [
+                'notification' => $this->notification,
+                'variables' => $this->variables,
+                'body' => $this->notification->body,
+            ],
+        );
+    }
+
+    /**
+     * Get the attachments for the message.
+     */
+    public function attachments(): array
+    {
+        $attachments = [];
+
+        if ($this->notification->hasAttachments()) {
+            foreach ($this->notification->attachments as $name => $path) {
+                if (file_exists(storage_path('app/' . $path))) {
+                    $attachments[] = Attachment::fromStorageDisk('local', $path)
+                        ->as($name . '.' . pathinfo($path, PATHINFO_EXTENSION));
                 }
             }
         }
 
-        return $mail;
+        return $attachments;
     }
 }

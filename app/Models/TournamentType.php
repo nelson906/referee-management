@@ -23,7 +23,7 @@ class TournamentType extends Model
      */
     protected $fillable = [
         'name',
-        'code',
+        'short_name',
         'description',
         'is_national',
         'required_level',

@@ -3,19 +3,15 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage;
 use App\Models\Notification;
-use App\Models\Tournament;
 use App\Models\Assignment;
-use App\Models\User;
-use App\Models\InstitutionalEmail;
+use App\Models\Tournament;
 use App\Models\LetterTemplate;
-use App\Mail\AssignmentNotification;
+use App\Models\InstitutionalEmail;
+use App\Models\Zone;
 use App\Services\NotificationService;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class NotificationController extends Controller
 {
@@ -27,565 +23,297 @@ class NotificationController extends Controller
     }
 
     /**
-     * Display a listing of notifications
+     * Display a listing of notifications.
      */
     public function index()
     {
-        $user = Auth::user();
-
-        $query = Notification::with(['assignment.tournament', 'assignment.user'])
-            ->orderBy('created_at', 'desc');
-
-        // Zone-based filtering for admins
-        if ($user->hasRole('Admin')) {
-            $query->whereHas('assignment.tournament', function ($q) use ($user) {
-                $q->where('zone_id', $user->zone_id);
-            });
-        }
-
-        $notifications = $query->paginate(20);
+        $notifications = Notification::with(['assignment.tournament', 'assignment.user'])
+            ->orderBy('created_at', 'desc')
+            ->paginate(20);
 
         return view('admin.notifications.index', compact('notifications'));
     }
 
+/**
+ * Display notification statistics.
+ */
+public function stats(Request $request)
+{
+    $days = $request->get('days', 30);
+
+    $stats = [
+        'total' => Notification::count(),
+        'sent' => Notification::where('status', 'sent')->count(),
+        'pending' => Notification::where('status', 'pending')->count(),
+        'failed' => Notification::where('status', 'failed')->count(),
+        'by_type' => Notification::select('recipient_type', DB::raw('count(*) as total'))
+            ->groupBy('recipient_type')
+            ->pluck('total', 'recipient_type')
+            ->toArray(),
+    ];
+
+    $dailyStats = Notification::select(
+            DB::raw('DATE(created_at) as date'),
+            DB::raw('sum(case when status = "sent" then 1 else 0 end) as sent'),
+            DB::raw('sum(case when status = "failed" then 1 else 0 end) as failed')
+        )
+        ->where('created_at', '>=', now()->subDays($days))
+        ->groupBy('date')
+        ->orderBy('date', 'desc')
+        ->pluck('sent', 'date')
+        ->toArray();
+
+    $topRecipients = Notification::select('recipient_email', DB::raw('count(*) as count'))
+        ->groupBy('recipient_email')
+        ->orderBy('count', 'desc')
+        ->limit(10)
+        ->get();
+
+    $templateUsage = Notification::select('template_used', DB::raw('count(*) as count'))
+        ->whereNotNull('template_used')
+        ->groupBy('template_used')
+        ->orderBy('count', 'desc')
+        ->limit(10)
+        ->get();
+
+    $failedNotifications = Notification::where('status', 'failed')
+        ->where('retry_count', '>=', 3)
+        ->orderBy('created_at', 'desc')
+        ->limit(20)
+        ->get();
+
+    return view('admin.notifications.stats', compact('days', 'stats', 'dailyStats', 'topRecipients', 'templateUsage', 'failedNotifications'));
+}
     /**
-     * Display the specified notification
+     * Show the form for sending assignment notifications.
+     */
+    public function sendAssignmentForm()
+    {
+        $tournaments = Tournament::with(['club', 'zone'])
+            ->where('status', '!=', 'completed')
+            ->orderBy('start_date', 'desc')
+            ->get();
+
+        $templates = LetterTemplate::active()
+            ->ofType('assignment')
+            ->orderBy('name')
+            ->get();
+
+        $zones = Zone::where('is_active', true)->orderBy('name')->get();
+
+        return view('admin.notifications.send-assignment', compact('tournaments', 'templates', 'zones'));
+    }
+
+    /**
+     * Send assignment notifications.
+     */
+    public function sendAssignment(Request $request)
+    {
+        $validated = $request->validate([
+            'tournament_id' => 'required|exists:tournaments,id',
+            'subject' => 'required|string|max:255',
+            'message' => 'required|string',
+            'template_id' => 'nullable|exists:letter_templates,id',
+            'recipients' => 'required|array',
+            'recipients.*' => 'in:referees,club,institutional,custom',
+            'custom_emails' => 'nullable|string',
+            'include_attachments' => 'boolean',
+        ]);
+
+        $tournament = Tournament::with(['assignments.user', 'club', 'zone'])->findOrFail($validated['tournament_id']);
+
+        try {
+            DB::beginTransaction();
+
+            $results = [
+                'sent' => 0,
+                'failed' => 0,
+                'errors' => []
+            ];
+
+            // Invio notifiche ai destinatari selezionati
+            foreach ($validated['recipients'] as $recipientType) {
+                switch ($recipientType) {
+                    case 'referees':
+                        $this->sendToReferees($tournament, $validated, $results);
+                        break;
+
+                    case 'club':
+                        $this->sendToClub($tournament, $validated, $results);
+                        break;
+
+                    case 'institutional':
+                        $this->sendToInstitutional($tournament, $validated, $results);
+                        break;
+
+                    case 'custom':
+                        $this->sendToCustomEmails($tournament, $validated, $results);
+                        break;
+                }
+            }
+
+            DB::commit();
+
+            $message = "Inviate {$results['sent']} notifiche con successo.";
+            if ($results['failed'] > 0) {
+                $message .= " {$results['failed']} invii falliti.";
+            }
+
+            return redirect()->route('notifications.index')
+                ->with('success', $message);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            return redirect()->back()
+                ->withInput()
+                ->with('error', 'Errore nell\'invio delle notifiche: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Display the specified notification.
      */
     public function show(Notification $notification)
     {
-        $user = Auth::user();
-
-        // Authorization check for zone admins
-        if ($user->hasRole('Admin')) {
-            if ($notification->assignment->tournament->zone_id !== $user->zone_id) {
-                abort(403, 'Non hai il permesso di visualizzare questa notifica.');
-            }
-        }
-
-        $notification->load([
-            'assignment.tournament.club.zone',
-            'assignment.user'
-        ]);
-
+        $notification->load(['assignment.tournament', 'assignment.user']);
         return view('admin.notifications.show', compact('notification'));
     }
 
     /**
-     * Show assignment notification form
+     * Remove the specified notification.
      */
-    public function showAssignmentForm(Tournament $tournament)
+    public function destroy(Notification $notification)
     {
-        $this->checkAssignmentFormAuthorization($tournament);
+        $notification->delete();
 
-        // Get assigned referees
-        $assignments = Assignment::where('tournament_id', $tournament->id)
-            ->with(['user'])
-            ->get();
-
-        // Get institutional emails for this zone
-        $institutionalEmails = InstitutionalEmail::where('is_active', true)
-            ->where(function ($query) use ($tournament) {
-                $query->where('zone_id', $tournament->zone_id)
-                      ->orWhere('receive_all_notifications', true);
-            })
-            ->orderBy('category')
-            ->get()
-            ->groupBy('category');
-
-        // Get available templates
-        $templates = LetterTemplate::where('is_active', true)
-            ->where('type', 'assignment')
-            ->where(function ($query) use ($tournament) {
-                $query->where('zone_id', $tournament->zone_id)
-                      ->orWhereNull('zone_id');
-            })
-            ->get();
-
-        // Check for existing documents
-        $documentStatus = $this->checkExistingDocuments($tournament);
-
-        return view('admin.notifications.assignment_form', compact(
-            'tournament',
-            'assignments',
-            'institutionalEmails',
-            'templates',
-            'documentStatus'
-        ));
+        return redirect()->route('notifications.index')
+            ->with('success', 'Notifica eliminata con successo.');
     }
 
     /**
-     * Send assignment notification
+     * Retry sending a failed notification.
      */
-    public function sendAssignmentNotification(Request $request, Tournament $tournament)
+    public function retry(Notification $notification)
     {
-        $this->checkAssignmentFormAuthorization($tournament);
-
-        $validated = $this->validateAssignmentRequest($request);
-
-        try {
-            // Get assignments for this tournament
-            $assignments = Assignment::where('tournament_id', $tournament->id)
-                ->with(['user', 'tournament.club'])
-                ->get();
-
-            if ($assignments->isEmpty()) {
-                return redirect()->back()
-                    ->with('error', 'Nessun arbitro assegnato a questo torneo.');
-            }
-
-            // Use the extended notification service for bulk sending
-            $results = $this->notificationService->sendBulkAssignmentNotifications($tournament, $validated);
-
-            if ($results['sent'] > 0) {
-                $message = "Notifiche inviate con successo a {$results['sent']} destinatari.";
-
-                if ($results['failed'] > 0) {
-                    $message .= " {$results['failed']} invii falliti.";
-                }
-
-                return redirect()->back()->with('success', $message);
-            } else {
-                $errorMessage = 'Nessuna notifica è stata inviata.';
-                if (!empty($results['errors'])) {
-                    $errorMessage .= ' Errori: ' . implode(', ', array_slice($results['errors'], 0, 3));
-                }
-
-                return redirect()->back()->with('error', $errorMessage);
-            }
-
-        } catch (\Exception $e) {
-            Log::error('Error sending assignment notifications', [
-                'tournament_id' => $tournament->id,
-                'error' => $e->getMessage()
-            ]);
-
+        if ($notification->status !== 'failed') {
             return redirect()->back()
-                ->with('error', 'Errore durante l\'invio delle notifiche: ' . $e->getMessage());
-        }
-    }
-
-    /**
-     * Resend failed notification
-     */
-    public function resend(Notification $notification)
-    {
-        $user = Auth::user();
-
-        // Authorization check
-        if ($user->hasRole('Admin')) {
-            if ($notification->assignment->tournament->zone_id !== $user->zone_id) {
-                abort(403, 'Non hai il permesso di reinviare questa notifica.');
-            }
-        }
-
-        if (!$notification->canBeRetried()) {
-            return redirect()->back()
-                ->with('error', 'Questa notifica non può essere reinviata.');
+                ->with('error', 'Solo le notifiche fallite possono essere ritentate.');
         }
 
         try {
-            $notification->resetForRetry();
-            $this->notificationService->processNotification($notification);
+            $this->notificationService->retryNotification($notification);
 
             return redirect()->back()
                 ->with('success', 'Notifica reinviata con successo.');
 
         } catch (\Exception $e) {
-            Log::error('Error resending notification', [
-                'notification_id' => $notification->id,
-                'error' => $e->getMessage()
-            ]);
-
             return redirect()->back()
-                ->with('error', 'Errore durante il reinvio: ' . $e->getMessage());
+                ->with('error', 'Errore nel reinvio: ' . $e->getMessage());
         }
     }
 
     /**
-     * Cancel pending notification
+     * Send notifications to referees assigned to tournament.
      */
-    public function cancel(Notification $notification)
+    private function sendToReferees(Tournament $tournament, array $data, array &$results)
     {
-        $user = Auth::user();
+        foreach ($tournament->assignments as $assignment) {
+            try {
+                $this->notificationService->sendAssignmentNotification($assignment, [
+                    'custom_subject' => $data['subject'],
+                    'custom_message' => $data['message'],
+                    'template_id' => $data['template_id'] ?? null,
+                    'include_attachments' => $data['include_attachments'] ?? false,
+                ]);
 
-        // Authorization check
-        if ($user->hasRole('Admin')) {
-            if ($notification->assignment->tournament->zone_id !== $user->zone_id) {
-                abort(403, 'Non hai il permesso di annullare questa notifica.');
+                $results['sent']++;
+            } catch (\Exception $e) {
+                $results['failed']++;
+                $results['errors'][] = "Errore invio a {$assignment->user->email}: " . $e->getMessage();
             }
         }
-
-        if ($notification->status !== 'pending') {
-            return redirect()->back()
-                ->with('error', 'Solo le notifiche in sospeso possono essere annullate.');
-        }
-
-        $notification->markAsCancelled();
-
-        return redirect()->back()
-            ->with('success', 'Notifica annullata con successo.');
     }
 
     /**
-     * Show notification statistics
+     * Send notification to club.
      */
-    public function stats(Request $request)
+    private function sendToClub(Tournament $tournament, array $data, array &$results)
     {
-        $days = $request->get('days', 30);
-        $user = Auth::user();
-
-        // Get basic statistics
-        $stats = $this->notificationService->getNotificationStatistics($days);
-
-        // Zone-specific stats for admins
-        if ($user->hasRole('Admin')) {
-            $query = Notification::whereHas('assignment.tournament', function ($q) use ($user) {
-                $q->where('zone_id', $user->zone_id);
-            });
-        } else {
-            $query = Notification::query();
-        }
-
-        $query->where('created_at', '>=', now()->subDays($days));
-
-        // Daily statistics for chart
-        $dailyStats = $query->clone()
-            ->selectRaw('DATE(created_at) as date, status, COUNT(*) as count')
-            ->groupBy('date', 'status')
-            ->orderBy('date')
-            ->get()
-            ->groupBy('date')
-            ->map(function ($items) {
-                return $items->pluck('count', 'status')->toArray();
-            });
-
-        // Top recipients
-        $topRecipients = $query->clone()
-            ->selectRaw('recipient_email, COUNT(*) as count')
-            ->groupBy('recipient_email')
-            ->orderByDesc('count')
-            ->limit(10)
-            ->get();
-
-        // Template usage
-        $templateUsage = $query->clone()
-            ->whereNotNull('template_used')
-            ->selectRaw('template_used, COUNT(*) as count')
-            ->groupBy('template_used')
-            ->orderByDesc('count')
-            ->get();
-
-        // Failed notifications
-        $failedNotifications = Notification::getFailedNotificationsRequiringAttention();
-
-        return view('admin.notifications.stats', compact(
-            'stats',
-            'dailyStats',
-            'topRecipients',
-            'templateUsage',
-            'failedNotifications',
-            'days'
-        ));
-    }
-
-    /**
-     * Export notifications to CSV
-     */
-    public function exportCsv(Request $request)
-    {
-        $user = Auth::user();
-
-        $query = Notification::with(['assignment.tournament', 'assignment.user']);
-
-        // Zone-based filtering for admins
-        if ($user->hasRole('Admin')) {
-            $query->whereHas('assignment.tournament', function ($q) use ($user) {
-                $q->where('zone_id', $user->zone_id);
-            });
-        }
-
-        // Apply filters
-        if ($request->filled('status')) {
-            $query->where('status', $request->status);
-        }
-
-        if ($request->filled('recipient_type')) {
-            $query->where('recipient_type', $request->recipient_type);
-        }
-
-        if ($request->filled('date_from')) {
-            $query->where('created_at', '>=', $request->date_from);
-        }
-
-        if ($request->filled('date_to')) {
-            $query->where('created_at', '<=', $request->date_to . ' 23:59:59');
-        }
-
-        $notifications = $query->orderBy('created_at', 'desc')->get();
-
-        // Create CSV content
-        $csvData = [];
-        $csvData[] = [
-            'Data Creazione',
-            'Data Invio',
-            'Oggetto',
-            'Tipo Destinatario',
-            'Email Destinatario',
-            'Torneo',
-            'Arbitro',
-            'Stato',
-            'Template Usato',
-            'Errore',
-            'Tentativi'
-        ];
-
-        foreach ($notifications as $notification) {
-            $csvData[] = [
-                $notification->created_at->format('d/m/Y H:i'),
-                $notification->sent_at ? $notification->sent_at->format('d/m/Y H:i') : '',
-                $notification->subject,
-                $notification->recipient_type_label,
-                $notification->recipient_email,
-                $notification->assignment ? $notification->assignment->tournament->name : '',
-                $notification->assignment ? $notification->assignment->user->name : '',
-                $notification->status_label,
-                $notification->template_used ?? '',
-                $notification->error_message ?? '',
-                $notification->retry_count
-            ];
-        }
-
-        // Generate CSV file
-        $filename = 'notifiche_' . now()->format('Y-m-d_H-i-s') . '.csv';
-
-        $output = fopen('php://temp', 'w');
-        foreach ($csvData as $row) {
-            fputcsv($output, $row, ';');
-        }
-        rewind($output);
-        $csv = stream_get_contents($output);
-        fclose($output);
-
-        return response($csv)
-            ->header('Content-Type', 'text/csv; charset=UTF-8')
-            ->header('Content-Disposition', 'attachment; filename="' . $filename . '"')
-            ->header('Content-Length', strlen($csv));
-    }
-
-    // =============================================
-    // PRIVATE HELPER METHODS
-    // =============================================
-
-    /**
-     * Check authorization for assignment form access
-     */
-    private function checkAssignmentFormAuthorization(Tournament $tournament)
-    {
-        $user = Auth::user();
-
-        if (!$user->hasAnyRole(['Admin', 'SuperAdmin'])) {
-            abort(403, 'Non hai i permessi per inviare notifiche.');
-        }
-
-        if ($user->hasRole('Admin') && $tournament->zone_id !== $user->zone_id) {
-            abort(403, 'Non hai accesso a questo torneo di altra zona.');
-        }
-    }
-
-    /**
-     * Validate assignment notification request
-     */
-    private function validateAssignmentRequest(Request $request)
-    {
-        return $request->validate([
-            'subject' => 'required|string|max:255',
-            'message' => 'required|string',
-            'template_id' => 'nullable|exists:letter_templates,id',
-            'recipients' => 'nullable|array',
-            'recipients.*' => 'exists:users,id',
-            'institutional_emails' => 'nullable|array',
-            'institutional_emails.*' => 'exists:institutional_emails,id',
-            'additional_emails' => 'nullable|array',
-            'additional_emails.*' => 'nullable|email',
-            'additional_names' => 'nullable|array',
-            'additional_names.*' => 'nullable|string',
-            'send_to_club' => 'boolean',
-            'attach_documents' => 'boolean'
-        ]);
-    }
-
-    /**
-     * Send notification to referee
-     */
-    private function sendToReferee(Assignment $assignment, array $data, ?LetterTemplate $template)
-    {
-        $attachments = [];
-        if ($data['attach_documents'] ?? false) {
-            $attachments = $this->getDocumentAttachments($assignment->tournament);
-        }
-
-        $notification = Notification::create([
-            'assignment_id' => $assignment->id,
-            'recipient_type' => 'referee',
-            'recipient_email' => $assignment->user->email,
-            'subject' => $data['subject'],
-            'body' => $data['message'],
-            'template_used' => $template->name ?? null,
-            'status' => 'pending',
-            'attachments' => $attachments
-        ]);
-
-        // Send email
-        Mail::to($assignment->user->email)
-            ->send(new AssignmentNotification($assignment, $notification, $attachments));
-
-        $notification->markAsSent();
-    }
-
-    /**
-     * Send to institutional emails
-     */
-    private function sendToInstitutionalEmails(Tournament $tournament, array $data, ?LetterTemplate $template)
-    {
-        $institutionalEmails = InstitutionalEmail::whereIn('id', $data['institutional_emails'])
-            ->get();
-
-        foreach ($institutionalEmails as $email) {
-            // Create a mock assignment for institutional notifications
-            $mockAssignment = new Assignment([
-                'tournament_id' => $tournament->id,
-                'role' => 'Institutional',
-            ]);
-            $mockAssignment->tournament = $tournament;
-
-            $notification = Notification::create([
-                'assignment_id' => null, // No specific assignment
-                'recipient_type' => 'institutional',
-                'recipient_email' => $email->email,
-                'subject' => $data['subject'],
-                'body' => $data['message'],
-                'template_used' => $template->name ?? null,
-                'status' => 'pending'
-            ]);
-
-            Mail::to($email->email)
-                ->send(new AssignmentNotification($mockAssignment, $notification));
-
-            $notification->markAsSent();
-        }
-    }
-
-    /**
-     * Send to additional emails
-     */
-    private function sendToAdditionalEmails(Tournament $tournament, array $data, ?LetterTemplate $template)
-    {
-        foreach ($data['additional_emails'] as $index => $email) {
-            if (empty($email)) continue;
-
-            $name = $data['additional_names'][$index] ?? null;
-
-            $mockAssignment = new Assignment([
-                'tournament_id' => $tournament->id,
-                'role' => 'Additional',
-            ]);
-            $mockAssignment->tournament = $tournament;
-
-            $notification = Notification::create([
-                'assignment_id' => null,
-                'recipient_type' => 'institutional',
-                'recipient_email' => $email,
-                'subject' => $data['subject'],
-                'body' => $data['message'],
-                'template_used' => $template->name ?? null,
-                'status' => 'pending'
-            ]);
-
-            Mail::to($email)
-                ->send(new AssignmentNotification($mockAssignment, $notification));
-
-            $notification->markAsSent();
-        }
-    }
-
-    /**
-     * Send to club
-     */
-    private function sendToClub(Tournament $tournament, array $data, ?LetterTemplate $template)
-    {
-        $clubEmail = $tournament->club->email;
-
-        if (!$clubEmail) {
-            Log::warning('Club has no email', ['club_id' => $tournament->club->id]);
+        if (!$tournament->club->email) {
+            $results['errors'][] = "Il circolo {$tournament->club->name} non ha un indirizzo email.";
             return;
         }
 
-        $mockAssignment = new Assignment([
-            'tournament_id' => $tournament->id,
-            'role' => 'Club',
-        ]);
-        $mockAssignment->tournament = $tournament;
+        try {
+            $this->notificationService->sendClubNotification($tournament, [
+                'custom_subject' => $data['subject'],
+                'custom_message' => $data['message'],
+                'template_id' => $data['template_id'] ?? null,
+            ]);
 
-        $attachments = [];
-        if ($data['attach_documents'] ?? false) {
-            $attachments = $this->getClubDocumentAttachments($tournament);
+            $results['sent']++;
+        } catch (\Exception $e) {
+            $results['failed']++;
+            $results['errors'][] = "Errore invio a circolo: " . $e->getMessage();
         }
-
-        $notification = Notification::create([
-            'assignment_id' => null,
-            'recipient_type' => 'club',
-            'recipient_email' => $clubEmail,
-            'subject' => $data['subject'],
-            'body' => $data['message'],
-            'template_used' => $template->name ?? null,
-            'status' => 'pending',
-            'attachments' => $attachments
-        ]);
-
-        Mail::to($clubEmail)
-            ->send(new AssignmentNotification($mockAssignment, $notification, $attachments));
-
-        $notification->markAsSent();
     }
 
     /**
-     * Check existing documents
+     * Send notifications to institutional emails.
      */
-    private function checkExistingDocuments(Tournament $tournament): array
+    private function sendToInstitutional(Tournament $tournament, array $data, array &$results)
     {
-        return [
-            'hasConvocation' => !empty($tournament->convocation_file_path) &&
-                              Storage::exists($tournament->convocation_file_path),
-            'hasClubLetter' => !empty($tournament->club_letter_file_path) &&
-                              Storage::exists($tournament->club_letter_file_path),
-        ];
+        $institutionalEmails = InstitutionalEmail::active()
+            ->forZone($tournament->zone_id)
+            ->forNotificationType('assignment')
+            ->get();
+
+        foreach ($institutionalEmails as $email) {
+            try {
+                $this->notificationService->sendInstitutionalNotification($email, $tournament, [
+                    'custom_subject' => $data['subject'],
+                    'custom_message' => $data['message'],
+                    'template_id' => $data['template_id'] ?? null,
+                ]);
+
+                $results['sent']++;
+            } catch (\Exception $e) {
+                $results['failed']++;
+                $results['errors'][] = "Errore invio a {$email->email}: " . $e->getMessage();
+            }
+        }
     }
 
     /**
-     * Get document attachments for referees
+     * Send notifications to custom email addresses.
      */
-    private function getDocumentAttachments(Tournament $tournament): array
+    private function sendToCustomEmails(Tournament $tournament, array $data, array &$results)
     {
-        $attachments = [];
-
-        if ($tournament->convocation_file_path && Storage::exists($tournament->convocation_file_path)) {
-            $attachments['convocation'] = Storage::path($tournament->convocation_file_path);
+        if (empty($data['custom_emails'])) {
+            return;
         }
 
-        return $attachments;
-    }
+        $emails = array_filter(array_map('trim', explode(',', $data['custom_emails'])));
 
-    /**
-     * Get document attachments for club
-     */
-    private function getClubDocumentAttachments(Tournament $tournament): array
-    {
-        $attachments = [];
+        foreach ($emails as $email) {
+            if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                $results['errors'][] = "Indirizzo email non valido: {$email}";
+                continue;
+            }
 
-        if ($tournament->club_letter_file_path && Storage::exists($tournament->club_letter_file_path)) {
-            $attachments['club_letter'] = Storage::path($tournament->club_letter_file_path);
+            try {
+                $this->notificationService->sendCustomNotification($email, $tournament, [
+                    'custom_subject' => $data['subject'],
+                    'custom_message' => $data['message'],
+                    'template_id' => $data['template_id'] ?? null,
+                ]);
+
+                $results['sent']++;
+            } catch (\Exception $e) {
+                $results['failed']++;
+                $results['errors'][] = "Errore invio a {$email}: " . $e->getMessage();
+            }
         }
-
-        return $attachments;
     }
 }

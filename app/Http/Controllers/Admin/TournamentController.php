@@ -174,7 +174,7 @@ class TournamentController extends Controller
                 return [
                     'id' => $type->id,
                     'name' => $type->name,
-                    'code' => $type->code,
+                    'short_name' => $type->short_name,
                     'is_national' => $type->is_national,
                 ];
             }),
@@ -521,7 +521,7 @@ public function edit(Tournament $tournament)
         $clubs = club::active()
             ->where('zone_id', $request->zone_id)
             ->ordered()
-            ->get(['id', 'name', 'code']);
+            ->get(['id', 'name', 'short_name']);
 
         return response()->json($clubs);
     }

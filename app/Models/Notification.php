@@ -4,18 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Carbon\Carbon;
 
 class Notification extends Model
 {
     use HasFactory;
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var array<int, string>
-     */
     protected $fillable = [
         'assignment_id',
         'recipient_type',
@@ -24,74 +17,56 @@ class Notification extends Model
         'body',
         'template_used',
         'status',
+        'priority',
         'sent_at',
+        'failed_at',
         'error_message',
-        'retry_count',
         'attachments',
+        'retry_count',
+        'metadata',
     ];
 
-    /**
-     * The attributes that should be cast.
-     *
-     * @var array<string, string>
-     */
     protected $casts = [
         'sent_at' => 'datetime',
-        'retry_count' => 'integer',
+        'failed_at' => 'datetime',
         'attachments' => 'array',
+        'metadata' => 'array',
+        'retry_count' => 'integer',
     ];
 
     /**
      * Notification statuses
      */
-    const STATUS_PENDING = 'pending';
-    const STATUS_SENT = 'sent';
-    const STATUS_FAILED = 'failed';
-    const STATUS_CANCELLED = 'cancelled';
+    public const STATUS_PENDING = 'pending';
+    public const STATUS_SENT = 'sent';
+    public const STATUS_FAILED = 'failed';
+    public const STATUS_CANCELLED = 'cancelled';
 
-    const STATUSES = [
-        self::STATUS_PENDING => 'In attesa',
-        self::STATUS_SENT => 'Inviata',
-        self::STATUS_FAILED => 'Fallita',
-        self::STATUS_CANCELLED => 'Annullata',
-    ];
+    /**
+     * Notification priorities
+     */
+    public const PRIORITY_LOW = 'low';
+    public const PRIORITY_NORMAL = 'normal';
+    public const PRIORITY_HIGH = 'high';
 
     /**
      * Recipient types
      */
-    const TYPE_REFEREE = 'referee';
-    const TYPE_club = 'club';
-    const TYPE_INSTITUTIONAL = 'institutional';
-
-    const RECIPIENT_TYPES = [
-        self::TYPE_REFEREE => 'Arbitro',
-        self::TYPE_club => 'Circolo',
-        self::TYPE_INSTITUTIONAL => 'Istituzionale',
-    ];
+    public const TYPE_REFEREE = 'referee';
+    public const TYPE_CLUB = 'club';
+    public const TYPE_INSTITUTIONAL = 'institutional';
+    public const TYPE_CUSTOM = 'custom';
 
     /**
-     * Maximum retry attempts
+     * Relationship with Assignment
      */
-    const MAX_RETRY_ATTEMPTS = 3;
-
-    /**
-     * Get the assignment that this notification belongs to.
-     */
-    public function assignment(): BelongsTo
+    public function assignment()
     {
         return $this->belongsTo(Assignment::class);
     }
 
     /**
-     * Scope a query to only include sent notifications.
-     */
-    public function scopeSent($query)
-    {
-        return $query->where('status', self::STATUS_SENT);
-    }
-
-    /**
-     * Scope a query to only include pending notifications.
+     * Scope for pending notifications
      */
     public function scopePending($query)
     {
@@ -99,7 +74,15 @@ class Notification extends Model
     }
 
     /**
-     * Scope a query to only include failed notifications.
+     * Scope for sent notifications
+     */
+    public function scopeSent($query)
+    {
+        return $query->where('status', self::STATUS_SENT);
+    }
+
+    /**
+     * Scope for failed notifications
      */
     public function scopeFailed($query)
     {
@@ -107,275 +90,198 @@ class Notification extends Model
     }
 
     /**
-     * Scope a query to only include notifications for a specific recipient type.
+     * Scope for specific recipient type
      */
-    public function scopeForRecipientType($query, string $type)
+    public function scopeOfType($query, $type)
     {
         return $query->where('recipient_type', $type);
     }
 
     /**
-     * Scope a query to only include notifications that can be retried.
+     * Scope for specific priority
      */
-    public function scopeRetryable($query)
+    public function scopeWithPriority($query, $priority)
     {
-        return $query->where('status', self::STATUS_FAILED)
-                    ->where('retry_count', '<', self::MAX_RETRY_ATTEMPTS);
+        return $query->where('priority', $priority);
     }
 
     /**
-     * Scope a query to only include recent notifications.
+     * Mark notification as sent
      */
-    public function scopeRecent($query, int $days = 7)
-    {
-        return $query->where('created_at', '>=', now()->subDays($days));
-    }
-
-    /**
-     * Mark notification as sent.
-     */
-    public function markAsSent(): void
+    public function markAsSent()
     {
         $this->update([
             'status' => self::STATUS_SENT,
             'sent_at' => now(),
+            'failed_at' => null,
             'error_message' => null,
         ]);
     }
 
     /**
-     * Mark notification as failed.
+     * Mark notification as failed
      */
-    public function markAsFailed(string $errorMessage): void
+    public function markAsFailed(string $errorMessage)
     {
         $this->update([
             'status' => self::STATUS_FAILED,
+            'failed_at' => now(),
             'error_message' => $errorMessage,
             'retry_count' => $this->retry_count + 1,
         ]);
     }
 
     /**
-     * Mark notification as cancelled.
+     * Reset notification for retry
      */
-    public function markAsCancelled(): void
-    {
-        $this->update([
-            'status' => self::STATUS_CANCELLED,
-        ]);
-    }
-
-    /**
-     * Reset notification for retry.
-     */
-    public function resetForRetry(): void
+    public function resetForRetry()
     {
         $this->update([
             'status' => self::STATUS_PENDING,
+            'failed_at' => null,
             'error_message' => null,
         ]);
     }
 
     /**
-     * Check if notification can be retried.
+     * Check if notification can be retried
      */
     public function canBeRetried(): bool
     {
-        return $this->status === self::STATUS_FAILED &&
-               $this->retry_count < self::MAX_RETRY_ATTEMPTS;
+        return $this->status === self::STATUS_FAILED && $this->retry_count < 3;
     }
 
     /**
-     * Check if notification has exceeded max retry attempts.
+     * Get status badge color
      */
-    public function hasExceededMaxRetries(): bool
+    public function getStatusBadgeColorAttribute()
     {
-        return $this->retry_count >= self::MAX_RETRY_ATTEMPTS;
-    }
-
-    /**
-     * Get recipient type label.
-     */
-    public function getRecipientTypeLabelAttribute(): string
-    {
-        return self::RECIPIENT_TYPES[$this->recipient_type] ?? ucfirst($this->recipient_type);
-    }
-
-    /**
-     * Get status label.
-     */
-    public function getStatusLabelAttribute(): string
-    {
-        return self::STATUSES[$this->status] ?? ucfirst($this->status);
-    }
-
-    /**
-     * Get status color for UI.
-     */
-    public function getStatusColorAttribute(): string
-    {
-        return match($this->status) {
-            self::STATUS_SENT => 'green',
-            self::STATUS_PENDING => 'yellow',
-            self::STATUS_FAILED => 'red',
-            self::STATUS_CANCELLED => 'gray',
-            default => 'gray',
+        return match ($this->status) {
+            self::STATUS_PENDING => 'bg-yellow-100 text-yellow-800',
+            self::STATUS_SENT => 'bg-green-100 text-green-800',
+            self::STATUS_FAILED => 'bg-red-100 text-red-800',
+            self::STATUS_CANCELLED => 'bg-gray-100 text-gray-800',
+            default => 'bg-gray-100 text-gray-800',
         };
     }
 
     /**
-     * Get time since sent/created.
+     * Get status display name
      */
-    public function getTimeSinceAttribute(): string
+    public function getStatusDisplayAttribute()
     {
-        $date = $this->sent_at ?? $this->created_at;
-        return $date->diffForHumans();
+        return match ($this->status) {
+            self::STATUS_PENDING => 'In attesa',
+            self::STATUS_SENT => 'Inviata',
+            self::STATUS_FAILED => 'Fallita',
+            self::STATUS_CANCELLED => 'Annullata',
+            default => ucfirst($this->status),
+        };
     }
 
     /**
-     * Get days since creation.
+     * Get recipient type display name
      */
-    public function getDaysSinceCreationAttribute(): int
+    public function getRecipientTypeDisplayAttribute()
     {
-        return $this->created_at->diffInDays(now());
+        return match ($this->recipient_type) {
+            self::TYPE_REFEREE => 'Arbitro',
+            self::TYPE_CLUB => 'Circolo',
+            self::TYPE_INSTITUTIONAL => 'Istituzionale',
+            self::TYPE_CUSTOM => 'Personalizzato',
+            default => ucfirst($this->recipient_type),
+        };
     }
 
     /**
-     * Check if notification is recent.
+     * Get priority badge color
      */
-    public function isRecent(int $days = 7): bool
+    public function getPriorityBadgeColorAttribute()
     {
-        return $this->days_since_creation <= $days;
+        return match ($this->priority) {
+            self::PRIORITY_HIGH => 'bg-red-100 text-red-800',
+            self::PRIORITY_NORMAL => 'bg-blue-100 text-blue-800',
+            self::PRIORITY_LOW => 'bg-gray-100 text-gray-800',
+            default => 'bg-gray-100 text-gray-800',
+        };
     }
 
     /**
-     * Get attachment count.
+     * Get priority display name
      */
-    public function getAttachmentCountAttribute(): int
+    public function getPriorityDisplayAttribute()
     {
-        return $this->attachments ? count($this->attachments) : 0;
+        return match ($this->priority) {
+            self::PRIORITY_HIGH => 'Alta',
+            self::PRIORITY_NORMAL => 'Normale',
+            self::PRIORITY_LOW => 'Bassa',
+            default => ucfirst($this->priority),
+        };
     }
 
     /**
-     * Check if notification has attachments.
+     * Get formatted sent date
+     */
+    public function getFormattedSentDateAttribute()
+    {
+        return $this->sent_at ? $this->sent_at->format('d/m/Y H:i') : '-';
+    }
+
+    /**
+     * Get formatted failed date
+     */
+    public function getFormattedFailedDateAttribute()
+    {
+        return $this->failed_at ? $this->failed_at->format('d/m/Y H:i') : '-';
+    }
+
+    /**
+     * Get tournament information through assignment
+     */
+    public function getTournamentAttribute()
+    {
+        return $this->assignment?->tournament;
+    }
+
+    /**
+     * Get referee information through assignment
+     */
+    public function getRefereeAttribute()
+    {
+        return $this->assignment?->user;
+    }
+
+    /**
+     * Check if notification has attachments
      */
     public function hasAttachments(): bool
     {
-        return $this->attachment_count > 0;
+        return !empty($this->attachments);
     }
 
     /**
-     * Get attachment names.
+     * Get attachment count
      */
-    public function getAttachmentNamesAttribute(): array
+    public function getAttachmentCount(): int
     {
-        if (!$this->attachments) {
-            return [];
-        }
-
-        return array_keys($this->attachments);
+        return count($this->attachments ?? []);
     }
 
     /**
-     * Get attachment paths.
+     * Add metadata
      */
-    public function getAttachmentPathsAttribute(): array
+    public function addMetadata(string $key, $value): void
     {
-        if (!$this->attachments) {
-            return [];
-        }
-
-        return array_values($this->attachments);
+        $metadata = $this->metadata ?? [];
+        $metadata[$key] = $value;
+        $this->update(['metadata' => $metadata]);
     }
 
     /**
-     * Get template display name.
+     * Get metadata value
      */
-    public function getTemplateDisplayNameAttribute(): string
+    public function getMetadata(string $key, $default = null)
     {
-        return $this->template_used ?: 'Template predefinito';
-    }
-
-    /**
-     * Get notification priority for queue processing.
-     */
-    public function getPriorityAttribute(): int
-    {
-        $priority = 0;
-
-        // Higher priority for referees
-        if ($this->recipient_type === self::TYPE_REFEREE) {
-            $priority += 10;
-        }
-
-        // Higher priority for urgent tournaments (within 3 days)
-        if ($this->assignment) {
-            $daysUntil = now()->diffInDays($this->assignment->tournament->start_date, false);
-            if ($daysUntil <= 3) {
-                $priority += 20;
-            }
-        }
-
-        // Higher priority for retries
-        if ($this->status === self::STATUS_FAILED) {
-            $priority += 5;
-        }
-
-        return $priority;
-    }
-
-    /**
-     * Get summary for logging/display.
-     */
-    public function getSummaryAttribute(): string
-    {
-        $summary = "{$this->recipient_type_label} - {$this->recipient_email}";
-
-        if ($this->assignment) {
-            $summary .= " - {$this->assignment->tournament->name}";
-        }
-
-        return $summary;
-    }
-
-    /**
-     * Create notification for assignment.
-     */
-    public static function createForAssignment(Assignment $assignment, array $data): self
-    {
-        return self::create(array_merge($data, [
-            'assignment_id' => $assignment->id,
-        ]));
-    }
-
-    /**
-     * Get failed notifications requiring attention.
-     */
-    public static function getFailedNotificationsRequiringAttention()
-    {
-        return self::failed()
-            ->where('retry_count', '>=', self::MAX_RETRY_ATTEMPTS)
-            ->where('created_at', '>=', now()->subDays(7))
-            ->with(['assignment.tournament', 'assignment.user'])
-            ->get();
-    }
-
-    /**
-     * Get notifications statistics.
-     */
-    public static function getStatistics(int $days = 30): array
-    {
-        $query = self::where('created_at', '>=', now()->subDays($days));
-
-        return [
-            'total' => $query->count(),
-            'sent' => $query->where('status', self::STATUS_SENT)->count(),
-            'pending' => $query->where('status', self::STATUS_PENDING)->count(),
-            'failed' => $query->where('status', self::STATUS_FAILED)->count(),
-            'by_type' => $query->selectRaw('recipient_type, COUNT(*) as count')
-                              ->groupBy('recipient_type')
-                              ->pluck('count', 'recipient_type')
-                              ->toArray(),
-        ];
+        return $this->metadata[$key] ?? $default;
     }
 }

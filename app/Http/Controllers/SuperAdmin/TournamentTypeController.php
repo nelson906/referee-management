@@ -17,7 +17,6 @@ class TournamentTypeController extends Controller
     {
         // ✅ FIXED: Variable name from $categories to $tournamentTypes
         $tournamentTypes = TournamentType::withCount('tournaments')
-            ->ordered()
             ->get();
 
         // ✅ FIXED: compact() uses tournamentTypes
@@ -66,7 +65,7 @@ class TournamentTypeController extends Controller
         // ✅ FIXED: Create using TournamentType model
         $tournamentType = TournamentType::create([
             'name' => $data['name'],
-            'code' => strtoupper($data['code']),
+            'short_name' => strtoupper($data['short_name']),
             'description' => $data['description'] ?? null,
             'is_national' => $data['is_national'] ?? false,
             'level' => $data['level'] ?? 'zonale',
@@ -148,7 +147,7 @@ class TournamentTypeController extends Controller
         // ✅ FIXED: Update TournamentType model
         $tournamentType->update([
             'name' => $data['name'],
-            'code' => strtoupper($data['code']),
+            'short_name' => strtoupper($data['short_name']),
             'description' => $data['description'] ?? null,
             'is_national' => $data['is_national'] ?? false,
             'level' => $data['level'] ?? 'zonale',
@@ -231,7 +230,7 @@ class TournamentTypeController extends Controller
     {
         $newType = $tournamentType->replicate();
         $newType->name = $tournamentType->name . ' (Copia)';
-        $newType->code = $tournamentType->code . '_COPY';
+        $newType->short_name = $tournamentType->short_name . '_COPY';
         $newType->sort_order = TournamentType::max('sort_order') + 10;
         $newType->is_active = false;
         $newType->save();
@@ -263,7 +262,7 @@ class TournamentTypeController extends Controller
                 return [
                     'id' => $type->id,
                     'name' => $type->name,
-                    'code' => $type->code,
+                    'short_name' => $type->short_name,
                     'tournaments_count' => $type->tournaments_count,
                     'is_national' => $type->is_national,
                     'is_active' => $type->is_active,
@@ -313,7 +312,7 @@ class TournamentTypeController extends Controller
                 fputcsv($file, [
                     $type->id,
                     $type->name,
-                    $type->code,
+                    $type->short_name,
                     $type->description ?? '',
                     $type->is_national ? 'Nazionale' : 'Zonale',
                     $type->required_level,
@@ -382,7 +381,7 @@ class TournamentTypeController extends Controller
         $preview = [
             'basic_info' => [
                 'name' => $tournamentType->name,
-                'code' => $tournamentType->code,
+                'short_name' => $tournamentType->short_name,
                 'description' => $tournamentType->description,
                 'type' => $tournamentType->is_national ? 'Nazionale' : 'Zonale',
             ],

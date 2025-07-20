@@ -63,7 +63,7 @@
                 </tr>
             </thead>
             <tbody class="bg-white divide-y divide-gray-200" id="sortable-categories">
-                @foreach($types as $type)
+                @foreach($tournamentTypes as $type)
                 <tr data-id="{{ $type->id }}" class="hover:bg-gray-50 transition-colors duration-150">
                     <td class="px-6 py-4 whitespace-nowrap">
                         <div class="flex items-center">
@@ -82,7 +82,7 @@
                                     {{ $type->name }}
                                 </div>
                                 <div class="text-sm text-gray-500">
-                                    Codice: {{ $type->code }}
+                                    Codice: {{ $type->short_name }}
                                 </div>
                             </div>
                         </div>
@@ -117,14 +117,14 @@
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <div class="flex items-center justify-end space-x-2">
-                            <a href="{{ route('super-admin.tournament-types.show', $category) }}"
+                            <a href="{{ route('super-admin.tournament-types.show', $type) }}"
                                class="text-gray-600 hover:text-gray-900" title="Visualizza">
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
                                 </svg>
                             </a>
-                            <a href="{{ route('super-admin.tournament-types.edit', $category) }}"
+                            <a href="{{ route('super-admin.tournament-types.edit', $type) }}"
                                class="text-indigo-600 hover:text-indigo-900" title="Modifica">
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
@@ -137,7 +137,7 @@
                                 </svg>
                             </button>
                             @if($type->tournaments_count == 0)
-                            <form action="{{ route('super-admin.tournament-types.destroy', $category) }}"
+                            <form action="{{ route('super-admin.tournament-types.destroy', $type) }}"
                                   method="POST"
                                   class="inline"
                                   onsubmit="return confirm('Sei sicuro di voler eliminare questa categoria?');">

@@ -1,4 +1,9 @@
-<x-admin-layout>
+@extends('layouts.admin')
+
+@section('title', ' ' )
+
+@section('content')
+
     <x-slot name="header">
         <div class="flex justify-between items-center">
             <h2 class="font-semibold text-xl text-gray-800 leading-tight">
@@ -257,4 +262,4 @@
             toggleNotificationTypes(receiveAllCheckbox.checked);
         });
     </script>
-</x-admin-layout>
+@endsection

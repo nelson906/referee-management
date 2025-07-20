@@ -108,17 +108,80 @@
                                 Assegna Arbitri
                             </a>
 
-                            <a href="{{ route('notifications.index') }}"
-                                class="inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition duration-150 ease-in-out
-   {{ request()->routeIs('notifications.*') ? 'border-white text-white' : 'border-transparent text-blue-100 hover:text-white hover:border-blue-300' }}">
-                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z">
-                                    </path>
-                                </svg>
-        <i class="fas fa-bell"></i> Notifiche
-                            </a>
+{{-- SOSTITUISCI IL LINK NOTIFICHE ESISTENTE CON QUESTO DROPDOWN --}}
+<div class="relative" x-data="{ notifOpen: false }">
+    <button @click="notifOpen = !notifOpen"
+        class="inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium leading-5 transition duration-150 ease-in-out
+            {{ request()->routeIs('notifications.*') || request()->routeIs('letter-templates.*') || request()->routeIs('institutional-emails.*') ? 'border-white text-white' : 'border-transparent text-blue-100 hover:text-white hover:border-blue-300' }}">
+        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9">
+            </path>
+        </svg>
+        📧 Notifiche
+        <svg class="ml-1 h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd"
+                d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
+                clip-rule="evenodd" />
+        </svg>
+    </button>
 
+    <div x-show="notifOpen" @click.away="notifOpen = false"
+        x-transition:enter="transition ease-out duration-200"
+        x-transition:enter-start="transform opacity-0 scale-95"
+        x-transition:enter-end="transform opacity-100 scale-100"
+        x-transition:leave="transition ease-in duration-75"
+        x-transition:leave-start="transform opacity-100 scale-100"
+        x-transition:leave-end="transform opacity-0 scale-95"
+        class="absolute left-0 mt-2 w-56 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-50"
+        style="display: none;">
+        <div class="py-1">
+            <a href="{{ route('notifications.index') }}"
+                class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                </svg>
+                📋 Tutte le Notifiche
+            </a>
+
+            <a href="{{ route('notifications.stats') }}"
+                class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                </svg>
+                📊 Statistiche
+            </a>
+
+            <div class="border-t border-gray-100"></div>
+
+            <a href="{{ route('letter-templates.index') }}"
+                class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                </svg>
+                📝 Template Lettere
+            </a>
+
+            <a href="{{ route('institutional-emails.index') }}"
+                class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+                </svg>
+                📮 Email Istituzionali
+            </a>
+
+            <div class="border-t border-gray-100"></div>
+
+            <a href="{{ route('notifications.send-assignment') }}"
+                class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
+                </svg>
+                🚀 Invia Notifica
+            </a>
+        </div>
+    </div>
+</div>
                             <div class="relative" x-data="{ open: false }">
                                 <button @click="open = !open"
                                     class="inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium leading-5 transition duration-150 ease-in-out
@@ -282,7 +345,37 @@
    {{ request()->routeIs('admin.assignments.*') ? 'border-white text-white bg-blue-800' : 'border-transparent text-blue-100 hover:text-white hover:bg-blue-800 hover:border-blue-300' }}">
                         👥 Assegna Arbitri
                     </a>
-                </div>
+ {{-- Menu Mobile Notifiche --}}
+<div class="border-l-4 border-transparent">
+    <div class="pl-3 pr-4 py-2 text-base font-medium text-blue-100">
+        📧 Notifiche
+    </div>
+
+    <a href="{{ route('notifications.index') }}"
+        class="block pl-6 pr-4 py-2 text-sm text-blue-200 hover:text-white hover:bg-blue-800">
+        📋 Tutte le Notifiche
+    </a>
+
+    <a href="{{ route('notifications.stats') }}"
+        class="block pl-6 pr-4 py-2 text-sm text-blue-200 hover:text-white hover:bg-blue-800">
+        📊 Statistiche
+    </a>
+
+    <a href="{{ route('letter-templates.index') }}"
+        class="block pl-6 pr-4 py-2 text-sm text-blue-200 hover:text-white hover:bg-blue-800">
+        📝 Template Lettere
+    </a>
+
+    <a href="{{ route('institutional-emails.index') }}"
+        class="block pl-6 pr-4 py-2 text-sm text-blue-200 hover:text-white hover:bg-blue-800">
+        📮 Email Istituzionali
+    </a>
+
+    <a href="{{ route('notifications.send-assignment') }}"
+        class="block pl-6 pr-4 py-2 text-sm text-blue-200 hover:text-white hover:bg-blue-800">
+        🚀 Invia Notifica
+    </a>
+</div>               </div>
             </div>
 
         </nav>

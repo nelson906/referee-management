@@ -59,6 +59,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'referee_or_admin' => \App\Http\Middleware\RefereeOrAdmin::class,
             'zone.access' => \App\Http\Middleware\ZoneAccessMiddleware::class,
             'zone.admin' => \App\Http\Middleware\ZoneAdminMiddleware::class,
+            'notification.access' => \App\Http\Middleware\NotificationAccessMiddleware::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

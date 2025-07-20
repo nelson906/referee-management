@@ -45,6 +45,37 @@
                 </div>
             </div>
 <!-- In resources/views/layouts/navigation.blade.php -->
+@if(auth()->user() && (auth()->user()->hasRole('Admin') || auth()->user()->hasRole('SuperAdmin') || auth()->user()->hasRole('NationalAdmin')))
+
+{{-- AGGIUNGI QUESTO DROPDOWN NOTIFICHE --}}
+<div class="relative" x-data="{ notifOpen: false }">
+    <button @click="notifOpen = !notifOpen" class="flex items-center space-x-1 px-3 py-2 text-blue-100 hover:text-white hover:bg-blue-700 rounded-md">
+        📧 Notifiche
+        <svg class="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+        </svg>
+    </button>
+
+    <div x-show="notifOpen" @click.away="notifOpen = false" x-transition
+         class="absolute left-0 mt-2 w-56 bg-white rounded-md shadow-lg py-1 z-50">
+        <a href="{{ route('notifications.index') }}" class="block px-4 py-2 text-gray-700 hover:bg-gray-100">
+            📋 Tutte le Notifiche
+        </a>
+        <a href="{{ route('notifications.stats') }}" class="block px-4 py-2 text-gray-700 hover:bg-gray-100">
+            📊 Statistiche
+        </a>
+        <div class="border-t border-gray-100"></div>
+        <a href="{{ route('letter-templates.index') }}" class="block px-4 py-2 text-gray-700 hover:bg-gray-100">
+            📝 Template Lettere
+        </a>
+        <a href="{{ route('institutional-emails.index') }}" class="block px-4 py-2 text-gray-700 hover:bg-gray-100">
+            📮 Email Istituzionali
+        </a>
+    </div>
+</div>
+
+@endif
+
 @can('viewAny', App\Models\Notification::class)
 <li class="nav-item dropdown">
     <a class="nav-link dropdown-toggle" href="#" data-toggle="dropdown">

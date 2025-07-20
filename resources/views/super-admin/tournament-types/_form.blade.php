@@ -34,19 +34,19 @@
 
     {{-- Codice --}}
     <div>
-        <label for="code" class="block text-sm font-medium text-gray-700">
+        <label for="short_name" class="block text-sm font-medium text-gray-700">
             Codice <span class="text-red-500">*</span>
         </label>
         <input type="text"
-               name="code"
-               id="code"
-               value="{{ old('code', $tournamentType->code ?? '') }}"
-               class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm uppercase @error('code') border-red-500 @enderror"
+               name="short_name"
+               id="short_name"
+               value="{{ old('short_name', $tournamentType->short_name ?? '') }}"
+               class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm uppercase @error('short_name') border-red-500 @enderror"
                pattern="[A-Za-z0-9_-]+"
                title="Solo lettere, numeri, trattini e underscore"
                required>
         <p class="mt-1 text-xs text-gray-500">Es: T18, GN-72, CI</p>
-        @error('code')
+        @error('short_name')
             <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
         @enderror
     </div>
@@ -280,8 +280,8 @@ document.getElementById('min_referees').addEventListener('change', function() {
     maxInput.min = this.value;
 });
 
-// Auto uppercase for code
-document.getElementById('code').addEventListener('input', function() {
+// Auto uppercase for short_name
+document.getElementById('short_name').addEventListener('input', function() {
     this.value = this.value.toUpperCase();
 });
 </script>

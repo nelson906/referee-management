@@ -1,5 +1,10 @@
 {{-- File: resources/views/admin/notifications/assignment_form.blade.php --}}
-<x-admin-layout>
+@extends('layouts.admin')
+
+@section('title', ' ' )
+
+@section('content')
+
     <x-slot name="header">
         <div class="flex justify-between items-center">
             <h2 class="font-semibold text-xl text-gray-800 leading-tight">
@@ -449,4 +454,4 @@ Cordiali saluti') }}</textarea>
             return confirm(`Sei sicuro di voler inviare la notifica a ${totalRecipients} destinatari?`);
         });
     </script>
-</x-admin-layout>
+@endsection

@@ -209,14 +209,14 @@ class DashboardController extends Controller
         return TournamentType::withCount('tournaments')
             ->orderBy('tournaments_count', 'desc')
             ->get()
-            ->map(function ($category) {
+            ->map(function ($type) {
                 return [
-                    'id' => $category->id,
-                    'name' => $category->name,
-                    'code' => $category->code,
-                    'tournaments_count' => $category->tournaments_count,
-                    'is_national' => $category->is_national,
-                    'is_active' => $category->is_active,
+                    'id' => $type->id,
+                    'name' => $type->name,
+                    'short_name' => $type->short_name,
+                    'tournaments_count' => $type->tournaments_count,
+                    'is_national' => $type->is_national,
+                    'is_active' => $type->is_active,
                 ];
             });
     }

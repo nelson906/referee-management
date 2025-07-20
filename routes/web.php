@@ -9,6 +9,7 @@ use App\Http\Controllers\Api;
 use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Admin\LetterTemplateController;
 use App\Http\Controllers\TournamentController;
 
 /*
@@ -206,7 +207,60 @@ Route::prefix('letter-templates')->name('letter-templates.')->group(function () 
         // Admin Calendar - Management focus
         Route::get('calendar', [Admin\CalendarController::class, 'index'])->name('calendar.index');
     });
-    // =================================================================
+
+ // =================================================================
+// NOTIFICATIONS SYSTEM ROUTES
+// =================================================================
+Route::middleware(['admin_or_superadmin'])->group(function () {
+
+    // Notifications Management
+    Route::prefix('notifications')->name('notifications.')->group(function () {
+        Route::get('/', [Admin\NotificationController::class, 'index'])->name('index');
+        Route::get('/stats', [Admin\NotificationController::class, 'stats'])->name('stats');
+        Route::get('/send-assignment', [Admin\NotificationController::class, 'sendAssignmentForm'])->name('send-assignment');
+        Route::post('/send-assignment', [Admin\NotificationController::class, 'sendAssignment'])->name('send-assignment.post');
+        Route::get('/{notification}', [Admin\NotificationController::class, 'show'])->name('show');
+        Route::delete('/{notification}', [Admin\NotificationController::class, 'destroy'])->name('destroy');
+        Route::post('/{notification}/retry', [Admin\NotificationController::class, 'retry'])->name('retry');
+    });
+
+    // Letter Templates Management
+    Route::prefix('letter-templates')->name('letter-templates.')->group(function () {
+        Route::get('/', [Admin\LetterTemplateController::class, 'index'])->name('index');
+        Route::get('/create', [Admin\LetterTemplateController::class, 'create'])->name('create');
+        Route::post('/', [Admin\LetterTemplateController::class, 'store'])->name('store');
+        Route::get('/{template}', [Admin\LetterTemplateController::class, 'show'])->name('show');
+        Route::get('/{template}/edit', [Admin\LetterTemplateController::class, 'edit'])->name('edit');
+        Route::put('/{template}', [Admin\LetterTemplateController::class, 'update'])->name('update');
+        Route::delete('/{template}', [Admin\LetterTemplateController::class, 'destroy'])->name('destroy');
+        Route::post('/{template}/duplicate', [Admin\LetterTemplateController::class, 'duplicate'])->name('duplicate');
+        Route::get('/{template}/preview', [Admin\LetterTemplateController::class, 'preview'])->name('preview');
+      Route::post('/{template}/toggle-active', [Admin\LetterTemplateController::class, 'toggleActive'])->name('toggle-active');
+    Route::post('/{template}/set-default', [Admin\LetterTemplateController::class, 'setDefault'])->name('set-default');
+  });
+
+    // Institutional Emails Management
+    Route::prefix('institutional-emails')->name('institutional-emails.')->group(function () {
+        Route::get('/', [Admin\InstitutionalEmailController::class, 'index'])->name('index');
+        Route::get('/create', [Admin\InstitutionalEmailController::class, 'create'])->name('create');
+        Route::post('/', [Admin\InstitutionalEmailController::class, 'store'])->name('store');
+        Route::get('/{email}', [Admin\InstitutionalEmailController::class, 'show'])->name('show');
+        Route::get('/{email}/edit', [Admin\InstitutionalEmailController::class, 'edit'])->name('edit');
+        Route::put('/{email}', [Admin\InstitutionalEmailController::class, 'update'])->name('update');
+        Route::delete('/{email}', [Admin\InstitutionalEmailController::class, 'destroy'])->name('destroy');
+        Route::post('/{email}/test', [Admin\InstitutionalEmailController::class, 'test'])->name('test');
+     Route::post('/{email}/toggle-active', [Admin\InstitutionalEmailController::class, 'toggleActive'])->name('toggle-active');
+    Route::post('/bulk-action', [Admin\InstitutionalEmailController::class, 'bulkAction'])->name('bulk-action');
+    Route::get('/export', [Admin\InstitutionalEmailController::class, 'export'])->name('export');
+   });
+
+    // Tournament Notification Routes (for sending notifications from tournament pages)
+    Route::prefix('tournaments/{tournament}')->name('tournaments.')->group(function () {
+        Route::get('/send-notification', [Admin\TournamentNotificationController::class, 'show'])->name('send-notification');
+        Route::post('/send-notification', [Admin\TournamentNotificationController::class, 'send'])->name('send-notification.post');
+    });
+});
+   // =================================================================
     // REFEREE ROUTES + Admin/Super Admin Access
     // =================================================================
     Route::middleware(['referee_or_admin'])->prefix('referee')->name('referee.')->group(function () {

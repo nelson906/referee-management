@@ -1,5 +1,10 @@
 {{-- File: resources/views/admin/letter-templates/index.blade.php --}}
-<x-admin-layout>
+@extends('layouts.admin')
+
+@section('title', ' ' )
+
+@section('content')
+
     <x-slot name="header">
         <div class="flex justify-between items-center">
             <h2 class="font-semibold text-xl text-gray-800 leading-tight">
@@ -43,7 +48,7 @@
                     {{-- Stats Header --}}
                     <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
                         <div class="bg-blue-50 p-4 rounded-lg">
-                            <div class="text-2xl font-bold text-blue-600">{{ $templates->total() }}</div>
+                            <div class="text-2xl font-bold text-blue-600">{{ $templates->count() }}</div>
                             <div class="text-sm text-blue-600">Totale Template</div>
                         </div>
                         <div class="bg-green-50 p-4 rounded-lg">
@@ -227,7 +232,10 @@
                                                     <div class="flex flex-wrap gap-1">
                                                         @foreach(array_slice(array_keys($template->used_variables), 0, 3) as $variable)
                                                             <span class="inline-flex px-1 py-0.5 text-xs bg-indigo-100 text-indigo-800 rounded">
-                                                                {{ str_replace(['{{', '}}'], '', $variable) }}
+@php
+    $cleanVariable = str_replace(['{{', '}}'], '', $variable);
+@endphp
+{{ $cleanVariable }}
                                                             </span>
                                                         @endforeach
                                                         @if(count($template->used_variables) > 3)
@@ -307,4 +315,4 @@
             }
         });
     </script>
-</x-admin-layout>
+@endsection
