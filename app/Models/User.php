@@ -8,6 +8,7 @@ use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
@@ -20,12 +21,23 @@ class User extends Authenticatable
      *
      * @var array<int, string>
      */
-protected $fillable = [
-    'name', 'email', 'password', 'user_type', 'is_active',
-    // ✅ ADD REFEREE CORE FIELDS:
-    'referee_code', 'level', 'category', 'zone_id', 'certified_date', 'phone', 'city',
-    'notes', 'last_login_at'
-];
+    protected $fillable = [
+        'name',
+        'email',
+        'password',
+        'user_type',
+        'is_active',
+        // ✅ ADD REFEREE CORE FIELDS:
+        'referee_code',
+        'level',
+        'category',
+        'zone_id',
+        'certified_date',
+        'phone',
+        'city',
+        'notes',
+        'last_login_at'
+    ];
 
     /**
      * The attributes that should be hidden for serialization.
@@ -421,5 +433,41 @@ protected $fillable = [
         return $this->hasOne(Referee::class);
     }
 
+    // AGGIUNGI QUESTE RELAZIONI nel Model User (app/Models/User.php)
 
+    /**
+     * Get tournaments through assignments - MISSING RELATIONSHIP
+     */
+    public function tournaments(): BelongsToMany
+    {
+        return $this->belongsToMany(Tournament::class, 'assignments')
+            ->withPivot(['role', 'is_confirmed', 'assigned_at', 'notes'])
+            ->withTimestamps();
+    }
+
+    /**
+     * Get all tournaments where user has declared availability
+     */
+    public function availableTournaments(): BelongsToMany
+    {
+        return $this->belongsToMany(Tournament::class, 'availabilities')
+            ->withPivot(['notes', 'status'])
+            ->withTimestamps();
+    }
+
+    /**
+     * Get tournaments assigned to this user (through assignments)
+     */
+    public function assignedTournaments(): BelongsToMany
+    {
+        return $this->tournaments()->wherePivot('is_confirmed', true);
+    }
+
+    /**
+     * Alternative method - get tournaments through assignments relationship
+     */
+    public function getTournamentsAttribute()
+    {
+        return $this->assignments()->with('tournament')->get()->pluck('tournament');
+    }
 }

@@ -7,42 +7,40 @@ use App\Models\Zone;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
-
+use Illuminate\Support\Facades\Schema;
 class ZoneController extends Controller
 {
     /**
      * Display a listing of zones.
      */
-    public function index(Request $request)
-    {
-        $query = Zone::withCount(['users', 'tournaments', 'clubs']);
+public function index(Request $request)
+{
+    $query = Zone::withCount(['users', 'tournaments', 'clubs']);
 
-        // Search filters
-        if ($request->filled('search')) {
-            $search = $request->search;
-            $query->where(function($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('code', 'like', "%{$search}%")
-                  ->orWhere('description', 'like', "%{$search}%");
-            });
-        }
-
-        if ($request->filled('is_active')) {
-            $query->where('is_active', $request->is_active);
-        }
-
-        $zones = $query->orderBy('sort_order')->orderBy('name')->paginate(15);
-
-        // Statistics
-        $stats = [
-            'total_zones' => Zone::count(),
-            'active_zones' => Zone::where('is_active', true)->count(),
-            'total_users' => User::whereIn('zone_id', Zone::pluck('id'))->count(),
-            'total_tournaments' => \DB::table('tournaments')->whereIn('zone_id', Zone::pluck('id'))->count(),
-        ];
-
-        return view('super-admin.zones.index', compact('zones', 'stats'));
+    // Search filters
+    if ($request->filled('search')) {
+        $search = $request->search;
+        $query->where(function($q) use ($search) {
+            $q->where('name', 'like', "%{$search}%")
+              ->orWhere('description', 'like', "%{$search}%");
+        });
     }
+
+    if ($request->filled('is_active')) {
+        $query->where('is_active', $request->is_active);
+    }
+
+    // ✅ CORREZIONE: Controllo se sort_order esiste, altrimenti ordina per name
+    if (Schema::hasColumn('zones', 'sort_order')) {
+        $zones = $query->orderBy('sort_order')->orderBy('name')->paginate(15);
+    } else {
+        // Fallback se sort_order non esiste ancora
+        $zones = $query->orderBy('name')->paginate(15);
+    }
+
+    return view('super-admin.zone.index', compact('zones'));
+}
+
 
     /**
      * Show the form for creating a new zone.

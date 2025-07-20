@@ -10,11 +10,7 @@ class TournamentController extends Controller
  * Public Calendar - View only focus
  * Route: /tournaments/calendar
  */
-/**
- * Public Calendar - View only focus
- * Route: /tournaments/calendar
- */
-public function calendar(Request $request): View
+public function calendar(Request $request)
 {
     $user = auth()->user();
 

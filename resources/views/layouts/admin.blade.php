@@ -162,13 +162,13 @@
                 📝 Template Lettere
             </a>
 
-            <a href="{{ route('institutional-emails.index') }}"
+            {{-- <a href="{{ route('institutional-emails.index') }}"
                 class="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
                 <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
                 </svg>
                 📮 Email Istituzionali
-            </a>
+            </a> --}}
 
             <div class="border-t border-gray-100"></div>
 
@@ -366,10 +366,10 @@
         📝 Template Lettere
     </a>
 
-    <a href="{{ route('institutional-emails.index') }}"
+    {{-- <a href="{{ route('institutional-emails.index') }}"
         class="block pl-6 pr-4 py-2 text-sm text-blue-200 hover:text-white hover:bg-blue-800">
         📮 Email Istituzionali
-    </a>
+    </a> --}}
 
     <a href="{{ route('notifications.send-assignment') }}"
         class="block pl-6 pr-4 py-2 text-sm text-blue-200 hover:text-white hover:bg-blue-800">
