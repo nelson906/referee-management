@@ -1,0 +1,1545 @@
+<?php
+
+namespace App\Http\Controllers\Reports;
+
+use App\Http\Controllers\Controller;
+use Illuminate\Http\Request;
+
+class AnalyticsController extends Controller
+{
+    //
+}
+<?php
+
+namespace App\Http\Controllers\Reports;
+
+use App\Http\Controllers\Controller;
+use App\Models\Assignment;
+use App\Models\Zone;
+use App\Models\TournamentType; // ✅ FIXED: Changed from TournamentCategory
+use Illuminate\Http\Request;
+use Illuminate\View\View;
+use Carbon\Carbon;
+
+class AssignmentReportController extends Controller
+{
+    /**
+     * Display assignments report.
+     */
+    public function index(Request $request): View
+    {
+        $user = auth()->user();
+
+        $query = Assignment::with([
+            'user:id,name,referee_code,level',
+            // ✅ FIXED: Changed tournament.tournamentCategory to tournament.tournamentType
+            'tournament:id,name,start_date,end_date,zone_id,club_id,tournament_type_id',
+            'tournament.club:id,name',
+            'tournament.zone:id,name',
+            'tournament.tournamentType:id,name', // ← FIXED: was tournamentCategory
+            'assignedBy:id,name'
+        ]);
+
+        // Apply access restrictions
+        if ($user->user_type === 'admin' && !in_array($user->user_type, ['super_admin', 'national_admin'])) {
+            $query->whereHas('tournament', function($q) use ($user) {
+                $q->where('zone_id', $user->zone_id);
+            });
+        }
+
+        // Apply filters
+        if ($request->filled('zone_id')) {
+            $query->whereHas('tournament', function($q) use ($request) {
+                $q->where('zone_id', $request->zone_id);
+            });
+        }
+
+        if ($request->filled('status')) {
+            if ($request->status === 'confirmed') {
+                $query->where('is_confirmed', true);
+            } elseif ($request->status === 'unconfirmed') {
+                $query->where('is_confirmed', false);
+            }
+        }
+
+        if ($request->filled('date_from')) {
+            $query->whereHas('tournament', function($q) use ($request) {
+                $q->where('start_date', '>=', $request->date_from);
+            });
+        }
+
+        if ($request->filled('date_to')) {
+            $query->whereHas('tournament', function($q) use ($request) {
+                $q->where('start_date', '<=', $request->date_to);
+            });
+        }
+
+        // ✅ FIXED: Changed from category_id to tournament_type_id
+        if ($request->filled('tournament_type_id')) {
+            $query->whereHas('tournament', function($q) use ($request) {
+                $q->where('tournament_type_id', $request->tournament_type_id);
+            });
+        }
+
+        $assignments = $query
+            ->orderBy('created_at', 'desc')
+            ->paginate(20)
+            ->withQueryString();
+
+        // Get filter options
+        $zones = $this->getAccessibleZones($user);
+
+        // ✅ FIXED: Variable name from $categories to $tournamentTypes
+        $tournamentTypes = TournamentType::active()->ordered()->get();
+
+        // Get statistics
+        $stats = $this->getAssignmentStats($user, $request);
+
+        // ✅ FIXED: compact() uses tournamentTypes instead of categories
+        return view('reports.assignments.index', compact(
+            'assignments',
+            'zones',
+            'tournamentTypes', // ← FIXED: was 'categories'
+            'stats'
+        ));
+    }
+
+    /**
+     * Get assignment statistics.
+     */
+    private function getAssignmentStats($user, $request): array
+    {
+        $query = Assignment::query();
+
+        // Apply same access restrictions as main query
+        if ($user->user_type === 'admin' && !in_array($user->user_type, ['super_admin', 'national_admin'])) {
+            $query->whereHas('tournament', function($q) use ($user) {
+                $q->where('zone_id', $user->zone_id);
+            });
+        }
+
+        // Apply same filters as main query
+        if ($request->filled('zone_id')) {
+            $query->whereHas('tournament', function($q) use ($request) {
+                $q->where('zone_id', $request->zone_id);
+            });
+        }
+
+        if ($request->filled('date_from') || $request->filled('date_to')) {
+            $query->whereHas('tournament', function($q) use ($request) {
+                if ($request->filled('date_from')) {
+                    $q->where('start_date', '>=', $request->date_from);
+                }
+                if ($request->filled('date_to')) {
+                    $q->where('start_date', '<=', $request->date_to);
+                }
+            });
+        }
+
+        // ✅ FIXED: Changed tournament_category_id to tournament_type_id
+        if ($request->filled('tournament_type_id')) {
+            $query->whereHas('tournament', function($q) use ($request) {
+                $q->where('tournament_type_id', $request->tournament_type_id);
+            });
+        }
+
+        return [
+            'total' => $query->count(),
+            'confirmed' => $query->where('is_confirmed', true)->count(),
+            'unconfirmed' => $query->where('is_confirmed', false)->count(),
+            'current_year' => $query->whereYear('created_at', now()->year)->count(),
+            'this_month' => $query->whereMonth('created_at', now()->month)
+                                 ->whereYear('created_at', now()->year)->count(),
+        ];
+    }
+
+    /**
+     * Get zones accessible to the user.
+     */
+    private function getAccessibleZones($user)
+    {
+        if ($user->user_type === 'super_admin' || $user->user_type === 'national_admin') {
+            return Zone::orderBy('name')->get();
+        }
+
+        return Zone::where('id', $user->zone_id)->get();
+    }
+
+    /**
+     * Export assignments report.
+     */
+    public function export(Request $request)
+    {
+        $user = auth()->user();
+
+        $query = Assignment::with([
+            'user:id,name,referee_code,level',
+            // ✅ FIXED: tournamentType relationship
+            'tournament:id,name,start_date,end_date,zone_id,club_id,tournament_type_id',
+            'tournament.club:id,name',
+            'tournament.zone:id,name',
+            'tournament.tournamentType:id,name', // ← FIXED
+            'assignedBy:id,name'
+        ]);
+
+        // Apply same access restrictions and filters as index method
+        if ($user->user_type === 'admin' && !in_array($user->user_type, ['super_admin', 'national_admin'])) {
+            $query->whereHas('tournament', function($q) use ($user) {
+                $q->where('zone_id', $user->zone_id);
+            });
+        }
+
+        // Apply filters (same logic as index)
+        if ($request->filled('zone_id')) {
+            $query->whereHas('tournament', function($q) use ($request) {
+                $q->where('zone_id', $request->zone_id);
+            });
+        }
+
+        if ($request->filled('status')) {
+            if ($request->status === 'confirmed') {
+                $query->where('is_confirmed', true);
+            } elseif ($request->status === 'unconfirmed') {
+                $query->where('is_confirmed', false);
+            }
+        }
+
+        if ($request->filled('date_from')) {
+            $query->whereHas('tournament', function($q) use ($request) {
+                $q->where('start_date', '>=', $request->date_from);
+            });
+        }
+
+        if ($request->filled('date_to')) {
+            $query->whereHas('tournament', function($q) use ($request) {
+                $q->where('start_date', '<=', $request->date_to);
+            });
+        }
+
+        // ✅ FIXED: tournament_type_id filter
+        if ($request->filled('tournament_type_id')) {
+            $query->whereHas('tournament', function($q) use ($request) {
+                $q->where('tournament_type_id', $request->tournament_type_id);
+            });
+        }
+
+        $assignments = $query->orderBy('created_at', 'desc')->get();
+
+        $filename = 'assignments_report_' . now()->format('Y-m-d_H-i-s') . '.csv';
+
+        $headers = [
+            'Content-Type' => 'text/csv',
+            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
+        ];
+
+        $callback = function() use ($assignments) {
+            $file = fopen('php://output', 'w');
+
+            // CSV headers
+            fputcsv($file, [
+                'ID',
+                'Arbitro',
+                'Codice Arbitro',
+                'Livello',
+                'Torneo',
+                'Categoria Torneo', // ✅ Column name clarified
+                'Club',
+                'Zona',
+                'Ruolo',
+                'Data Assegnazione',
+                'Confermato',
+                'Assegnato da',
+                'Note'
+            ]);
+
+            foreach ($assignments as $assignment) {
+                fputcsv($file, [
+                    $assignment->id,
+                    $assignment->user->name,
+                    $assignment->user->referee_code ?? 'N/A',
+                    $assignment->user->level ?? 'N/A',
+                    $assignment->tournament->name,
+                    // ✅ FIXED: tournamentType relationship
+                    $assignment->tournament->tournamentType->name ?? 'N/A',
+                    $assignment->tournament->club->name ?? 'N/A',
+                    $assignment->tournament->zone->name ?? 'N/A',
+                    $assignment->role,
+                    $assignment->assigned_at?->format('d/m/Y H:i') ?? 'N/A',
+                    $assignment->is_confirmed ? 'Sì' : 'No',
+                    $assignment->assignedBy->name ?? 'N/A',
+                    $assignment->notes ?? ''
+                ]);
+            }
+
+            fclose($file);
+        };
+
+        return response()->stream($callback, 200, $headers);
+    }
+
+    /**
+     * Show detailed assignment analytics.
+     */
+    public function analytics(Request $request): View
+    {
+        $user = auth()->user();
+        $startDate = $request->get('start_date', now()->subMonths(6)->format('Y-m-d'));
+        $endDate = $request->get('end_date', now()->format('Y-m-d'));
+
+        // Base query with proper access control
+        $baseQuery = Assignment::query()
+            ->when($user->user_type === 'admin' && !in_array($user->user_type, ['super_admin', 'national_admin']), function($q) use ($user) {
+                $q->whereHas('tournament', function($subQ) use ($user) {
+                    $subQ->where('zone_id', $user->zone_id);
+                });
+            });
+
+        // Assignments by tournament type
+        $assignmentsByType = $baseQuery->clone()
+            ->with(['tournament.tournamentType']) // ✅ FIXED relationship
+            ->whereHas('tournament', function($q) use ($startDate, $endDate) {
+                $q->whereBetween('start_date', [$startDate, $endDate]);
+            })
+            ->get()
+            ->groupBy(function($assignment) {
+                // ✅ FIXED: tournamentType relationship
+                return $assignment->tournament->tournamentType->name ?? 'Sconosciuta';
+            })
+            ->map(function($assignments) {
+                return $assignments->count();
+            });
+
+        // Assignments by month
+        $assignmentsByMonth = $baseQuery->clone()
+            ->whereHas('tournament', function($q) use ($startDate, $endDate) {
+                $q->whereBetween('start_date', [$startDate, $endDate]);
+            })
+            ->get()
+            ->groupBy(function($assignment) {
+                return $assignment->tournament->start_date->format('Y-m');
+            })
+            ->map(function($assignments) {
+                return $assignments->count();
+            })
+            ->sortKeys();
+
+        // Top referees by assignments
+        $topReferees = $baseQuery->clone()
+            ->with(['user'])
+            ->whereHas('tournament', function($q) use ($startDate, $endDate) {
+                $q->whereBetween('start_date', [$startDate, $endDate]);
+            })
+            ->get()
+            ->groupBy('user_id')
+            ->map(function($assignments) {
+                return [
+                    'referee' => $assignments->first()->user,
+                    'count' => $assignments->count(),
+                    'confirmed' => $assignments->where('is_confirmed', true)->count()
+                ];
+            })
+            ->sortByDesc('count')
+            ->take(10);
+
+        // Zone distribution (only for national admins)
+        $zoneDistribution = collect();
+        if (in_array($user->user_type, ['super_admin', 'national_admin'])) {
+            $zoneDistribution = $baseQuery->clone()
+                ->with(['tournament.zone'])
+                ->whereHas('tournament', function($q) use ($startDate, $endDate) {
+                    $q->whereBetween('start_date', [$startDate, $endDate]);
+                })
+                ->get()
+                ->groupBy(function($assignment) {
+                    return $assignment->tournament->zone->name ?? 'Sconosciuta';
+                })
+                ->map(function($assignments) {
+                    return $assignments->count();
+                });
+        }
+
+        return view('reports.assignments.analytics', compact(
+            'assignmentsByType',
+            'assignmentsByMonth',
+            'topReferees',
+            'zoneDistribution',
+            'startDate',
+            'endDate'
+        ));
+    }
+}
+<?php
+
+namespace App\Http\Controllers\Reports;
+
+use App\Http\Controllers\Controller;
+use App\Models\TournamentType;
+use Illuminate\Http\Request;
+use Illuminate\View\View;
+
+class CategoryReportController extends Controller
+{
+    /**
+     * Display category reports listing.
+     */
+    public function index(): View
+    {
+        $categories = TournamentType::withCount('tournaments')
+            ->ordered()
+            ->get();
+
+        return view('reports.categories.index', compact('types'));
+    }
+
+    /**
+     * Show specific category report.
+     */
+    public function show(TournamentCategory $category): View
+    {
+        return view('reports.categories.show', compact('category'));
+    }
+
+    /**
+     * Export category report.
+     */
+    public function export(TournamentCategory $category)
+    {
+        return response()->json(['message' => 'Export in sviluppo']);
+    }
+}
+<?php
+
+namespace App\Http\Controllers\Reports;
+
+use App\Http\Controllers\Controller;
+use App\Models\User;
+use App\Models\Zone;
+use App\Models\Tournament;
+use App\Models\TournamentType;
+use App\Models\Club;
+use App\Models\TournamentAssignment;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Carbon\Carbon;
+
+class DashboardController extends Controller
+{
+    /**
+     * Display the reports dashboard.
+     */
+    public function index(Request $request)
+    {
+        $period = $request->get('period', '30'); // days
+        $startDate = Carbon::now()->subDays($period);
+
+        // Basic statistics
+        $stats = $this->getBasicStats();
+
+        // Growth statistics
+        $growth = $this->getGrowthStats($startDate);
+
+        // Activity trends
+        $trends = $this->getActivityTrends($startDate);
+
+        // Zone performance
+        $zonePerformance = $this->getZonePerformance();
+
+        // Category usage
+        $categoryUsage = $this->getCategoryUsage();
+
+        // Recent activity
+        $recentActivity = $this->getRecentActivity();
+
+        // System health indicators
+        $systemHealth = $this->getSystemHealth();
+
+        return view('reports.dashboard.index', compact(
+            'stats',
+            'growth',
+            'trends',
+            'zonePerformance',
+            'categoryUsage',
+            'recentActivity',
+            'systemHealth',
+            'period'
+        ));
+    }
+
+    /**
+     * Get basic system statistics.
+     */
+    private function getBasicStats()
+    {
+        return [
+            'total_users' => User::count(),
+            'active_users' => User::where('is_active', true)->count(),
+            'total_referees' => User::where('user_type', 'referee')->count(),
+            'active_referees' => User::where('user_type', 'referee')->where('is_active', true)->count(),
+            'total_zones' => Zone::count(),
+            'active_zones' => Zone::where('is_active', true)->count(),
+            'total_clubs' => Club::count(),
+            'active_clubs' => Club::where('is_active', true)->count(),
+            'total_tournaments' => Tournament::count(),
+            'active_tournaments' => Tournament::whereIn('status', ['open', 'closed', 'assigned'])->count(),
+            'completed_tournaments' => Tournament::where('status', 'completed')->count(),
+            'total_categories' => TournamentType::count(),
+            'active_categories' => TournamentType::where('is_active', true)->count(),
+            'total_assignments' => TournamentAssignment::count(),
+            'pending_assignments' => TournamentAssignment::where('status', 'pending')->count(),
+            'accepted_assignments' => TournamentAssignment::where('status', 'accepted')->count(),
+        ];
+    }
+
+    /**
+     * Get growth statistics over a period.
+     */
+    private function getGrowthStats($startDate)
+    {
+        $previousPeriodStart = $startDate->copy()->subDays($startDate->diffInDays(Carbon::now()));
+
+        // Current period counts
+        $currentUsers = User::where('created_at', '>=', $startDate)->count();
+        $currentTournaments = Tournament::where('created_at', '>=', $startDate)->count();
+        $currentClubs = Club::where('created_at', '>=', $startDate)->count();
+        $currentAssignments = TournamentAssignment::where('created_at', '>=', $startDate)->count();
+
+        // Previous period counts
+        $previousUsers = User::whereBetween('created_at', [$previousPeriodStart, $startDate])->count();
+        $previousTournaments = Tournament::whereBetween('created_at', [$previousPeriodStart, $startDate])->count();
+        $previousClubs = Club::whereBetween('created_at', [$previousPeriodStart, $startDate])->count();
+        $previousAssignments = TournamentAssignment::whereBetween('created_at', [$previousPeriodStart, $startDate])->count();
+
+        return [
+            'users' => [
+                'current' => $currentUsers,
+                'previous' => $previousUsers,
+                'growth' => $previousUsers > 0 ? (($currentUsers - $previousUsers) / $previousUsers) * 100 : 0
+            ],
+            'tournaments' => [
+                'current' => $currentTournaments,
+                'previous' => $previousTournaments,
+                'growth' => $previousTournaments > 0 ? (($currentTournaments - $previousTournaments) / $previousTournaments) * 100 : 0
+            ],
+            'clubs' => [
+                'current' => $currentClubs,
+                'previous' => $previousClubs,
+                'growth' => $previousClubs > 0 ? (($currentClubs - $previousClubs) / $previousClubs) * 100 : 0
+            ],
+            'assignments' => [
+                'current' => $currentAssignments,
+                'previous' => $previousAssignments,
+                'growth' => $previousAssignments > 0 ? (($currentAssignments - $previousAssignments) / $previousAssignments) * 100 : 0
+            ],
+        ];
+    }
+
+    /**
+     * Get activity trends over time.
+     */
+    private function getActivityTrends($startDate)
+    {
+        $userTrends = User::select(
+            DB::raw('DATE(created_at) as date'),
+            DB::raw('COUNT(*) as count')
+        )
+            ->where('created_at', '>=', $startDate)
+            ->groupBy('date')
+            ->orderBy('date')
+            ->get()
+            ->keyBy('date')
+            ->pluck('count');
+
+        $tournamentTrends = Tournament::select(
+            DB::raw('DATE(created_at) as date'),
+            DB::raw('COUNT(*) as count')
+        )
+            ->where('created_at', '>=', $startDate)
+            ->groupBy('date')
+            ->orderBy('date')
+            ->get()
+            ->keyBy('date')
+            ->pluck('count');
+
+        $assignmentTrends = TournamentAssignment::select(
+            DB::raw('DATE(created_at) as date'),
+            DB::raw('COUNT(*) as count')
+        )
+            ->where('created_at', '>=', $startDate)
+            ->groupBy('date')
+            ->orderBy('date')
+            ->get()
+            ->keyBy('date')
+            ->pluck('count');
+
+        // Fill missing dates with 0
+        $dates = [];
+        $current = $startDate->copy();
+        while ($current <= Carbon::now()) {
+            $dateStr = $current->format('Y-m-d');
+            $dates[] = [
+                'date' => $dateStr,
+                'users' => $userTrends->get($dateStr, 0),
+                'tournaments' => $tournamentTrends->get($dateStr, 0),
+                'assignments' => $assignmentTrends->get($dateStr, 0),
+            ];
+            $current->addDay();
+        }
+
+        return $dates;
+    }
+
+    /**
+     * Get zone performance statistics.
+     */
+    private function getZonePerformance()
+    {
+        return Zone::withCount(['users', 'tournaments', 'clubs'])
+            ->orderBy('tournaments_count', 'desc')
+            ->limit(10)
+            ->get()
+            ->map(function ($zone) {
+                return [
+                    'id' => $zone->id,
+                    'name' => $zone->name,
+                    'region' => $zone->region,
+                    'users_count' => $zone->users_count,
+                    'tournaments_count' => $zone->tournaments_count,
+                    'clubs_count' => $zone->clubs_count,
+                    'is_active' => $zone->is_active,
+                ];
+            });
+    }
+
+    /**
+     * Get tournament type usage statistics.
+     */
+    private function getCategoryUsage()
+    {
+        return TournamentType::withCount('tournaments')
+            ->orderBy('tournaments_count', 'desc')
+            ->get()
+            ->map(function ($type) {
+                return [
+                    'id' => $type->id,
+                    'name' => $type->name,
+                    'short_name' => $type->short_name,
+                    'tournaments_count' => $type->tournaments_count,
+                    'is_national' => $type->is_national,
+                    'is_active' => $type->is_active,
+                ];
+            });
+    }
+
+    /**
+     * Get recent system activity.
+     */
+    private function getRecentActivity()
+    {
+        $activities = [];
+
+        // Recent users
+        $recentUsers = User::latest()->limit(5)->get();
+        foreach ($recentUsers as $user) {
+            $activities[] = [
+                'type' => 'user_registered',
+                'title' => 'Nuovo utente registrato',
+                'description' => "{$user->name} si è registrato come {$user->user_type}",
+                'created_at' => $user->created_at,
+                'icon' => 'user-plus',
+                'color' => 'blue',
+            ];
+        }
+
+        // Recent tournaments
+        $recentTournaments = Tournament::with(['category', 'zone'])->latest()->limit(5)->get();
+        foreach ($recentTournaments as $tournament) {
+            $activities[] = [
+                'type' => 'tournament_created',
+                'title' => 'Nuovo torneo creato',
+                'description' => $tournament->name . ' (' . ($tournament->tournamentCategory->name ?? 'N/A') . ') - ' . ($tournament->zone->name ?? 'N/A'),
+                'created_at' => $tournament->created_at,
+                'icon' => 'calendar',
+                'color' => 'green',
+            ];
+        }
+
+        // Recent assignments
+        $recentAssignments = TournamentAssignment::with(['tournament', 'referee'])
+            ->where('status', 'accepted')
+            ->latest()
+            ->limit(5)
+            ->get();
+        foreach ($recentAssignments as $assignment) {
+            $activities[] = [
+                'type' => 'assignment_accepted',
+                'title' => 'Assegnazione accettata',
+                'description' => "{$assignment->referee->name} ha accettato {$assignment->tournament->name}",
+                'created_at' => $assignment->updated_at,
+                'icon' => 'check-circle',
+                'color' => 'green',
+            ];
+        }
+
+        // Sort by creation date
+        return collect($activities)->sortByDesc('created_at')->take(15)->values();
+    }
+
+    /**
+     * Get system health indicators.
+     */
+    private function getSystemHealth()
+    {
+        $health = [
+            'database' => $this->checkDatabaseHealth(),
+            'user_activity' => $this->checkUserActivity(),
+            'tournament_activity' => $this->checkTournamentActivity(),
+            'assignment_rate' => $this->checkAssignmentRate(),
+            'system_errors' => $this->checkSystemErrors(),
+        ];
+
+        // Calculate overall health score
+        $scores = array_column($health, 'score');
+        $overallScore = count($scores) > 0 ? array_sum($scores) / count($scores) : 0;
+
+        $health['overall'] = [
+            'score' => $overallScore,
+            'status' => $this->getHealthStatus($overallScore),
+            'message' => $this->getHealthMessage($overallScore),
+        ];
+
+        return $health;
+    }
+
+    /**
+     * Check database health.
+     */
+    private function checkDatabaseHealth()
+    {
+        try {
+            DB::connection()->getPdo();
+            $tableCount = count(DB::select('SHOW TABLES'));
+
+            return [
+                'score' => 100,
+                'status' => 'healthy',
+                'message' => "Database connesso ({$tableCount} tabelle)",
+                'details' => ['tables' => $tableCount]
+            ];
+        } catch (\Exception $e) {
+            return [
+                'score' => 0,
+                'status' => 'error',
+                'message' => 'Errore connessione database',
+                'details' => ['error' => $e->getMessage()]
+            ];
+        }
+    }
+
+    /**
+     * Check user activity.
+     */
+    private function checkUserActivity()
+    {
+        $totalUsers = User::count();
+        $activeUsers = User::where('last_login_at', '>=', Carbon::now()->subDays(30))->count();
+
+        if ($totalUsers == 0) {
+            $activityRate = 0;
+        } else {
+            $activityRate = ($activeUsers / $totalUsers) * 100;
+        }
+
+        return [
+            'score' => min($activityRate, 100),
+            'status' => $activityRate >= 70 ? 'healthy' : ($activityRate >= 40 ? 'warning' : 'error'),
+            'message' => "{$activeUsers}/{$totalUsers} utenti attivi (ultimi 30 giorni)",
+            'details' => [
+                'total' => $totalUsers,
+                'active' => $activeUsers,
+                'rate' => round($activityRate, 1)
+            ]
+        ];
+    }
+
+    /**
+     * Check tournament activity.
+     */
+    private function checkTournamentActivity()
+    {
+        $recentTournaments = Tournament::where('created_at', '>=', Carbon::now()->subDays(30))->count();
+        $activeTournaments = Tournament::whereIn('status', ['open', 'closed', 'assigned'])->count();
+
+        $score = min(($recentTournaments * 10) + ($activeTournaments * 5), 100);
+
+        return [
+            'score' => $score,
+            'status' => $score >= 70 ? 'healthy' : ($score >= 40 ? 'warning' : 'error'),
+            'message' => "{$recentTournaments} tornei creati, {$activeTournaments} attivi",
+            'details' => [
+                'recent' => $recentTournaments,
+                'active' => $activeTournaments
+            ]
+        ];
+    }
+
+    /**
+     * Check assignment rate.
+     */
+    private function checkAssignmentRate()
+    {
+        $totalAssignments = TournamentAssignment::count();
+        $acceptedAssignments = TournamentAssignment::where('status', 'accepted')->count();
+
+        if ($totalAssignments == 0) {
+            $acceptanceRate = 100; // No assignments yet, assume healthy
+        } else {
+            $acceptanceRate = ($acceptedAssignments / $totalAssignments) * 100;
+        }
+
+        return [
+            'score' => $acceptanceRate,
+            'status' => $acceptanceRate >= 80 ? 'healthy' : ($acceptanceRate >= 60 ? 'warning' : 'error'),
+            'message' => "{$acceptedAssignments}/{$totalAssignments} assegnazioni accettate",
+            'details' => [
+                'total' => $totalAssignments,
+                'accepted' => $acceptedAssignments,
+                'rate' => round($acceptanceRate, 1)
+            ]
+        ];
+    }
+
+    /**
+     * Check for system errors.
+     */
+    private function checkSystemErrors()
+    {
+        // This is a simplified check - in a real app you'd check log files
+        $inactiveZones = Zone::where('is_active', false)->count();
+        $inactiveUsers = User::where('is_active', false)->count();
+
+        $issues = $inactiveZones + $inactiveUsers;
+        $score = max(100 - ($issues * 5), 0);
+
+        return [
+            'score' => $score,
+            'status' => $score >= 90 ? 'healthy' : ($score >= 70 ? 'warning' : 'error'),
+            'message' => $issues == 0 ? 'Nessun problema rilevato' : "{$issues} elementi disattivati",
+            'details' => [
+                'inactive_zones' => $inactiveZones,
+                'inactive_users' => $inactiveUsers
+            ]
+        ];
+    }
+
+    /**
+     * Get health status based on score.
+     */
+    private function getHealthStatus($score)
+    {
+        if ($score >= 80) return 'healthy';
+        if ($score >= 60) return 'warning';
+        return 'error';
+    }
+
+    /**
+     * Get health message based on score.
+     */
+    private function getHealthMessage($score)
+    {
+        if ($score >= 90) return 'Sistema in ottima salute';
+        if ($score >= 80) return 'Sistema in buona salute';
+        if ($score >= 60) return 'Sistema con alcuni problemi';
+        if ($score >= 40) return 'Sistema con problemi significativi';
+        return 'Sistema con gravi problemi';
+    }
+
+    /**
+     * Export dashboard data.
+     */
+    public function export(Request $request)
+    {
+        $period = $request->get('period', '30');
+        $format = $request->get('format', 'csv');
+
+        $stats = $this->getBasicStats();
+        $growth = $this->getGrowthStats(Carbon::now()->subDays($period));
+
+        $data = array_merge($stats, [
+            'export_date' => Carbon::now()->format('Y-m-d H:i:s'),
+            'period_days' => $period,
+        ]);
+
+        if ($format === 'json') {
+            return response()->json($data);
+        }
+
+        // CSV Export
+        $filename = 'dashboard_report_' . Carbon::now()->format('Y-m-d_H-i-s') . '.csv';
+
+        $headers = [
+            'Content-Type' => 'text/csv',
+            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
+        ];
+
+        $callback = function () use ($data) {
+            $file = fopen('php://output', 'w');
+
+            // CSV headers
+            fputcsv($file, ['Metrica', 'Valore']);
+
+            foreach ($data as $key => $value) {
+                if (is_numeric($value)) {
+                    fputcsv($file, [ucfirst(str_replace('_', ' ', $key)), $value]);
+                }
+            }
+
+            fclose($file);
+        };
+
+        return response()->stream($callback, 200, $headers);
+    }
+}
+<?php
+
+namespace App\Http\Controllers\Reports;
+
+use App\Http\Controllers\Controller;
+use App\Models\User;
+use Illuminate\View\View;
+
+class RefereeReportController extends Controller
+{
+    /**
+     * Display referee report.
+     */
+    public function show(User $referee): View
+    {
+        // Check that user is actually a referee
+        if (!$referee->isReferee()) {
+            abort(404, 'Utente non trovato.');
+        }
+
+        // Check access
+        $this->checkRefereeAccess($referee);
+
+        // Load relationships and statistics
+        $referee->load([
+            'zone',
+            'assignments.tournament.club',
+            'availabilities.tournament.club'
+        ]);
+
+        // Get statistics
+        $stats = [
+            'total_assignments' => $referee->assignments()->count(),
+            'confirmed_assignments' => $referee->assignments()->where('is_confirmed', true)->count(),
+            'current_year_assignments' => $referee->assignments()->whereYear('created_at', now()->year)->count(),
+            'total_availabilities' => $referee->availabilities()->count(),
+            'current_year_availabilities' => $referee->availabilities()->whereYear('created_at', now()->year)->count(),
+            'upcoming_assignments' => $referee->assignments()->upcoming()->count(),
+        ];
+
+        // Get recent assignments
+        $recentAssignments = $referee->assignments()
+            ->with(['tournament.club', 'tournament.zone'])
+            ->orderBy('created_at', 'desc')
+            ->limit(10)
+            ->get();
+
+        return view('reports.referee.show', compact('referee', 'stats', 'recentAssignments'));
+    }
+
+    /**
+     * Export referee report.
+     */
+    public function export(User $referee)
+    {
+        $this->checkRefereeAccess($referee);
+
+        // TODO: Implement export functionality
+        return response()->json([
+            'message' => 'Export functionality coming soon'
+        ]);
+    }
+
+    /**
+     * Check if user can access referee reports.
+     */
+    private function checkRefereeAccess(User $referee): void
+    {
+        $user = auth()->user();
+
+        // Super admin and national admin can access all
+        if ($user->user_type === 'super_admin' || $user->user_type === 'national_admin') {
+            return;
+        }
+
+        // Zone admin can access referees in their zone
+        if ($user->user_type === 'admin' && $user->zone_id === $referee->zone_id) {
+            return;
+        }
+
+        // Referees can only access their own reports
+        if ($user->isReferee() && $user->id === $referee->id) {
+            return;
+        }
+
+        abort(403, 'Non sei autorizzato ad accedere a questo report.');
+    }
+}
+<?php
+
+namespace App\Http\Controllers\Reports;
+
+use App\Http\Controllers\Controller;
+use App\Models\Zone;
+use App\Models\Tournament;
+use App\Models\User;
+use App\Models\Assignment;
+use Illuminate\Http\Request;
+use Illuminate\View\View;
+
+class ReportController extends Controller
+{
+    /**
+     * Display reports dashboard.
+     */
+    public function index(): View
+    {
+        $user = auth()->user();
+
+        // Get user's accessible zones
+        $zones = $this->getAccessibleZones($user);
+
+        // Get recent tournaments
+        $recentTournaments = $this->getAccessibleTournaments($user)
+            ->with(['club', 'zone', 'tournamentType'])
+            ->orderBy('start_date', 'desc')
+            ->limit(10)
+            ->get();
+
+        // Get statistics based on user access
+        $stats = $this->getAccessibleStats($user);
+
+        return view('reports.index', compact('zones', 'recentTournaments', 'stats'));
+    }
+
+    /**
+     * Get zones accessible to the user.
+     */
+    private function getAccessibleZones($user)
+    {
+        if ($user->user_type === 'super_admin' || $user->user_type === 'national_admin') {
+            return Zone::orderBy('name')->get();
+        }
+
+        return Zone::where('id', $user->zone_id)->get();
+    }
+
+    /**
+     * Get tournaments accessible to the user.
+     */
+    private function getAccessibleTournaments($user)
+    {
+        $query = Tournament::query();
+
+        if ($user->user_type === 'admin' && $user->user_type !== 'super_admin' && $user->user_type !== 'national_admin') {
+            $query->where('zone_id', $user->zone_id);
+        }
+
+        return $query;
+    }
+
+    /**
+     * Get statistics based on user access.
+     */
+    private function getAccessibleStats($user): array
+    {
+        $tournamentsQuery = $this->getAccessibleTournaments($user);
+        $assignmentsQuery = Assignment::query();
+
+        if ($user->user_type === 'admin' && $user->user_type !== 'super_admin' && $user->user_type !== 'national_admin') {
+            $assignmentsQuery->whereHas('tournament', function($q) use ($user) {
+                $q->where('zone_id', $user->zone_id);
+            });
+        }
+
+        return [
+            'total_tournaments' => $tournamentsQuery->count(),
+            'upcoming_tournaments' => $tournamentsQuery->upcoming()->count(),
+            'active_tournaments' => $tournamentsQuery->active()->count(),
+            'total_assignments' => $assignmentsQuery->count(),
+            'confirmed_assignments' => $assignmentsQuery->where('is_confirmed', true)->count(),
+            'current_year_assignments' => $assignmentsQuery->whereYear('created_at', now()->year)->count(),
+        ];
+    }
+}
+<?php
+
+namespace App\Http\Controllers\Reports;
+
+use App\Http\Controllers\Controller;
+use App\Models\Tournament;
+use Illuminate\View\View;
+
+class TournamentReportController extends Controller
+{
+    /**
+     * Display tournament report.
+     */
+    public function show(Tournament $tournament): View
+    {
+        // Check access
+        $this->checkTournamentAccess($tournament);
+
+        // Load relationships
+        $tournament->load([
+            'club',
+            'zone',
+            'tournamentType',
+            'availabilities.user',
+            'assignments.user',
+            'assignments.assignedBy'
+        ]);
+
+        // Get statistics
+        $stats = [
+            'total_availabilities' => $tournament->availabilities()->count(),
+            'total_assignments' => $tournament->assignments()->count(),
+            'confirmed_assignments' => $tournament->assignments()->where('is_confirmed', true)->count(),
+            'required_referees' => $tournament->required_referees,
+            'max_referees' => $tournament->max_referees,
+            'days_until_start' => $tournament->start_date ? now()->diffInDays($tournament->start_date, false) : null,
+        ];
+
+        return view('reports.tournament.show', compact('tournament', 'stats'));
+    }
+
+    /**
+     * Export tournament report.
+     */
+    public function export(Tournament $tournament)
+    {
+        $this->checkTournamentAccess($tournament);
+
+        // TODO: Implement export functionality
+        return response()->json([
+            'message' => 'Export functionality coming soon'
+        ]);
+    }
+
+    /**
+     * Check if user can access tournament reports.
+     */
+    private function checkTournamentAccess(Tournament $tournament): void
+    {
+        $user = auth()->user();
+
+        if ($user->user_type === 'super_admin' || $user->user_type === 'national_admin') {
+            return;
+        }
+
+        if ($user->user_type === 'admin' && $user->zone_id !== $tournament->zone_id) {
+            abort(403, 'Non sei autorizzato ad accedere ai report di questo torneo.');
+        }
+    }
+}
+<?php
+
+namespace App\Http\Controllers\Reports;
+
+use App\Http\Controllers\Controller;
+use App\Models\Zone;
+use App\Models\User;
+use App\Models\Tournament;
+use App\Models\Assignment;
+use Illuminate\Http\Request;
+use Illuminate\View\View;
+use Carbon\Carbon;
+
+class ZoneReportController extends Controller
+{
+    /**
+     * Display zone overview report.
+     */
+    public function show(Zone $zone): View
+    {
+        // Check access
+        $this->checkZoneAccess($zone);
+
+        // Get statistics
+        $stats = [
+            'total_referees' => $zone->referees()->count(),
+            'active_referees' => $zone->referees()->where('is_active', true)->count(),
+            'total_clubs' => $zone->clubs()->count(),
+            'active_clubs' => $zone->clubs()->where('is_active', true)->count(),
+            'total_tournaments' => $zone->tournaments()->count(),
+            'upcoming_tournaments' => $zone->tournaments()->upcoming()->count(),
+            'active_tournaments' => $zone->tournaments()->active()->count(),
+            'completed_tournaments' => $zone->tournaments()->where('status', 'completed')->count(),
+        ];
+
+        // Get referees by level
+        $refereesByLevel = $zone->referees()
+            ->where('is_active', true)
+            ->selectRaw('level, COUNT(*) as total')
+            ->groupBy('level')
+            ->get()
+            ->pluck('total', 'level')
+            ->toArray();
+
+        // Get recent tournaments
+        $recentTournaments = $zone->tournaments()
+            ->with(['club', 'tournamentType'])
+            ->orderBy('start_date', 'desc')
+            ->limit(10)
+            ->get();
+
+        // Get assignment statistics
+        $assignmentStats = [
+            'total_assignments' => Assignment::whereHas('tournament', function($q) use ($zone) {
+                $q->where('zone_id', $zone->id);
+            })->count(),
+            'confirmed_assignments' => Assignment::whereHas('tournament', function($q) use ($zone) {
+                $q->where('zone_id', $zone->id);
+            })->where('is_confirmed', true)->count(),
+            'current_year' => Assignment::whereHas('tournament', function($q) use ($zone) {
+                $q->where('zone_id', $zone->id);
+            })->whereYear('created_at', now()->year)->count(),
+        ];
+
+        return view('reports.zone.show', compact(
+            'zone',
+            'stats',
+            'refereesByLevel',
+            'recentTournaments',
+            'assignmentStats'
+        ));
+    }
+
+    /**
+     * Display zone referees report.
+     */
+    public function referees(Zone $zone): View
+    {
+        $this->checkZoneAccess($zone);
+
+        $referees = $zone->referees()
+            ->with(['assignments' => function($q) {
+                $q->whereYear('created_at', now()->year);
+            }])
+            ->withCount([
+                'assignments',
+                'assignments as current_year_assignments' => function($q) {
+                    $q->whereYear('created_at', now()->year);
+                },
+                'availabilities'
+            ])
+            ->orderBy('is_active', 'desc')
+            ->orderBy('level')
+            ->orderBy('name')
+            ->paginate(20);
+
+        return view('reports.zone.referees', compact('zone', 'referees'));
+    }
+
+    /**
+     * Display zone tournaments report.
+     */
+    public function tournaments(Zone $zone): View
+    {
+        $this->checkZoneAccess($zone);
+
+        $tournaments = $zone->tournaments()
+            ->with(['club', 'tournamentType'])
+            ->withCount(['assignments', 'availabilities'])
+            ->orderBy('start_date', 'desc')
+            ->paginate(20);
+
+        return view('reports.zone.tournaments', compact('zone', 'tournaments'));
+    }
+
+    /**
+     * Export zone report.
+     */
+    public function export(Zone $zone)
+    {
+        $this->checkZoneAccess($zone);
+
+        // TODO: Implement export functionality
+        return response()->json([
+            'message' => 'Export functionality coming soon'
+        ]);
+    }
+
+    /**
+     * Check if user can access zone reports.
+     */
+    private function checkZoneAccess(Zone $zone): void
+    {
+        $user = auth()->user();
+
+        if ($user->user_type === 'super_admin' || $user->user_type === 'national_admin') {
+            return;
+        }
+
+        if ($user->user_type === 'admin' && $user->zone_id !== $zone->id) {
+            abort(403, 'Non sei autorizzato ad accedere ai report di questa zona.');
+        }
+    }
+}
+<?php
+
+namespace App\Http\Controllers\Admin;
+
+use App\Http\Controllers\Controller;
+use App\Models\InstitutionalEmail;
+use App\Models\Zone;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Mail;
+
+class InstitutionalEmailController extends Controller
+{
+    /**
+     * Display a listing of institutional emails.
+     */
+    public function index()
+    {
+        $emails = InstitutionalEmail::with('zone')
+            ->orderBy('category')
+            ->orderBy('name')
+            ->get();
+
+        return view('admin.institutional-emails.index', compact('emails'));
+    }
+
+    /**
+     * Show the form for creating a new institutional email.
+     */
+    public function create()
+    {
+        $zones = Zone::where('is_active', true)->orderBy('name')->get();
+        $categories = InstitutionalEmail::getCategories();
+        $notificationTypes = InstitutionalEmail::getNotificationTypes();
+
+        return view('admin.institutional-emails.create', compact('zones', 'categories', 'notificationTypes'));
+    }
+
+    /**
+     * Store a newly created institutional email.
+     */
+    public function store(Request $request)
+    {
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|unique:institutional_emails,email',
+            'description' => 'nullable|string',
+            'zone_id' => 'nullable|exists:zones,id',
+            'category' => 'required|in:' . implode(',', array_keys(InstitutionalEmail::getCategories())),
+            'is_active' => 'boolean',
+            'receive_all_notifications' => 'boolean',
+            'notification_types' => 'nullable|array',
+            'notification_types.*' => 'in:' . implode(',', array_keys(InstitutionalEmail::getNotificationTypes())),
+        ]);
+
+        // Se receive_all_notifications è true, non serve specificare i tipi
+        if ($validated['receive_all_notifications'] ?? false) {
+            $validated['notification_types'] = [];
+        }
+
+        InstitutionalEmail::create($validated);
+
+        return redirect()->route('institutional-emails.index')
+            ->with('success', 'Email istituzionale creata con successo.');
+    }
+
+    /**
+     * Display the specified institutional email.
+     */
+    public function show(InstitutionalEmail $email)
+    {
+        $email->load('zone');
+        return view('admin.institutional-emails.show', compact('email'));
+    }
+
+    /**
+     * Show the form for editing the institutional email.
+     */
+    public function edit(InstitutionalEmail $email)
+    {
+        $zones = Zone::where('is_active', true)->orderBy('name')->get();
+        $categories = InstitutionalEmail::getCategories();
+        $notificationTypes = InstitutionalEmail::getNotificationTypes();
+
+        return view('admin.institutional-emails.edit', compact('email', 'zones', 'categories', 'notificationTypes'));
+    }
+
+    /**
+     * Update the specified institutional email.
+     */
+    public function update(Request $request, InstitutionalEmail $email)
+    {
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'email' => 'required|email|unique:institutional_emails,email,' . $email->id,
+            'description' => 'nullable|string',
+            'zone_id' => 'nullable|exists:zones,id',
+            'category' => 'required|in:' . implode(',', array_keys(InstitutionalEmail::getCategories())),
+            'is_active' => 'boolean',
+            'receive_all_notifications' => 'boolean',
+            'notification_types' => 'nullable|array',
+            'notification_types.*' => 'in:' . implode(',', array_keys(InstitutionalEmail::getNotificationTypes())),
+        ]);
+
+        // Se receive_all_notifications è true, non serve specificare i tipi
+        if ($validated['receive_all_notifications'] ?? false) {
+            $validated['notification_types'] = [];
+        }
+
+        $email->update($validated);
+
+        return redirect()->route('institutional-emails.index')
+            ->with('success', 'Email istituzionale aggiornata con successo.');
+    }
+
+    /**
+     * Remove the specified institutional email.
+     */
+    public function destroy(InstitutionalEmail $email)
+    {
+        $email->delete();
+
+        return redirect()->route('institutional-emails.index')
+            ->with('success', 'Email istituzionale eliminata con successo.');
+    }
+
+    /**
+     * Toggle email active status.
+     */
+    public function toggleActive(InstitutionalEmail $email)
+    {
+        $email->update(['is_active' => !$email->is_active]);
+
+        return response()->json([
+            'success' => true,
+            'message' => $email->is_active ? 'Email attivata.' : 'Email disattivata.',
+            'is_active' => $email->is_active
+        ]);
+    }
+
+    /**
+     * Test email connectivity.
+     */
+    public function test(Request $request, InstitutionalEmail $email)
+    {
+        $validated = $request->validate([
+            'test_subject' => 'required|string|max:255',
+            'test_message' => 'required|string',
+        ]);
+
+        try {
+            // Invia email di test
+            Mail::raw($validated['test_message'], function ($message) use ($email, $validated) {
+                $message->to($email->email, $email->name)
+                        ->subject($validated['test_subject'])
+                        ->from(config('mail.from.address'), config('mail.from.name'));
+            });
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Email di test inviata con successo a ' . $email->email
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Errore nell\'invio dell\'email: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Bulk operations on institutional emails.
+     */
+    public function bulkAction(Request $request)
+    {
+        $validated = $request->validate([
+            'action' => 'required|in:activate,deactivate,delete',
+            'emails' => 'required|array',
+            'emails.*' => 'exists:institutional_emails,id',
+        ]);
+
+        $emails = InstitutionalEmail::whereIn('id', $validated['emails']);
+
+        switch ($validated['action']) {
+            case 'activate':
+                $emails->update(['is_active' => true]);
+                $message = 'Email selezionate attivate con successo.';
+                break;
+
+            case 'deactivate':
+                $emails->update(['is_active' => false]);
+                $message = 'Email selezionate disattivate con successo.';
+                break;
+
+            case 'delete':
+                $emails->delete();
+                $message = 'Email selezionate eliminate con successo.';
+                break;
+        }
+
+        return redirect()->route('institutional-emails.index')
+            ->with('success', $message);
+    }
+
+    /**
+     * Export institutional emails.
+     */
+    public function export()
+    {
+        $emails = InstitutionalEmail::with('zone')->get();
+
+        $filename = 'institutional_emails_' . now()->format('Y-m-d_H-i-s') . '.csv';
+
+        $headers = [
+            'Content-Type' => 'text/csv',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+        ];
+
+        $callback = function() use ($emails) {
+            $file = fopen('php://output', 'w');
+
+            // Header CSV
+            fputcsv($file, [
+                'Nome',
+                'Email',
+                'Categoria',
+                'Zona',
+                'Descrizione',
+                'Stato',
+                'Riceve Tutte',
+                'Tipi Notifica',
+                'Creato'
+            ]);
+
+            // Dati
+            foreach ($emails as $email) {
+                fputcsv($file, [
+                    $email->name,
+                    $email->email,
+                    $email->category_display,
+                    $email->zone?->name ?? 'Tutte',
+                    $email->description,
+                    $email->is_active ? 'Attivo' : 'Inattivo',
+                    $email->receive_all_notifications ? 'Sì' : 'No',
+                    implode(', ', $email->notification_types ?? []),
+                    $email->created_at->format('d/m/Y H:i')
+                ]);
+            }
+
+            fclose($file);
+        };
+
+        return response()->stream($callback, 200, $headers);
+    }
+}

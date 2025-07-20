@@ -21,7 +21,7 @@ return new class extends Migration
         Schema::create('tournament_types', function (Blueprint $table) {
             $table->id();
             $table->string('name');
-            $table->string('code', 20)->unique();
+            $table->string('short_name', 20)->unique();
             $table->text('description')->nullable();
             $table->boolean('is_national')->default(false);
             $table->enum('level', ['zonale', 'nazionale'])->default('zonale');
@@ -40,7 +40,7 @@ return new class extends Migration
             // Indexes
             $table->index(['is_active', 'sort_order']);
             $table->index(['is_national', 'is_active']);
-            $table->index('code');
+            $table->index('short_name');
         });
     }
 

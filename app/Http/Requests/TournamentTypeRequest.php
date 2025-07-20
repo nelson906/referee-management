@@ -31,12 +31,12 @@ class TournamentTypeRequest extends FormRequest
                 'max:255',
                 Rule::unique('tournament_types', 'name')->ignore($tournamentTypeId),
             ],
-            'code' => [
+            'short_name' => [
                 'required',
                 'string',
                 'max:20',
                 'alpha_num:ascii',
-                Rule::unique('tournament_types', 'code')->ignore($tournamentTypeId),
+                Rule::unique('tournament_types', 'short_name')->ignore($tournamentTypeId),
             ],
             'description' => [
                 'nullable',
@@ -109,10 +109,10 @@ class TournamentTypeRequest extends FormRequest
             'name.unique' => 'Esiste già un tipo torneo con questo nome.',
             'name.max' => 'Il nome non può superare i 255 caratteri.',
 
-            'code.required' => 'Il codice è obbligatorio.',
-            'code.unique' => 'Esiste già un tipo torneo con questo codice.',
-            'code.max' => 'Il codice non può superare i 20 caratteri.',
-            'code.alpha_num' => 'Il codice può contenere solo lettere e numeri.',
+            'short_name.required' => 'Il codice è obbligatorio.',
+            'short_name.unique' => 'Esiste già un tipo torneo con questo codice.',
+            'short_name.max' => 'Il codice non può superare i 20 caratteri.',
+            'short_name.alpha_num' => 'Il codice può contenere solo lettere e numeri.',
 
             'description.max' => 'La descrizione non può superare i 1000 caratteri.',
 
@@ -159,7 +159,7 @@ class TournamentTypeRequest extends FormRequest
     {
         return [
             'name' => 'nome',
-            'code' => 'codice',
+            'short_name' => 'codice',
             'description' => 'descrizione',
             'is_national' => 'nazionale',
             'level' => 'livello',
@@ -180,10 +180,10 @@ class TournamentTypeRequest extends FormRequest
      */
     protected function prepareForValidation(): void
     {
-        // Convert code to uppercase
-        if ($this->has('code')) {
+        // Convert short_name to uppercase
+        if ($this->has('short_name')) {
             $this->merge([
-                'code' => strtoupper($this->code)
+                'short_name' => strtoupper($this->short_name)
             ]);
         }
 
@@ -269,21 +269,21 @@ class TournamentTypeRequest extends FormRequest
                 }
             }
 
-            // Validate code format
-            if ($this->has('code')) {
-                // Code should be meaningful and not just numbers
-                if (is_numeric($this->code)) {
+            // Validate short_name format
+            if ($this->has('short_name')) {
+                // short_name should be meaningful and not just numbers
+                if (is_numeric($this->short_name)) {
                     $validator->errors()->add(
-                        'code',
+                        'short_name',
                         'Il codice non può essere solo numerico.'
                     );
                 }
 
-                // Code should not contain common words that might cause conflicts
+                // short_name should not contain common words that might cause conflicts
                 $reservedWords = ['ADMIN', 'API', 'SYSTEM', 'DEFAULT', 'NULL', 'UNDEFINED'];
-                if (in_array(strtoupper($this->code), $reservedWords)) {
+                if (in_array(strtoupper($this->short_name), $reservedWords)) {
                     $validator->errors()->add(
-                        'code',
+                        'short_name',
                         'Il codice non può utilizzare parole riservate del sistema.'
                     );
                 }

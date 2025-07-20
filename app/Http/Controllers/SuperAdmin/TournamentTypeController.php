@@ -150,9 +150,9 @@ class TournamentTypeController extends Controller
             'short_name' => strtoupper($data['short_name']),
             'description' => $data['description'] ?? null,
             'is_national' => $data['is_national'] ?? false,
-            'level' => $data['level'] ?? 'zonale',
+            // 'level' => $data['level'] ?? 'zonale',
             'required_level' => $data['required_referee_level'] ?? 'aspirante',
-            'sort_order' => $data['sort_order'] ?? 0,
+            // 'sort_order' => $data['sort_order'] ?? 0,
             'is_active' => $data['is_active'] ?? true,
 
             // Colonne fisiche

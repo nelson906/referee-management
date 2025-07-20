@@ -15,7 +15,7 @@ class TournamentTypesSeeder extends Seeder
         $tournamentTypes = [
             [
                 'name' => 'Open Nazionale',
-                'code' => 'OPEN_NAZ',
+                'short_name' => 'OPEN_NAZ',
                 'description' => 'Tornei aperti di livello nazionale',
                 'is_national' => true,
                 'required_level' => 'nazionale',
@@ -34,7 +34,7 @@ class TournamentTypesSeeder extends Seeder
             ],
             [
                 'name' => 'Campionato Zonale',
-                'code' => 'CAMP_ZONE',
+                'short_name' => 'CAMP_ZONE',
                 'description' => 'Campionati organizzati dalle zone territoriali',
                 'is_national' => false,
                 'required_level' => 'regionale',
@@ -52,7 +52,7 @@ class TournamentTypesSeeder extends Seeder
             ],
             [
                 'name' => 'Gara Sociale',
-                'code' => 'GARA_SOC',
+                'short_name' => 'GARA_SOC',
                 'description' => 'Gare sociali dei circoli',
                 'is_national' => false,
                 'required_level' => 'primo_livello',
@@ -70,7 +70,7 @@ class TournamentTypesSeeder extends Seeder
             ],
             [
                 'name' => 'Pro-Am',
-                'code' => 'PRO_AM',
+                'short_name' => 'PRO_AM',
                 'description' => 'Tornei professionali dilettanti',
                 'is_national' => true,
                 'required_level' => 'nazionale',
@@ -89,7 +89,7 @@ class TournamentTypesSeeder extends Seeder
             ],
             [
                 'name' => 'Trofeo Giovanile',
-                'code' => 'TROF_GIOV',
+                'short_name' => 'TROF_GIOV',
                 'description' => 'Tornei per categorie giovanili',
                 'is_national' => false,
                 'required_level' => 'primo_livello',
@@ -110,7 +110,7 @@ class TournamentTypesSeeder extends Seeder
 
         foreach ($tournamentTypes as $typeData) {
             TournamentType::updateOrCreate(
-                ['code' => $typeData['code']],
+                ['short_name' => $typeData['short_name']],
                 $typeData
             );
         }
