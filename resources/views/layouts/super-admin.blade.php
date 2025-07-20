@@ -40,167 +40,216 @@
                 </div>
             </div>
 
-            <!-- Navigation -->
-            <nav class="p-4">
-                <div class="space-y-2">
-                    {{-- Sistema --}}
-                    <div class="mb-6">
-                        <h3 class="text-xs uppercase text-indigo-300 font-semibold px-3 mb-2"
-                            x-show="sidebarOpen">Sistema</h3>
+<!-- Navigation Section per super-admin.blade.php -->
+<!-- Sostituire la sezione <nav class="p-4"> esistente con questa: -->
 
-                        <a href="{{ route('super-admin.tournament-types.index') }}"
-                           class="flex items-center space-x-3 p-3 rounded-lg transition duration-200 group
-                           {{ request()->routeIs('super-admin.tournament-types.*') ? 'bg-indigo-900' : 'hover:bg-indigo-700' }}"
-                           title="Categorie Tornei">
-                            <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
-                            </svg>
-                            <span x-show="sidebarOpen">Categorie Tornei</span>
-                        </a>
+<nav class="p-4">
+    <div class="space-y-2">
 
-                        <a href="{{ route('super-admin.settings.index') }}"
-                           class="flex items-center space-x-3 p-3 rounded-lg transition duration-200 group
-                           {{ request()->routeIs('super-admin.settings.*') ? 'bg-indigo-900' : 'hover:bg-indigo-700' }}"
-                           title="Impostazioni Sistema">
-                            <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                            </svg>
-                            <span x-show="sidebarOpen">Impostazioni Sistema</span>
-                        </a>
-                    </div>
+        {{-- GESTIONE ISTITUZIONALE --}}
+        <div class="mb-6">
+            <h3 class="text-xs uppercase text-indigo-300 font-semibold px-3 mb-2"
+                x-show="sidebarOpen">Gestione Istituzionale</h3>
 
-                    {{-- Gestione Globale --}}
-                    <div class="pt-4 mt-4 border-t border-indigo-700">
-                        <h3 class="text-xs uppercase text-indigo-300 font-semibold px-3 mb-2"
-                            x-show="sidebarOpen">Gestione Globale</h3>
+            {{-- Email Istituzionali - NUOVO --}}
+            <a href="{{ route('super-admin.institutional-emails.index') }}"
+               class="flex items-center space-x-3 p-3 rounded-lg transition duration-200 group
+               {{ request()->routeIs('super-admin.institutional-emails.*') ? 'bg-indigo-700 text-white' : 'text-indigo-200 hover:bg-indigo-700 hover:text-white' }}"
+               title="Email Istituzionali">
+                <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+                </svg>
+                <span x-show="sidebarOpen">Email Istituzionali</span>
+                <span x-show="!sidebarOpen" class="absolute left-full ml-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">Email Istituzionali</span>
+            </a>
 
-                        <a href="{{ route('admin.referees.index') }}"
-                           class="flex items-center space-x-3 p-3 rounded-lg transition duration-200 group
-                           {{ request()->routeIs('admin.referees.*') ? 'bg-indigo-900' : 'hover:bg-indigo-700' }}"
-                           title="Tutti gli Arbitri">
-                            <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
-                            </svg>
-                            <span x-show="sidebarOpen">Tutti gli Arbitri</span>
-                            <span x-show="!sidebarOpen" class="absolute left-full ml-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">Tutti gli Arbitri</span>
-                        </a>
-
-                        <a href="{{ route('admin.tournaments.index') }}"
-                           class="flex items-center space-x-3 p-3 rounded-lg transition duration-200 group
-                           {{ request()->routeIs('admin.tournaments.*') ? 'bg-indigo-900' : 'hover:bg-indigo-700' }}"
-                           title="Tutti i Tornei">
-                            <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-                            </svg>
-                            <span x-show="sidebarOpen">Tutti i Tornei</span>
-                            <span x-show="!sidebarOpen" class="absolute left-full ml-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">Tutti i Tornei</span>
-                        </a>
-
-                        <a href="{{ route('admin.clubs.index') }}"
-                           class="flex items-center space-x-3 p-3 rounded-lg transition duration-200 group
-                           {{ request()->routeIs('admin.clubs.*') ? 'bg-indigo-900' : 'hover:bg-indigo-700' }}"
-                           title="Tutti i Clubs">
-                            <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
-                            </svg>
-                            <span x-show="sidebarOpen">Tutti i Clubs</span>
-                            <span x-show="!sidebarOpen" class="absolute left-full ml-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">Tutti i Clubs</span>
-                        </a>
-
-                        <a href="{{ route('admin.assignments.index') }}"
-                           class="flex items-center space-x-3 p-3 rounded-lg transition duration-200 group
-                           {{ request()->routeIs('admin.assignments.*') ? 'bg-indigo-900' : 'hover:bg-indigo-700' }}"
-                           title="Tutte le Assegnazioni">
-                            <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path>
-                            </svg>
-                            <span x-show="sidebarOpen">Tutte le Assegnazioni</span>
-                            <span x-show="!sidebarOpen" class="absolute left-full ml-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">Tutte le Assegnazioni</span>
-                        </a>
-                    </div>
-
-                    {{-- Report e Analytics --}}
-                    <div class="pt-4 mt-4 border-t border-indigo-700">
-                        <h3 class="text-xs uppercase text-indigo-300 font-semibold px-3 mb-2"
-                            x-show="sidebarOpen">Report e Analytics</h3>
-
-                        <a href="{{ route('reports.dashboard') }}"
-                           class="flex items-center space-x-3 p-3 rounded-lg transition duration-200 group
-                           {{ request()->routeIs('reports.dashboard') ? 'bg-indigo-900' : 'hover:bg-indigo-700' }}"
-                           title="Dashboard Analytics">
-                            <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
-                            </svg>
-                            <span x-show="sidebarOpen">Dashboard Analytics</span>
-                            <span x-show="!sidebarOpen" class="absolute left-full ml-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">Dashboard Analytics</span>
-                        </a>
-
-                        <div class="relative" x-data="{ reportOpen: false }">
-                            <button @click="reportOpen = !reportOpen"
-                                    class="w-full flex items-center justify-between space-x-3 p-3 rounded-lg transition duration-200 group hover:bg-indigo-700"
-                                    title="Report Globali">
-                                <div class="flex items-center space-x-3">
-                                    <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                                    </svg>
-                                    <span x-show="sidebarOpen">Report Globali</span>
-                                </div>
-                                <svg x-show="sidebarOpen" class="w-4 h-4 transition-transform"
-                                     :class="reportOpen ? 'rotate-180' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-                                </svg>
-                            </button>
-
-                            <div x-show="reportOpen && sidebarOpen" x-transition class="ml-8 mt-2 space-y-1">
-                                <a href="{{ route('reports.category.index') }}"
-                                   class="block px-3 py-2 text-sm text-indigo-200 hover:text-white hover:bg-indigo-700 rounded">
-                                    Report per Categoria
-                                </a>
-                                <a href="{{ route('reports.zone.index') }}"
-                                   class="block px-3 py-2 text-sm text-indigo-200 hover:text-white hover:bg-indigo-700 rounded">
-                                    Report per Zona
-                                </a>
-                                <a href="{{ route('reports.referee.index') }}"
-                                   class="block px-3 py-2 text-sm text-indigo-200 hover:text-white hover:bg-indigo-700 rounded">
-                                    Report Arbitri
-                                </a>
-                                <a href="{{ route('reports.tournament.index') }}"
-                                   class="block px-3 py-2 text-sm text-indigo-200 hover:text-white hover:bg-indigo-700 rounded">
-                                    Report Tornei
-                                </a>
-                            </div>
-                        </div>
-                    </div>
-
-                    {{-- Accesso Rapido --}}
-                    <div class="pt-4 mt-4 border-t border-indigo-700">
-                        <h3 class="text-xs uppercase text-indigo-300 font-semibold px-3 mb-2"
-                            x-show="sidebarOpen">Accesso Rapido</h3>
-
-                        <a href="{{ route('admin.dashboard') }}"
-                           class="flex items-center space-x-3 p-3 rounded-lg transition duration-200 group hover:bg-indigo-700"
-                           title="Area Admin">
-                            <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z"></path>
-                            </svg>
-                            <span x-show="sidebarOpen">Area Admin</span>
-                            <span x-show="!sidebarOpen" class="absolute left-full ml-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">Area Admin</span>
-                        </a>
-
-                        <a href="{{ route('referee.dashboard') }}"
-                           class="flex items-center space-x-3 p-3 rounded-lg transition duration-200 group hover:bg-indigo-700"
-                           title="Area Arbitro">
-                            <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
-                            </svg>
-                            <span x-show="sidebarOpen">Area Arbitro</span>
-                            <span x-show="!sidebarOpen" class="absolute left-full ml-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">Area Arbitro</span>
-                        </a>
-                    </div>
-                </div>
-            </nav>
+            {{-- Categorie Tornei --}}
+            <a href="{{ route('super-admin.tournament-types.index') }}"
+               class="flex items-center space-x-3 p-3 rounded-lg transition duration-200 group
+               {{ request()->routeIs('super-admin.tournament-types.*') ? 'bg-indigo-700 text-white' : 'text-indigo-200 hover:bg-indigo-700 hover:text-white' }}"
+               title="Categorie Tornei">
+                <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"></path>
+                </svg>
+                <span x-show="sidebarOpen">Categorie Tornei</span>
+                <span x-show="!sidebarOpen" class="absolute left-full ml-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">Categorie Tornei</span>
+            </a>
         </div>
+
+        {{-- GESTIONE UTENTI E ZONE --}}
+        <div class="mb-6">
+            <h3 class="text-xs uppercase text-indigo-300 font-semibold px-3 mb-2"
+                x-show="sidebarOpen">Gestione Sistema</h3>
+
+            {{-- Gestione Utenti --}}
+            <a href="{{ route('super-admin.users.index') }}"
+               class="flex items-center space-x-3 p-3 rounded-lg transition duration-200 group
+               {{ request()->routeIs('super-admin.users.*') ? 'bg-indigo-700 text-white' : 'text-indigo-200 hover:bg-indigo-700 hover:text-white' }}"
+               title="Gestione Utenti">
+                <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"></path>
+                </svg>
+                <span x-show="sidebarOpen">Gestione Utenti</span>
+                <span x-show="!sidebarOpen" class="absolute left-full ml-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">Gestione Utenti</span>
+            </a>
+
+            {{-- Gestione Zone --}}
+            <a href="{{ route('super-admin.zones.index') }}"
+               class="flex items-center space-x-3 p-3 rounded-lg transition duration-200 group
+               {{ request()->routeIs('super-admin.zones.*') ? 'bg-indigo-700 text-white' : 'text-indigo-200 hover:bg-indigo-700 hover:text-white' }}"
+               title="Gestione Zone">
+                <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                </svg>
+                <span x-show="sidebarOpen">Gestione Zone</span>
+                <span x-show="!sidebarOpen" class="absolute left-full ml-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">Gestione Zone</span>
+            </a>
+        </div>
+
+        {{-- SUPERVISIONE (SOLO VISUALIZZAZIONE) --}}
+        <div class="mb-6">
+            <h3 class="text-xs uppercase text-indigo-300 font-semibold px-3 mb-2"
+                x-show="sidebarOpen">Supervisione</h3>
+
+            {{-- Tutti gli Arbitri - Solo visualizzazione --}}
+            {{-- TEMPORANEAMENTE COMMENTATO - Route da creare --}}
+            <div class="flex items-center space-x-3 p-3 rounded-lg text-indigo-300 opacity-50"
+                 title="Tutti gli Arbitri (In sviluppo)">
+                <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                </svg>
+                <span x-show="sidebarOpen">Tutti gli Arbitri</span>
+                <div x-show="sidebarOpen" class="ml-auto">
+                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-600 text-gray-200">
+                        In sviluppo
+                    </span>
+                </div>
+                <span x-show="!sidebarOpen" class="absolute left-full ml-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">Tutti gli Arbitri (In sviluppo)</span>
+            </div>
+
+            {{-- Tutti i Tornei - Solo visualizzazione --}}
+            {{-- TEMPORANEAMENTE COMMENTATO - Route da creare --}}
+            <div class="flex items-center space-x-3 p-3 rounded-lg text-indigo-300 opacity-50"
+                 title="Tutti i Tornei (In sviluppo)">
+                <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                </svg>
+                <span x-show="sidebarOpen">Tutti i Tornei</span>
+                <div x-show="sidebarOpen" class="ml-auto">
+                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-600 text-gray-200">
+                        In sviluppo
+                    </span>
+                </div>
+                <span x-show="!sidebarOpen" class="absolute left-full ml-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">Tutti i Tornei (In sviluppo)</span>
+            </div>
+
+            {{-- Tutti i Clubs - Solo visualizzazione --}}
+            {{-- TEMPORANEAMENTE COMMENTATO - Route da creare --}}
+            <div class="flex items-center space-x-3 p-3 rounded-lg text-indigo-300 opacity-50"
+                 title="Tutti i Clubs (In sviluppo)">
+                <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+                </svg>
+                <span x-show="sidebarOpen">Tutti i Clubs</span>
+                <div x-show="sidebarOpen" class="ml-auto">
+                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-600 text-gray-200">
+                        In sviluppo
+                    </span>
+                </div>
+                <span x-show="!sidebarOpen" class="absolute left-full ml-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">Tutti i Clubs (In sviluppo)</span>
+            </div>
+
+            {{-- Tutte le Assegnazioni - Solo visualizzazione --}}
+            {{-- TEMPORANEAMENTE COMMENTATO - Route da creare --}}
+            <div class="flex items-center space-x-3 p-3 rounded-lg text-indigo-300 opacity-50"
+                 title="Tutte le Assegnazioni (In sviluppo)">
+                <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path>
+                </svg>
+                <span x-show="sidebarOpen">Tutte le Assegnazioni</span>
+                <div x-show="sidebarOpen" class="ml-auto">
+                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-600 text-gray-200">
+                        In sviluppo
+                    </span>
+                </div>
+                <span x-show="!sidebarOpen" class="absolute left-full ml-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">Tutte le Assegnazioni (In sviluppo)</span>
+            </div>
+        </div>
+
+        {{-- REPORT E ANALYTICS --}}
+        <div class="mb-6">
+            <h3 class="text-xs uppercase text-indigo-300 font-semibold px-3 mb-2"
+                x-show="sidebarOpen">Report e Analytics</h3>
+
+            {{-- Dashboard Analytics - IN SVILUPPO --}}
+            <div class="flex items-center space-x-3 p-3 rounded-lg text-indigo-300 opacity-50"
+                 title="Dashboard Analytics (In sviluppo)">
+                <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                </svg>
+                <span x-show="sidebarOpen">Dashboard Analytics</span>
+                <div x-show="sidebarOpen" class="ml-auto">
+                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-600 text-gray-200">
+                        In sviluppo
+                    </span>
+                </div>
+                <span x-show="!sidebarOpen" class="absolute left-full ml-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">Dashboard Analytics (In sviluppo)</span>
+            </div>
+
+            {{-- Report per Zone - IN SVILUPPO --}}
+            <div class="flex items-center space-x-3 p-3 rounded-lg text-indigo-300 opacity-50"
+                 title="Report per Zone (In sviluppo)">
+                <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                </svg>
+                <span x-show="sidebarOpen">Report per Zone</span>
+                <div x-show="sidebarOpen" class="ml-auto">
+                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-600 text-gray-200">
+                        In sviluppo
+                    </span>
+                </div>
+                <span x-show="!sidebarOpen" class="absolute left-full ml-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">Report per Zone (In sviluppo)</span>
+            </div>
+
+            {{-- Report per Categorie - IN SVILUPPO --}}
+            <div class="flex items-center space-x-3 p-3 rounded-lg text-indigo-300 opacity-50"
+                 title="Report per Categorie (In sviluppo)">
+                <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                </svg>
+                <span x-show="sidebarOpen">Report per Categorie</span>
+                <div x-show="sidebarOpen" class="ml-auto">
+                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-600 text-gray-200">
+                        In sviluppo
+                    </span>
+                </div>
+                <span x-show="!sidebarOpen" class="absolute left-full ml-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">Report per Categorie (In sviluppo)</span>
+            </div>
+        </div>
+
+        {{-- SEPARATOR --}}
+        <div class="border-t border-indigo-700 pt-4 mt-6">
+            {{-- Link Rapidi --}}
+            <h3 class="text-xs uppercase text-indigo-300 font-semibold px-3 mb-2"
+                x-show="sidebarOpen">Accesso Rapido</h3>
+
+            {{-- Calendario Tornei Pubblico --}}
+            <a href="{{ route('tournaments.calendar') }}"
+               class="flex items-center space-x-3 p-3 rounded-lg transition duration-200 group text-indigo-200 hover:bg-indigo-700 hover:text-white"
+               title="Calendario Pubblico">
+                <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                </svg>
+                <span x-show="sidebarOpen">Calendario Pubblico</span>
+                <span x-show="!sidebarOpen" class="absolute left-full ml-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">Calendario Pubblico</span>
+            </a>
+        </div>
+    </div>
+</nav>
+
+</div>
 
         <!-- Main Content -->
         <div class="flex-1">

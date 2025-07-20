@@ -14,8 +14,10 @@ class CategoryReportController extends Controller
      */
     public function index(): View
     {
-        $categories = TournamentType::withCount('tournaments')
-            ->ordered()
+        // ✅ FIXED: Using correct orderBy instead of ordered() method
+        $types = TournamentType::withCount('tournaments')
+            ->orderBy('sort_order', 'asc')
+            ->orderBy('name', 'asc')
             ->get();
 
         return view('reports.categories.index', compact('types'));
@@ -24,15 +26,15 @@ class CategoryReportController extends Controller
     /**
      * Show specific category report.
      */
-    public function show(TournamentCategory $category): View
+    public function show(TournamentType $type): View // ✅ FIXED: Parameter name
     {
-        return view('reports.categories.show', compact('category'));
+        return view('reports.categories.show', compact('type'));
     }
 
     /**
      * Export category report.
      */
-    public function export(TournamentCategory $category)
+    public function export(TournamentType $type)
     {
         return response()->json(['message' => 'Export in sviluppo']);
     }

@@ -4,12 +4,59 @@ namespace App\Http\Controllers\Reports;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Models\Zone;
+use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 class RefereeReportController extends Controller
 {
     /**
-     * Display referee report.
+     * Display referee reports listing.
+     */
+    public function index(Request $request): View
+    {
+        $user = auth()->user();
+
+        // Base query for referees
+        $query = User::where('user_type', 'referee')
+            ->with(['zone', 'assignments'])
+            ->withCount([
+                'assignments',
+                'assignments as current_year_assignments' => function($q) {
+                    $q->whereYear('created_at', now()->year);
+                },
+                'availabilities'
+            ]);
+
+        // Apply zone restrictions for non-super admins
+        if (!in_array($user->user_type, ['super_admin', 'national_admin'])) {
+            $query->where('zone_id', $user->zone_id);
+        }
+
+        // Apply filters
+        if ($request->filled('zone_id')) {
+            $query->where('zone_id', $request->zone_id);
+        }
+
+        if ($request->filled('level')) {
+            $query->where('level', $request->level);
+        }
+
+        if ($request->filled('is_active')) {
+            $query->where('is_active', $request->is_active);
+        }
+
+        $referees = $query->orderBy('name')->paginate(20);
+
+        // Get filter options
+        $zones = $this->getAccessibleZones($user);
+        $levels = ['Aspirante', '1_livello', 'Regionale', 'Nazionale', 'Internazionale'];
+
+        return view('reports.referees.index', compact('referees', 'zones', 'levels'));
+    }
+
+    /**
+     * Show specific referee report.
      */
     public function show(User $referee): View
     {
@@ -45,40 +92,36 @@ class RefereeReportController extends Controller
             ->limit(10)
             ->get();
 
-        return view('reports.referee.show', compact('referee', 'stats', 'recentAssignments'));
+        return view('reports.referees.show', compact('referee', 'stats', 'recentAssignments'));
     }
 
     /**
-     * Export referee report.
+     * Get zones accessible to user.
      */
-    public function export(User $referee)
+    private function getAccessibleZones($user)
     {
-        $this->checkRefereeAccess($referee);
+        if (in_array($user->user_type, ['super_admin', 'national_admin'])) {
+            return Zone::orderBy('name')->get();
+        }
 
-        // TODO: Implement export functionality
-        return response()->json([
-            'message' => 'Export functionality coming soon'
-        ]);
+        return Zone::where('id', $user->zone_id)->get();
     }
 
     /**
-     * Check if user can access referee reports.
+     * Check referee access permissions.
      */
     private function checkRefereeAccess(User $referee): void
     {
         $user = auth()->user();
 
-        // Super admin and national admin can access all
-        if ($user->user_type === 'super_admin' || $user->user_type === 'national_admin') {
+        if (in_array($user->user_type, ['super_admin', 'national_admin'])) {
             return;
         }
 
-        // Zone admin can access referees in their zone
         if ($user->user_type === 'admin' && $user->zone_id === $referee->zone_id) {
             return;
         }
 
-        // Referees can only access their own reports
         if ($user->isReferee() && $user->id === $referee->id) {
             return;
         }
