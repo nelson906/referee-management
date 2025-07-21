@@ -69,14 +69,6 @@
                                 Le Mie Assegnazioni
                             </a>
 
-                            <a href="{{ route('tournaments.calendar') }}"
-                               class="inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition duration-150 ease-in-out
-                               {{ request()->routeIs('tournaments.calendar') ? 'border-white text-white' : 'border-transparent text-blue-100 hover:text-white hover:border-blue-300' }}">
-                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9v-9m0-9v9"></path>
-                                </svg>
-                                Tornei Pubblici
-                            </a>
                         </div>
                     </div>
 

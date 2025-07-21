@@ -1,0 +1,53 @@
+    Route::get('tournaments/calendar', [Admin\TournamentController::class, 'publicCalendar'])->name('tournaments.calendar');
+    prefix('admin')->name('admin.')->Route::get('tournaments/calendar', [Admin\TournamentController::class, 'calendar'])->name('tournaments.calendar');
+    prefix('admin')->name('admin.')->prefix('assignments')->name('assignments.')->Route::get('/calendar', [Admin\AssignmentController::class, 'calendar'])->name('calendar');
+    prefix('admin')->name('admin.')->Route::get('calendar', [Admin\CalendarController::class, 'index'])->name('calendar.index');
+    prefix('referee')->name('referee.')->Route::get('/calendar', [Referee\AvailabilityController::class, 'calendar'])->name('calendar');
+    prefix('api')->name('api.')->prefix('calendar')->name('calendar.')->Route::get('calendar/events', [Api\CalendarController::class, 'index'])->name('calendar.events');
+    prefix('api')->name('api.')->Route::get('calendar/admin', [Api\CalendarController::class, 'adminEvents'])->name('calendar.admin');
+    prefix('api')->name('api.')->Route::get('calendar/referee', [Api\CalendarController::class, 'refereeEvents'])->name('calendar.referee');
+    prefix('api')->name('api.')->Route::get('calendar/public', [Api\CalendarController::class, 'publicEvents'])->name('calendar.public');
+    prefix('api')->name('api.')->Route::post('availability/toggle', [Api\AvailabilityController::class, 'toggle'])->name('availability.toggle');
+
+admin.tournaments.calendar
+/Users/iMac/Sites/referee-management/resources/views/admin/tournaments/index.blade.php
+
+tournaments.calendar
+/Users/iMac/Sites/referee-management/app/Http/Controllers/TournamentController.php
+/Users/iMac/Sites/referee-management/app/Http/Controllers/Admin/TournamentController.php
+/Users/iMac/Sites/referee-management/resources/views/admin/tournaments/index.blade.php
+/Users/iMac/Sites/referee-management/resources/views/layouts/navigation.blade.php
+/Users/iMac/Sites/referee-management/resources/views/layouts/referee.blade.php
+/Users/iMac/Sites/referee-management/resources/views/layouts/super-admin.blade.php
+/Users/iMac/Sites/referee-management/resources/views/tournaments/index.blade.php
+
+calendar.index
+/Users/iMac/Sites/referee-management/resources/views/layouts/admin.blade.php
+
+calendar.events non usato
+
+calendar.admin non usato
+
+calendar.referee non usato
+
+calendar.public non usato
+
+availability.toggle non usato
+
+blades
+/Users/iMac/Sites/referee-management/resources/views/admin/calendar.blade.php
+/Users/iMac/Sites/referee-management/resources/views/admin/tournaments/calendar.blade.php
+/Users/iMac/Sites/referee-management/resources/views/referee/availability/calendar.blade.php
+/Users/iMac/Sites/referee-management/resources/views/tournaments/calendar.blade.php
+/Users/iMac/Sites/referee-management/resources/views/admin/tournaments/index.blade.php
+/Users/iMac/Sites/referee-management/resources/views/admin/tournaments/show.blade.php
+/Users/iMac/Sites/referee-management/resources/views/layouts/admin.blade.php
+/Users/iMac/Sites/referee-management/resources/views/layouts/navigation.blade.php
+/Users/iMac/Sites/referee-management/resources/views/layouts/referee.blade.php
+/Users/iMac/Sites/referee-management/resources/views/layouts/super-admin.blade.php
+/Users/iMac/Sites/referee-management/resources/views/referee/availability/index.blade.php
+/Users/iMac/Sites/referee-management/resources/views/reports/dashboard/index.blade.php
+/Users/iMac/Sites/referee-management/resources/views/super-admin/tournament-types/index.blade.php
+/Users/iMac/Sites/referee-management/resources/views/super-admin/tournament-types/show.blade.php
+/Users/iMac/Sites/referee-management/resources/views/tournaments/index.blade.php
+/Users/iMac/Sites/referee-management/resources/views/tournaments/show.blade.php

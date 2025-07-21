@@ -149,8 +149,10 @@ class TournamentType extends Model
      */
     public function scopeOrdered($query)
     {
-        return $query->orderBy('sort_order')->orderBy('name');
+        return $query->orderBy('name'); // Solo nome
     }
+
+
 
     /**
      * Get the required referee level from settings (for backward compatibility)
@@ -298,6 +300,4 @@ class TournamentType extends Model
     {
         return $this->tournamentType();
     }
-
-
 }

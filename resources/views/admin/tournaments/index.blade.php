@@ -13,7 +13,7 @@
 
     {{-- Azioni aggiuntive opzionali --}}
     <x-slot name="additionalActions">
-<a href="{{ route('admin.tournaments.calendar') }}" class="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700">
+<a href="{{ route('tournaments.calendar') }}" class="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700">
     Calendario
 </a>
     </x-slot>

@@ -1,0 +1,2483 @@
+{{-- resources/views/super-admin/institutional-emails/create.blade.php --}}
+@extends('layouts.super-admin')
+
+@section('title', 'Nuova Email Istituzionale')
+
+@section('header', 'Nuova Email Istituzionale')
+
+@section('content')
+<div class="max-w-4xl mx-auto">
+    <div class="bg-white shadow-sm rounded-lg">
+        <div class="px-6 py-4 border-b border-gray-200">
+            <div class="flex items-center justify-between">
+                <h2 class="text-lg font-medium text-gray-900">Crea Nuova Email Istituzionale</h2>
+                <a href="{{ route('super-admin.institutional-emails.index') }}"
+                   class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                    </svg>
+                    Indietro
+                </a>
+            </div>
+        </div>
+
+        <form method="POST" action="{{ route('super-admin.institutional-emails.store') }}" class="p-6">
+            @csrf
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {{-- Nome --}}
+                <div class="md:col-span-1">
+                    <label for="name" class="block text-sm font-medium text-gray-700 mb-1">
+                        Nome *
+                    </label>
+                    <input type="text" name="name" id="name" value="{{ old('name') }}"
+                           class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm @error('name') border-red-500 @enderror"
+                           required>
+                    @error('name')
+                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                    @enderror
+                </div>
+
+                {{-- Email --}}
+                <div class="md:col-span-1">
+                    <label for="email" class="block text-sm font-medium text-gray-700 mb-1">
+                        Indirizzo Email *
+                    </label>
+                    <input type="email" name="email" id="email" value="{{ old('email') }}"
+                           class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm @error('email') border-red-500 @enderror"
+                           required>
+                    @error('email')
+                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                    @enderror
+                </div>
+
+                {{-- Categoria --}}
+                <div class="md:col-span-1">
+                    <label for="category" class="block text-sm font-medium text-gray-700 mb-1">
+                        Categoria *
+                    </label>
+                    <select name="category" id="category"
+                            class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm @error('category') border-red-500 @enderror"
+                            required>
+                        <option value="">Seleziona categoria</option>
+                        @foreach($categories as $key => $label)
+                            <option value="{{ $key }}" {{ old('category') === $key ? 'selected' : '' }}>
+                                {{ $label }}
+                            </option>
+                        @endforeach
+                    </select>
+                    @error('category')
+                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                    @enderror
+                </div>
+
+                {{-- Zona --}}
+                <div class="md:col-span-1">
+                    <label for="zone_id" class="block text-sm font-medium text-gray-700 mb-1">
+                        Zona
+                    </label>
+                    <select name="zone_id" id="zone_id"
+                            class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm @error('zone_id') border-red-500 @enderror">
+                        <option value="">Tutte le zone</option>
+                        @foreach($zones as $zone)
+                            <option value="{{ $zone->id }}" {{ old('zone_id') == $zone->id ? 'selected' : '' }}>
+                                {{ $zone->name }}
+                            </option>
+                        @endforeach
+                    </select>
+                    @error('zone_id')
+                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                    @enderror
+                    <p class="mt-1 text-xs text-gray-500">Lascia vuoto per applicare a tutte le zone</p>
+                </div>
+
+                {{-- Descrizione --}}
+                <div class="md:col-span-2">
+                    <label for="description" class="block text-sm font-medium text-gray-700 mb-1">
+                        Descrizione
+                    </label>
+                    <textarea name="description" id="description" rows="3"
+                              class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm @error('description') border-red-500 @enderror"
+                              placeholder="Descrizione opzionale dell'email istituzionale...">{{ old('description') }}</textarea>
+                    @error('description')
+                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                    @enderror
+                </div>
+            </div>
+
+            {{-- Sezione Notifiche --}}
+            <div class="mt-8 border-t border-gray-200 pt-6">
+                <h3 class="text-lg font-medium text-gray-900 mb-4">Configurazione Notifiche</h3>
+
+                <div class="space-y-4">
+                    {{-- Ricevi tutte le notifiche --}}
+                    <div class="flex items-start">
+                        <div class="flex items-center h-5">
+                            <input type="hidden" name="receive_all_notifications" value="0">
+                            <input type="checkbox" name="receive_all_notifications" id="receive_all_notifications"
+                                   value="1" {{ old('receive_all_notifications') ? 'checked' : '' }}
+                                   class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded">
+                        </div>
+                        <div class="ml-3 text-sm">
+                            <label for="receive_all_notifications" class="font-medium text-gray-700">
+                                Ricevi tutte le notifiche
+                            </label>
+                            <p class="text-gray-500">Se attivato, questa email riceverà automaticamente tutti i tipi di notifica</p>
+                        </div>
+                    </div>
+
+                    {{-- Tipi di notifica specifici --}}
+                    <div id="specific-notifications" class="{{ old('receive_all_notifications') ? 'hidden' : '' }}">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                            Tipi di notifica specifici
+                        </label>
+                        <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
+                            @foreach($notificationTypes as $key => $label)
+                                <div class="flex items-start">
+                                    <div class="flex items-center h-5">
+                                        <input type="checkbox" name="notification_types[]" id="notification_{{ $key }}"
+                                               value="{{ $key }}"
+                                               {{ in_array($key, old('notification_types', [])) ? 'checked' : '' }}
+                                               class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded">
+                                    </div>
+                                    <div class="ml-3 text-sm">
+                                        <label for="notification_{{ $key }}" class="text-gray-700">
+                                            {{ $label }}
+                                        </label>
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+                        @error('notification_types')
+                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                        @enderror
+                    </div>
+                </div>
+            </div>
+
+            {{-- Stato --}}
+            <div class="mt-6 border-t border-gray-200 pt-6">
+                <div class="flex items-start">
+                    <div class="flex items-center h-5">
+                        <input type="hidden" name="is_active" value="0">
+                        <input type="checkbox" name="is_active" id="is_active"
+                               value="1" {{ old('is_active', '1') ? 'checked' : '' }}
+                               class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded">
+                    </div>
+                    <div class="ml-3 text-sm">
+                        <label for="is_active" class="font-medium text-gray-700">
+                            Email attiva
+                        </label>
+                        <p class="text-gray-500">Se disattivata, questa email non riceverà alcuna notifica</p>
+                    </div>
+                </div>
+            </div>
+
+            {{-- Pulsanti di azione --}}
+            <div class="mt-8 flex items-center justify-end space-x-3 border-t border-gray-200 pt-6">
+                <a href="{{ route('super-admin.institutional-emails.index') }}"
+                   class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                    Annulla
+                </a>
+                <button type="submit"
+                        class="inline-flex items-center px-4 py-2 bg-indigo-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-indigo-700 active:bg-indigo-900 focus:outline-none focus:border-indigo-900 focus:ring ring-indigo-300 disabled:opacity-25 transition ease-in-out duration-150">
+                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                    </svg>
+                    Crea Email
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const receiveAllCheckbox = document.getElementById('receive_all_notifications');
+    const specificNotifications = document.getElementById('specific-notifications');
+    const specificCheckboxes = document.querySelectorAll('input[name="notification_types[]"]');
+
+    function toggleSpecificNotifications() {
+        if (receiveAllCheckbox.checked) {
+            specificNotifications.classList.add('hidden');
+            // Uncheck all specific notifications
+            specificCheckboxes.forEach(checkbox => {
+                checkbox.checked = false;
+            });
+        } else {
+            specificNotifications.classList.remove('hidden');
+        }
+    }
+
+    receiveAllCheckbox.addEventListener('change', toggleSpecificNotifications);
+
+    // Initialize on page load
+    toggleSpecificNotifications();
+});
+</script>
+@endpush
+@endsection
+{{-- resources/views/super-admin/institutional-emails/edit.blade.php --}}
+@extends('layouts.super-admin')
+
+@section('title', 'Modifica Email Istituzionale')
+
+@section('header', 'Modifica Email Istituzionale')
+
+@section('content')
+<div class="max-w-4xl mx-auto">
+    <div class="bg-white shadow-sm rounded-lg">
+        <div class="px-6 py-4 border-b border-gray-200">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h2 class="text-lg font-medium text-gray-900">Modifica Email Istituzionale</h2>
+                    <p class="mt-1 text-sm text-gray-600">{{ $institutionalEmail->email }}</p>
+                </div>
+                <div class="flex items-center space-x-3">
+                    <a href="{{ route('super-admin.institutional-emails.show', $institutionalEmail) }}"
+                       class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                        </svg>
+                        Visualizza
+                    </a>
+                    <a href="{{ route('super-admin.institutional-emails.index') }}"
+                       class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                        </svg>
+                        Indietro
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <form method="POST" action="{{ route('super-admin.institutional-emails.update', $institutionalEmail) }}" class="p-6">
+            @csrf
+            @method('PUT')
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {{-- Nome --}}
+                <div class="md:col-span-1">
+                    <label for="name" class="block text-sm font-medium text-gray-700 mb-1">
+                        Nome *
+                    </label>
+                    <input type="text" name="name" id="name" value="{{ old('name', $institutionalEmail->name) }}"
+                           class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm @error('name') border-red-500 @enderror"
+                           required>
+                    @error('name')
+                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                    @enderror
+                </div>
+
+                {{-- Email --}}
+                <div class="md:col-span-1">
+                    <label for="email" class="block text-sm font-medium text-gray-700 mb-1">
+                        Indirizzo Email *
+                    </label>
+                    <input type="email" name="email" id="email" value="{{ old('email', $institutionalEmail->email) }}"
+                           class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm @error('email') border-red-500 @enderror"
+                           required>
+                    @error('email')
+                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                    @enderror
+                </div>
+
+                {{-- Categoria --}}
+                <div class="md:col-span-1">
+                    <label for="category" class="block text-sm font-medium text-gray-700 mb-1">
+                        Categoria *
+                    </label>
+                    <select name="category" id="category"
+                            class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm @error('category') border-red-500 @enderror"
+                            required>
+                        <option value="">Seleziona categoria</option>
+                        @foreach($categories as $key => $label)
+                            <option value="{{ $key }}" {{ old('category', $institutionalEmail->category) === $key ? 'selected' : '' }}>
+                                {{ $label }}
+                            </option>
+                        @endforeach
+                    </select>
+                    @error('category')
+                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                    @enderror
+                </div>
+
+                {{-- Zona --}}
+                <div class="md:col-span-1">
+                    <label for="zone_id" class="block text-sm font-medium text-gray-700 mb-1">
+                        Zona
+                    </label>
+                    <select name="zone_id" id="zone_id"
+                            class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm @error('zone_id') border-red-500 @enderror">
+                        <option value="">Tutte le zone</option>
+                        @foreach($zones as $zone)
+                            <option value="{{ $zone->id }}" {{ old('zone_id', $institutionalEmail->zone_id) == $zone->id ? 'selected' : '' }}>
+                                {{ $zone->name }}
+                            </option>
+                        @endforeach
+                    </select>
+                    @error('zone_id')
+                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                    @enderror
+                    <p class="mt-1 text-xs text-gray-500">Lascia vuoto per applicare a tutte le zone</p>
+                </div>
+
+                {{-- Descrizione --}}
+                <div class="md:col-span-2">
+                    <label for="description" class="block text-sm font-medium text-gray-700 mb-1">
+                        Descrizione
+                    </label>
+                    <textarea name="description" id="description" rows="3"
+                              class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm @error('description') border-red-500 @enderror"
+                              placeholder="Descrizione opzionale dell'email istituzionale...">{{ old('description', $institutionalEmail->description) }}</textarea>
+                    @error('description')
+                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                    @enderror
+                </div>
+            </div>
+
+            {{-- Sezione Notifiche --}}
+            <div class="mt-8 border-t border-gray-200 pt-6">
+                <h3 class="text-lg font-medium text-gray-900 mb-4">Configurazione Notifiche</h3>
+
+                <div class="space-y-4">
+                    {{-- Ricevi tutte le notifiche --}}
+                    <div class="flex items-start">
+                        <div class="flex items-center h-5">
+                            <input type="hidden" name="receive_all_notifications" value="0">
+                            <input type="checkbox" name="receive_all_notifications" id="receive_all_notifications"
+                                   value="1" {{ old('receive_all_notifications', $institutionalEmail->receive_all_notifications) ? 'checked' : '' }}
+                                   class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded">
+                        </div>
+                        <div class="ml-3 text-sm">
+                            <label for="receive_all_notifications" class="font-medium text-gray-700">
+                                Ricevi tutte le notifiche
+                            </label>
+                            <p class="text-gray-500">Se attivato, questa email riceverà automaticamente tutti i tipi di notifica</p>
+                        </div>
+                    </div>
+
+                    {{-- Tipi di notifica specifici --}}
+                    <div id="specific-notifications" class="{{ old('receive_all_notifications', $institutionalEmail->receive_all_notifications) ? 'hidden' : '' }}">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                            Tipi di notifica specifici
+                        </label>
+                        <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
+                            @foreach($notificationTypes as $key => $label)
+                                <div class="flex items-start">
+                                    <div class="flex items-center h-5">
+                                        <input type="checkbox" name="notification_types[]" id="notification_{{ $key }}"
+                                               value="{{ $key }}"
+                                               {{ in_array($key, old('notification_types', $institutionalEmail->notification_types ?? [])) ? 'checked' : '' }}
+                                               class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded">
+                                    </div>
+                                    <div class="ml-3 text-sm">
+                                        <label for="notification_{{ $key }}" class="text-gray-700">
+                                            {{ $label }}
+                                        </label>
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+                        @error('notification_types')
+                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                        @enderror
+                    </div>
+                </div>
+            </div>
+
+            {{-- Stato --}}
+            <div class="mt-6 border-t border-gray-200 pt-6">
+                <div class="flex items-start">
+                    <div class="flex items-center h-5">
+                        <input type="hidden" name="is_active" value="0">
+                        <input type="checkbox" name="is_active" id="is_active"
+                               value="1" {{ old('is_active', $institutionalEmail->is_active) ? 'checked' : '' }}
+                               class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded">
+                    </div>
+                    <div class="ml-3 text-sm">
+                        <label for="is_active" class="font-medium text-gray-700">
+                            Email attiva
+                        </label>
+                        <p class="text-gray-500">Se disattivata, questa email non riceverà alcuna notifica</p>
+                    </div>
+                </div>
+            </div>
+
+            {{-- Informazioni di sistema --}}
+            <div class="mt-6 border-t border-gray-200 pt-6">
+                <div class="bg-gray-50 rounded-lg p-4">
+                    <h4 class="text-sm font-medium text-gray-900 mb-2">Informazioni Sistema</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs text-gray-600">
+                        <div>
+                            <span class="font-medium">Creata il:</span> {{ $institutionalEmail->created_at->format('d/m/Y H:i') }}
+                        </div>
+                        <div>
+                            <span class="font-medium">Ultima modifica:</span> {{ $institutionalEmail->updated_at->format('d/m/Y H:i') }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {{-- Pulsanti di azione --}}
+            <div class="mt-8 flex items-center justify-end space-x-3 border-t border-gray-200 pt-6">
+                <a href="{{ route('super-admin.institutional-emails.show', $institutionalEmail) }}"
+                   class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                    Annulla
+                </a>
+                <button type="submit"
+                        class="inline-flex items-center px-4 py-2 bg-indigo-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-indigo-700 active:bg-indigo-900 focus:outline-none focus:border-indigo-900 focus:ring ring-indigo-300 disabled:opacity-25 transition ease-in-out duration-150">
+                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                    </svg>
+                    Salva Modifiche
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const receiveAllCheckbox = document.getElementById('receive_all_notifications');
+    const specificNotifications = document.getElementById('specific-notifications');
+    const specificCheckboxes = document.querySelectorAll('input[name="notification_types[]"]');
+
+    function toggleSpecificNotifications() {
+        if (receiveAllCheckbox.checked) {
+            specificNotifications.classList.add('hidden');
+            // Uncheck all specific notifications
+            specificCheckboxes.forEach(checkbox => {
+                checkbox.checked = false;
+            });
+        } else {
+            specificNotifications.classList.remove('hidden');
+        }
+    }
+
+    receiveAllCheckbox.addEventListener('change', toggleSpecificNotifications);
+
+    // Initialize on page load
+    toggleSpecificNotifications();
+});
+</script>
+@endpush
+@endsection
+{{-- resources/views/super-admin/institutional-emails/index.blade.php --}}
+@extends('layouts.super-admin')
+
+@section('title', 'Email Istituzionali')
+
+@section('header', 'Gestione Email Istituzionali')
+
+@section('content')
+<div class="space-y-6">
+    {{-- Header Section --}}
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-900">Email Istituzionali</h1>
+            <p class="mt-1 text-sm text-gray-600">
+                Gestisci gli indirizzi email istituzionali per notifiche e comunicazioni
+            </p>
+        </div>
+        <div class="mt-4 sm:mt-0">
+            <a href="{{ route('super-admin.institutional-emails.create') }}"
+               class="inline-flex items-center px-4 py-2 bg-indigo-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-indigo-700 active:bg-indigo-900 focus:outline-none focus:border-indigo-900 focus:ring ring-indigo-300 disabled:opacity-25 transition ease-in-out duration-150">
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                </svg>
+                Nuova Email
+            </a>
+        </div>
+    </div>
+
+    {{-- Filters Section --}}
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <form method="GET" action="{{ route('super-admin.institutional-emails.index') }}" class="space-y-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                {{-- Search --}}
+                <div>
+                    <label for="search" class="block text-sm font-medium text-gray-700 mb-1">Cerca</label>
+                    <input type="text" name="search" id="search" value="{{ request('search') }}"
+                           placeholder="Nome, email, descrizione..."
+                           class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                </div>
+
+                {{-- Category Filter --}}
+                <div>
+                    <label for="category" class="block text-sm font-medium text-gray-700 mb-1">Categoria</label>
+                    <select name="category" id="category"
+                            class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                        <option value="">Tutte le categorie</option>
+                        @foreach(App\Models\InstitutionalEmail::CATEGORIES as $key => $label)
+                            <option value="{{ $key }}" {{ request('category') === $key ? 'selected' : '' }}>
+                                {{ $label }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+
+                {{-- Zone Filter --}}
+                <div>
+                    <label for="zone_id" class="block text-sm font-medium text-gray-700 mb-1">Zona</label>
+                    <select name="zone_id" id="zone_id"
+                            class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                        <option value="">Tutte le zone</option>
+                        <option value="null" {{ request('zone_id') === 'null' ? 'selected' : '' }}>Nessuna zona specifica</option>
+                        @foreach($zones as $zone)
+                            <option value="{{ $zone->id }}" {{ request('zone_id') == $zone->id ? 'selected' : '' }}>
+                                {{ $zone->name }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+
+                {{-- Status Filter --}}
+                <div>
+                    <label for="is_active" class="block text-sm font-medium text-gray-700 mb-1">Stato</label>
+                    <select name="is_active" id="is_active"
+                            class="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                        <option value="">Tutti</option>
+                        <option value="1" {{ request('is_active') === '1' ? 'selected' : '' }}>Attive</option>
+                        <option value="0" {{ request('is_active') === '0' ? 'selected' : '' }}>Disattivate</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="flex items-center justify-between">
+                <div class="flex space-x-2">
+                    <button type="submit"
+                            class="inline-flex items-center px-4 py-2 bg-gray-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-gray-700 active:bg-gray-900 focus:outline-none focus:border-gray-900 focus:ring ring-gray-300 disabled:opacity-25 transition ease-in-out duration-150">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                        </svg>
+                        Filtra
+                    </button>
+                    @if(request()->hasAny(['search', 'category', 'zone_id', 'is_active']))
+                        <a href="{{ route('super-admin.institutional-emails.index') }}"
+                           class="inline-flex items-center px-4 py-2 bg-gray-300 border border-transparent rounded-md font-semibold text-xs text-gray-700 uppercase tracking-widest hover:bg-gray-400 active:bg-gray-500 focus:outline-none focus:border-gray-500 focus:ring ring-gray-200 disabled:opacity-25 transition ease-in-out duration-150">
+                            Reset Filtri
+                        </a>
+                    @endif
+                </div>
+
+                <div class="flex space-x-2">
+                    {{-- Export Button - ✅ NOME ROUTE CORRETTO --}}
+                    <a href="{{ route('super-admin.institutional-emails.export', request()->query()) }}"
+                       class="inline-flex items-center px-4 py-2 bg-green-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-green-700 active:bg-green-900 focus:outline-none focus:border-green-900 focus:ring ring-green-300 disabled:opacity-25 transition ease-in-out duration-150">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                        </svg>
+                        Esporta CSV
+                    </a>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    {{-- Results Section --}}
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200">
+        @if($institutionalEmails->count() > 0)
+            {{-- Bulk Actions --}}
+            <div class="px-6 py-4 border-b border-gray-200 bg-gray-50">
+                <form id="bulk-action-form" method="POST" action="{{ route('super-admin.institutional-emails.bulk-action') }}" class="flex items-center space-x-4">
+                    @csrf
+                    <div class="flex items-center space-x-2">
+                        <input type="checkbox" id="select-all" class="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                        <label for="select-all" class="text-sm font-medium text-gray-700">Seleziona tutto</label>
+                    </div>
+
+                    <select name="action" class="rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                        <option value="">Azioni selezionate...</option>
+                        <option value="activate">Attiva</option>
+                        <option value="deactivate">Disattiva</option>
+                        <option value="delete">Elimina</option>
+                    </select>
+
+                    <button type="submit" class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                        Applica
+                    </button>
+                </form>
+            </div>
+
+            {{-- Table --}}
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th scope="col" class="w-12 px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                <span class="sr-only">Seleziona</span>
+                            </th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Email
+                            </th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Categoria
+                            </th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Zona
+                            </th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Notifiche
+                            </th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Stato
+                            </th>
+                            <th scope="col" class="relative px-6 py-3">
+                                <span class="sr-only">Azioni</span>
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        @foreach($institutionalEmails as $email)
+                            <tr class="hover:bg-gray-50">
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <input type="checkbox" name="email_ids[]" value="{{ $email->id }}" form="bulk-action-form"
+                                           class="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="flex items-center">
+                                        <div class="flex-shrink-0 h-8 w-8">
+                                            <div class="h-8 w-8 rounded-full bg-indigo-100 flex items-center justify-center">
+                                                <svg class="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+                                                </svg>
+                                            </div>
+                                        </div>
+                                        <div class="ml-4">
+                                            <div class="text-sm font-medium text-gray-900">{{ $email->name }}</div>
+                                            <div class="text-sm text-gray-500">{{ $email->email }}</div>
+                                            @if($email->description)
+                                                <div class="text-xs text-gray-400 mt-1">{{ Str::limit($email->description, 50) }}</div>
+                                            @endif
+                                        </div>
+                                    </div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+                                        @switch($email->category)
+                                            @case('federazione') bg-purple-100 text-purple-800 @break
+                                            @case('comitato') bg-blue-100 text-blue-800 @break
+                                            @case('zona') bg-green-100 text-green-800 @break
+                                            @default bg-gray-100 text-gray-800
+                                        @endswitch">
+                                        {{ $email->category_label }}
+                                    </span>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                    {{ $email->zone ? $email->zone->name : 'Tutte le Zone' }}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    @if($email->receive_all_notifications)
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
+                                            Tutte
+                                        </span>
+                                    @elseif($email->notification_types && count($email->notification_types) > 0)
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                            {{ count($email->notification_types) }} tipi
+                                        </span>
+                                    @else
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                                            Nessuna
+                                        </span>
+                                    @endif
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    @if($email->is_active)
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                            Attiva
+                                        </span>
+                                    @else
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                            Disattivata
+                                        </span>
+                                    @endif
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                    <div class="flex items-center justify-end space-x-2">
+                                        <a href="{{ route('super-admin.institutional-emails.show', $email) }}"
+                                           class="text-indigo-600 hover:text-indigo-900">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                                            </svg>
+                                        </a>
+                                        <a href="{{ route('super-admin.institutional-emails.edit', $email) }}"
+                                           class="text-gray-600 hover:text-gray-900">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                                            </svg>
+                                        </a>
+                                        <form method="POST" action="{{ route('super-admin.institutional-emails.destroy', $email) }}" class="inline">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="text-red-600 hover:text-red-900"
+                                                    onclick="return confirm('Sei sicuro di voler eliminare questa email istituzionale?')">
+                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                                </svg>
+                                            </button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+
+            {{-- Pagination --}}
+            <div class="px-6 py-4 border-t border-gray-200">
+                {{ $institutionalEmails->withQueryString()->links() }}
+            </div>
+        @else
+            {{-- Empty State --}}
+            <div class="px-6 py-12 text-center">
+                <div class="mx-auto h-12 w-12 text-gray-400">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+                    </svg>
+                </div>
+                <h3 class="mt-2 text-sm font-medium text-gray-900">Nessuna email istituzionale</h3>
+                <p class="mt-1 text-sm text-gray-500">
+                    @if(request()->hasAny(['search', 'category', 'zone_id', 'is_active']))
+                        Nessuna email istituzionale corrisponde ai criteri di ricerca.
+                    @else
+                        Inizia creando la prima email istituzionale.
+                    @endif
+                </p>
+                <div class="mt-6">
+                    @if(request()->hasAny(['search', 'category', 'zone_id', 'is_active']))
+                        <a href="{{ route('super-admin.institutional-emails.index') }}"
+                           class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                            Reset Filtri
+                        </a>
+                    @else
+                        <a href="{{ route('super-admin.institutional-emails.create') }}"
+                           class="inline-flex items-center px-4 py-2 bg-indigo-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-indigo-700 active:bg-indigo-900 focus:outline-none focus:border-indigo-900 focus:ring ring-indigo-300 disabled:opacity-25 transition ease-in-out duration-150">
+                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                            </svg>
+                            Nuova Email Istituzionale
+                        </a>
+                    @endif
+                </div>
+            </div>
+        @endif
+    </div>
+</div>
+
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Select all functionality
+    const selectAllCheckbox = document.getElementById('select-all');
+    const itemCheckboxes = document.querySelectorAll('input[name="email_ids[]"]');
+    const bulkActionForm = document.getElementById('bulk-action-form');
+
+    selectAllCheckbox?.addEventListener('change', function() {
+        itemCheckboxes.forEach(checkbox => {
+            checkbox.checked = this.checked;
+        });
+    });
+
+    // Bulk action form submission
+    bulkActionForm?.addEventListener('submit', function(e) {
+        const checkedItems = document.querySelectorAll('input[name="email_ids[]"]:checked');
+        const actionSelect = document.querySelector('select[name="action"]');
+
+        if (checkedItems.length === 0) {
+            e.preventDefault();
+            alert('Seleziona almeno una email istituzionale');
+            return;
+        }
+
+        if (!actionSelect.value) {
+            e.preventDefault();
+            alert('Seleziona un\'azione da eseguire');
+            return;
+        }
+
+        if (actionSelect.value === 'delete') {
+            if (!confirm('Sei sicuro di voler eliminare le email istituzionali selezionate?')) {
+                e.preventDefault();
+            }
+        }
+    });
+});
+</script>
+@endpush
+@endsection
+{{-- resources/views/super-admin/institutional-emails/show.blade.php --}}
+@extends('layouts.super-admin')
+
+@section('title', 'Dettagli Email Istituzionale')
+
+@section('header', 'Dettagli Email Istituzionale')
+
+@section('content')
+<div class="max-w-4xl mx-auto">
+    <div class="bg-white shadow-sm rounded-lg">
+        <div class="px-6 py-4 border-b border-gray-200">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h2 class="text-lg font-medium text-gray-900">{{ $institutionalEmail->name }}</h2>
+                    <p class="mt-1 text-sm text-gray-600">{{ $institutionalEmail->email }}</p>
+                </div>
+                <div class="flex items-center space-x-3">
+                    <a href="{{ route('super-admin.institutional-emails.edit', $institutionalEmail) }}"
+                       class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                        </svg>
+                        Modifica
+                    </a>
+                    <a href="{{ route('super-admin.institutional-emails.index') }}"
+                       class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                        </svg>
+                        Indietro
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="p-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {{-- Informazioni Generali --}}
+                <div class="bg-gray-50 rounded-lg p-4">
+                    <h3 class="text-sm font-medium text-gray-900 mb-3">Informazioni Generali</h3>
+                    <dl class="space-y-3">
+                        <div>
+                            <dt class="text-xs font-medium text-gray-500 uppercase tracking-wider">Nome</dt>
+                            <dd class="mt-1 text-sm text-gray-900">{{ $institutionalEmail->name }}</dd>
+                        </div>
+
+                        <div>
+                            <dt class="text-xs font-medium text-gray-500 uppercase tracking-wider">Email</dt>
+                            <dd class="mt-1 text-sm text-gray-900">
+                                <a href="mailto:{{ $institutionalEmail->email }}" class="text-indigo-600 hover:text-indigo-500">
+                                    {{ $institutionalEmail->email }}
+                                </a>
+                            </dd>
+                        </div>
+
+                        <div>
+                            <dt class="text-xs font-medium text-gray-500 uppercase tracking-wider">Categoria</dt>
+                            <dd class="mt-1">
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+                                    @switch($institutionalEmail->category)
+                                        @case('federazione') bg-purple-100 text-purple-800 @break
+                                        @case('comitato') bg-blue-100 text-blue-800 @break
+                                        @case('zona') bg-green-100 text-green-800 @break
+                                        @default bg-gray-100 text-gray-800
+                                    @endswitch">
+                                    {{ $institutionalEmail->category_label }}
+                                </span>
+                            </dd>
+                        </div>
+
+                        <div>
+                            <dt class="text-xs font-medium text-gray-500 uppercase tracking-wider">Zona</dt>
+                            <dd class="mt-1 text-sm text-gray-900">
+                                {{ $institutionalEmail->zone ? $institutionalEmail->zone->name : 'Tutte le Zone' }}
+                            </dd>
+                        </div>
+
+                        <div>
+                            <dt class="text-xs font-medium text-gray-500 uppercase tracking-wider">Stato</dt>
+                            <dd class="mt-1">
+                                @if($institutionalEmail->is_active)
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                        <svg class="w-1.5 h-1.5 mr-1.5" fill="currentColor" viewBox="0 0 8 8">
+                                            <circle cx="4" cy="4" r="3"/>
+                                        </svg>
+                                        Attiva
+                                    </span>
+                                @else
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                        <svg class="w-1.5 h-1.5 mr-1.5" fill="currentColor" viewBox="0 0 8 8">
+                                            <circle cx="4" cy="4" r="3"/>
+                                        </svg>
+                                        Disattivata
+                                    </span>
+                                @endif
+                            </dd>
+                        </div>
+
+                        @if($institutionalEmail->description)
+                        <div>
+                            <dt class="text-xs font-medium text-gray-500 uppercase tracking-wider">Descrizione</dt>
+                            <dd class="mt-1 text-sm text-gray-900">{{ $institutionalEmail->description }}</dd>
+                        </div>
+                        @endif
+                    </dl>
+                </div>
+
+                {{-- Configurazione Notifiche --}}
+                <div class="bg-gray-50 rounded-lg p-4">
+                    <h3 class="text-sm font-medium text-gray-900 mb-3">Configurazione Notifiche</h3>
+
+                    @if($institutionalEmail->receive_all_notifications)
+                        <div class="flex items-center p-3 bg-indigo-50 rounded-md">
+                            <svg class="w-5 h-5 text-indigo-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                            <span class="text-sm text-indigo-800 font-medium">Riceve tutte le notifiche</span>
+                        </div>
+                    @elseif($institutionalEmail->notification_types && count($institutionalEmail->notification_types) > 0)
+                        <div>
+                            <p class="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">Tipi di notifica attivi</p>
+                            <div class="space-y-2">
+                                @foreach($institutionalEmail->notification_types as $type)
+                                    @if(isset(App\Models\InstitutionalEmail::NOTIFICATION_TYPES[$type]))
+                                        <div class="flex items-center">
+                                            <svg class="w-4 h-4 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                            </svg>
+                                            <span class="text-sm text-gray-700">{{ App\Models\InstitutionalEmail::NOTIFICATION_TYPES[$type] }}</span>
+                                        </div>
+                                    @endif
+                                @endforeach
+                            </div>
+                        </div>
+                    @else
+                        <div class="flex items-center p-3 bg-yellow-50 rounded-md">
+                            <svg class="w-5 h-5 text-yellow-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.464 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                            </svg>
+                            <span class="text-sm text-yellow-800">Nessuna notifica configurata</span>
+                        </div>
+                    @endif
+                </div>
+            </div>
+
+            {{-- Metadati --}}
+            <div class="mt-8 border-t border-gray-200 pt-6">
+                <h3 class="text-sm font-medium text-gray-900 mb-3">Informazioni Sistema</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <dt class="text-xs font-medium text-gray-500 uppercase tracking-wider">Creata il</dt>
+                        <dd class="mt-1 text-sm text-gray-900">
+                            {{ $institutionalEmail->created_at->format('d/m/Y H:i') }}
+                        </dd>
+                    </div>
+                    <div>
+                        <dt class="text-xs font-medium text-gray-500 uppercase tracking-wider">Ultima modifica</dt>
+                        <dd class="mt-1 text-sm text-gray-900">
+                            {{ $institutionalEmail->updated_at->format('d/m/Y H:i') }}
+                        </dd>
+                    </div>
+                </div>
+            </div>
+
+            {{-- Azioni Rapide --}}
+            <div class="mt-8 border-t border-gray-200 pt-6">
+                <h3 class="text-sm font-medium text-gray-900 mb-3">Azioni Rapide</h3>
+                <div class="flex flex-wrap gap-3">
+                    @if($institutionalEmail->is_active)
+                        <form method="POST" action="{{ route('super-admin.institutional-emails.toggle-active', $institutionalEmail) }}" class="inline">
+                            @csrf
+                            <button type="submit"
+                                    class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                                    onclick="return confirm('Sei sicuro di voler disattivare questa email?')">
+                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728L5.636 5.636m12.728 12.728L18.364 5.636"></path>
+                                </svg>
+                                Disattiva
+                            </button>
+                        </form>
+                    @else
+                        <form method="POST" action="{{ route('super-admin.institutional-emails.toggle-active', $institutionalEmail) }}" class="inline">
+                            @csrf
+                            <button type="submit"
+                                    class="inline-flex items-center px-3 py-2 border border-green-300 shadow-sm text-sm leading-4 font-medium rounded-md text-green-700 bg-green-50 hover:bg-green-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500">
+                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                </svg>
+                                Attiva
+                            </button>
+                        </form>
+                    @endif
+
+                    {{-- Test Email Button (se implementato nel controller) --}}
+                    {{-- Commentato fino a implementazione metodo test
+
+                    <form method="POST" action="{{ route('super-admin.institutional-emails.test', $institutionalEmail) }}" class="inline">
+                        @csrf
+                        <button type="submit"
+                                class="inline-flex items-center px-3 py-2 border border-blue-300 shadow-sm text-sm leading-4 font-medium rounded-md text-blue-700 bg-blue-50 hover:bg-blue-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+                            </svg>
+                            Invia Test
+                        </button>
+                    </form>
+                    --}}
+
+
+                    <form method="POST" action="{{ route('super-admin.institutional-emails.destroy', $institutionalEmail) }}" class="inline">
+                        @csrf
+                        @method('DELETE')
+                        <button type="submit"
+                                class="inline-flex items-center px-3 py-2 border border-red-300 shadow-sm text-sm leading-4 font-medium rounded-md text-red-700 bg-red-50 hover:bg-red-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                                onclick="return confirm('Sei sicuro di voler eliminare questa email istituzionale? Questa azione non può essere annullata.')">
+                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                            </svg>
+                            Elimina
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+@endsection
+<?php
+
+namespace App\Http\Controllers;
+
+use Illuminate\Http\Request;
+
+class TournamentController extends Controller
+{
+/**
+ * Public Calendar - View only focus
+ * Route: /tournaments/calendar
+ */
+public function calendar(Request $request)
+{
+    $user = auth()->user();
+
+    try {
+        // Get all published tournaments (public view)
+        $tournaments = Tournament::with(['tournamentType', 'zone', 'club'])
+            ->where('status', 'published') // Only published for public
+            ->orderBy('start_date', 'asc')
+            ->get();
+
+        // Get filter data for public filtering
+        $zones = \App\Models\Zone::orderBy('name')->get();
+        $tournamentTypes = \App\Models\TournamentType::orderBy('name')->get();
+        $clubs = \App\Models\Club::orderBy('name')->get();
+
+        // === STANDARDIZED CALENDAR DATA ===
+        $calendarData = [
+            // Core tournament data
+            'tournaments' => $tournaments->map(function ($tournament) {
+                return [
+                    'id' => $tournament->id,
+                    'title' => $tournament->name,
+                    'start' => $tournament->start_date->format('Y-m-d'),
+                    'end' => $tournament->end_date->addDay()->format('Y-m-d'),
+                    'color' => $this->getEventColor($tournament),
+                    'borderColor' => $this->getPublicBorderColor($tournament),
+                    'extendedProps' => [
+                        // Basic info
+                        'club' => $tournament->club->name ?? 'N/A',
+                        'zone' => $tournament->zone->name ?? 'N/A',
+                        'zone_id' => $tournament->zone_id,
+                        'category' => $tournament->tournamentType->name ?? 'N/A',
+                        'status' => $tournament->status,
+                        'tournament_url' => route('tournaments.show', $tournament),
+
+                        // Dates & deadlines
+                        'deadline' => $tournament->availability_deadline?->format('d/m/Y') ?? 'N/A',
+                        'days_until_deadline' => $tournament->days_until_deadline ?? 0,
+
+                        // Type info (important for public filtering)
+                        'type_id' => $tournament->tournament_type_id,
+                        'type' => $tournament->tournamentType,
+
+                        // Admin-specific (not applicable for public)
+                        'availabilities_count' => 0,
+                        'assignments_count' => 0,
+                        'required_referees' => 0,
+                        'max_referees' => 0,
+                        'management_priority' => 'none',
+
+                        // Referee-specific (not applicable for public)
+                        'is_available' => false,
+                        'is_assigned' => false,
+                        'can_apply' => false,
+                        'personal_status' => 'none',
+                    ],
+                ];
+            }),
+
+            // Context data
+            'userType' => 'public',
+            'userRoles' => $user ? [$user->user_type] : ['guest'],
+            'canModify' => false, // Public view is read-only
+
+            // === FILTER DATA (important for public) ===
+            'zones' => $zones,
+            'types' => $tournamentTypes,
+            'clubs' => $clubs,
+
+            // User-specific data (not applicable)
+            'availabilities' => [],
+            'assignments' => [],
+
+            // Metadata
+            'totalTournaments' => $tournaments->count(),
+            'lastUpdated' => now()->toISOString(),
+        ];
+
+        return view('tournaments.calendar', compact('calendarData'));
+
+    } catch (\Exception $e) {
+        \Log::error('Public calendar error', [
+            'user_id' => auth()->id(),
+            'error' => $e->getMessage()
+        ]);
+
+        // Return error state
+        return view('tournaments.calendar', [
+            'calendarData' => [
+                'tournaments' => collect(),
+                'userType' => 'public',
+                'userRoles' => ['guest'],
+                'canModify' => false,
+                'zones' => collect(),
+                'types' => collect(),
+                'clubs' => collect(),
+                'availabilities' => [],
+                'assignments' => [],
+                'totalTournaments' => 0,
+                'lastUpdated' => now()->toISOString(),
+                'error_state' => 'error',
+                'error' => 'Errore nel caricamento del calendario pubblico.'
+            ]
+        ]);
+    }
+}
+
+/**
+ * Get event color based on tournament type (same as admin/referee)
+ */
+private function getEventColor($tournament): string
+{
+    return match($tournament->tournamentType->name ?? 'default') {
+        'Categoria A' => '#FF6B6B',
+        'Categoria B' => '#4ECDC4',
+        'Categoria C' => '#45B7D1',
+        'Categoria D' => '#96CEB4',
+        default => '#3B82F6'
+    };
+}
+
+/**
+ * Public border color - based on tournament status (like admin)
+ */
+private function getPublicBorderColor($tournament): string
+{
+    return match($tournament->status) {
+        'published' => '#10B981',   // Green - Published
+        'in_progress' => '#3B82F6', // Blue - In progress
+        'completed' => '#6B7280',   // Gray - Completed
+        'cancelled' => '#EF4444',   // Red - Cancelled
+        default => '#10B981'        // Green default (published)
+    };
+}
+}
+<?php
+
+namespace App\Http\Controllers\Admin;
+
+use App\Http\Controllers\Controller;
+use App\Http\Requests\TournamentRequest;
+use App\Models\Tournament;
+use App\Models\TournamentType; // ✅ FIXED: Changed from TournamentCategory
+use App\Models\club;
+use App\Models\Zone;
+use Carbon\Carbon;
+use Illuminate\Http\Request;
+use App\Http\Traits\CrudActions;
+
+class TournamentController extends Controller
+{
+    use CrudActions;
+
+    /**
+     * Display a listing of tournaments.
+     */
+    public function index(Request $request)
+    {
+        $user = auth()->user();
+        $isNationalAdmin = $user->user_type === 'national_admin' || $user->user_type === 'super_admin';
+
+        // Base query - ✅ FIXED: tournamentType relationship
+        $query = Tournament::with(['tournamentType', 'zone', 'club', 'assignments']);
+
+        // Filter by zone for zone admins
+        if (!$isNationalAdmin && !in_array($user->user_type, ['super_admin'])) {
+            $query->where('zone_id', $user->zone_id);
+        }
+
+        // Apply filters
+        if ($request->has('status') && $request->status !== '') {
+            $query->where('status', $request->status);
+        }
+
+        if ($request->has('zone_id') && $request->zone_id !== '') {
+            $query->where('zone_id', $request->zone_id);
+        }
+
+        // ✅ FIXED: tournament_type_id filter name
+        if ($request->has('tournament_type_id') && $request->tournament_type_id !== '') {
+            $query->where('tournament_type_id', $request->tournament_type_id);
+        }
+
+        if ($request->has('month') && $request->month !== '') {
+            $startOfMonth = Carbon::parse($request->month)->startOfMonth();
+            $endOfMonth = Carbon::parse($request->month)->endOfMonth();
+            $query->where(function ($q) use ($startOfMonth, $endOfMonth) {
+                $q->whereBetween('start_date', [$startOfMonth, $endOfMonth])
+                    ->orWhereBetween('end_date', [$startOfMonth, $endOfMonth]);
+            });
+        }
+
+        // Search
+        if ($request->has('search') && $request->search !== '') {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                    ->orWhereHas('club', function ($q2) use ($search) {
+                        $q2->where('name', 'like', "%{$search}%");
+                    });
+            });
+        }
+
+        // Order by start date descending
+        $tournaments = $query->orderBy('start_date', 'desc')->paginate(20);
+
+        // Get data for filters
+        $zones = $isNationalAdmin ? Zone::orderBy('name')->get() : collect();
+
+        // ✅ FIXED: Variable name from $categories to $tournamentTypes
+        $tournamentTypes = TournamentType::active()->ordered()->get();
+        $statuses = Tournament::STATUSES;
+
+        // ✅ FIXED: compact() uses tournamentTypes instead of categories
+        return view('admin.tournaments.index', compact(
+            'tournaments',
+            'zones',
+            'tournamentTypes', // ← FIXED: was 'categories'
+            'statuses',
+            'isNationalAdmin'
+        ));
+    }
+
+    /**
+     * Show tournaments calendar view
+     */
+    public function calendar(Request $request)
+    {
+        $user = auth()->user();
+        $isNationalAdmin = $user->user_type === 'national_admin' || $user->user_type === 'super_admin' || $user->user_type === 'admin';
+
+        // ✅ FIXED: tournamentType relationship
+        $tournaments = Tournament::with(['tournamentType', 'zone', 'club', 'assignments.user'])
+            ->when(!$isNationalAdmin && !in_array($user->user_type, ['super_admin']), function ($q) use ($user) {
+                $q->where('zone_id', $user->zone_id);
+            })
+            ->get();
+
+        // Get zones for filter
+        $zones = $isNationalAdmin
+            ? Zone::orderBy('name')->get()
+            : Zone::where('id', $user->zone_id)->get();
+
+        // Get clubs for filter
+        $clubs = \App\Models\Club::active()
+            ->when(!$isNationalAdmin && !in_array($user->user_type, ['super_admin']), function ($q) use ($user) {
+                $q->where('zone_id', $user->zone_id);
+            })
+            ->orderBy('name')
+            ->get();
+
+        // ✅ FIXED: Variable name from $types to $tournamentTypes
+        $tournamentTypes = TournamentType::active()->ordered()->get();
+
+        // User roles for permissions
+        $userRoles = ['Admin'];
+        if ($user->user_type === 'super_admin') {
+            $userRoles[] = 'SuperAdmin';
+        } elseif ($user->user_type === 'national_admin') {
+            $userRoles[] = 'NationalAdmin';
+        }
+
+        // Format tournaments for calendar
+        $calendarTournaments = $tournaments->map(function ($tournament) {
+            return [
+                'id' => $tournament->id,
+                'title' => $tournament->name,
+                'start' => $tournament->start_date->format('Y-m-d'),
+                'end' => $tournament->end_date->addDay()->format('Y-m-d'),
+                'color' => '#3b82f6', // Default color
+                'borderColor' => '#1e40af',
+                'extendedProps' => [
+                    'club' => $tournament->club->name ?? 'N/A',
+                    'zone' => $tournament->zone->name ?? 'N/A',
+                    'zone_id' => $tournament->zone_id,
+                    // ✅ FIXED: tournamentType relationship
+                    'category' => $tournament->tournamentType->name ?? 'N/A',
+                    'status' => $tournament->status,
+                    'tournament_url' => route('admin.tournaments.show', $tournament),
+                    'deadline' => $tournament->availability_deadline?->format('d/m/Y') ?? 'N/A',
+                    'type_id' => $tournament->tournament_type_id,
+                    'availabilities_count' => $tournament->availabilities()->count(),
+                    'assignments_count' => $tournament->assignments()->count(),
+                    'required_referees' => $tournament->required_referees ?? 1,
+                    'max_referees' => $tournament->max_referees ?? 4,
+                    'management_priority' => 'open',
+                ],
+            ];
+        });
+
+        // Prepare data for React component
+        $calendarData = [
+            'tournaments' => $calendarTournaments,
+            'zones' => $zones->map(function ($zone) {
+                return [
+                    'id' => $zone->id,
+                    'name' => $zone->name,
+                ];
+            }),
+            'clubs' => $clubs->map(function ($club) {
+                return [
+                    'id' => $club->id,
+                    'name' => $club->name,
+                    'zone_id' => $club->zone_id,
+                ];
+            }),
+            // ✅ FIXED: tournamentTypes instead of types
+            'tournamentTypes' => $tournamentTypes->map(function ($type) {
+                return [
+                    'id' => $type->id,
+                    'name' => $type->name,
+                    'short_name' => $type->short_name,
+                    'is_national' => $type->is_national,
+                ];
+            }),
+            'userRoles' => $userRoles,
+            'userType' => 'admin',
+            'canModify' => true,
+        ];
+
+        return view('admin.tournaments.calendar', compact('calendarData'));
+    }
+
+/**
+ * Show the form for creating a new tournament.
+ */
+public function create()
+{
+    $user = auth()->user();
+    $isNationalAdmin = $user->user_type === 'national_admin';
+
+    // Get all active types (NON categories!)
+    $allTypes = TournamentType::active()->ordered()->get();
+
+    // Filter types based on user access
+    $types = $allTypes->filter(function ($type) use ($user, $isNationalAdmin) {
+        // National admins see all types
+        if ($isNationalAdmin) {
+            return true;
+        }
+
+        // National types are always visible
+        if ($type->is_national) {
+            return true;
+        }
+
+        // Check if zone user can see this zonal type
+        return $type->isAvailableForZone($user->zone_id);
+    });
+
+    // Get zones
+    $zones = $isNationalAdmin
+        ? Zone::orderBy('name')->get()
+        : Zone::where('id', $user->zone_id)->get();
+
+    // Get clubs
+    $clubs = Club::active()
+        ->when(!$isNationalAdmin, function ($q) use ($user) {
+            $q->where('zone_id', $user->zone_id);
+        })
+        ->ordered()
+        ->get();
+
+    return view('admin.tournaments.create', compact('types', 'zones', 'clubs'));
+}
+
+/**
+ * Show the form for editing the specified tournament.
+ */
+public function edit(Tournament $tournament)
+{
+    // Check access
+    $this->checkTournamentAccess($tournament);
+
+    // Check if editable
+    if (!$tournament->isEditable()) {
+        return redirect()
+            ->route('admin.tournaments.show', $tournament)
+            ->with('error', 'Questo torneo non può essere modificato nel suo stato attuale.');
+    }
+
+    $user = auth()->user();
+    $isNationalAdmin = $user->user_type === 'national_admin';
+
+    // Get all active types (NON categories!)
+    $allTournamentTypes = TournamentType::active()->get();
+
+    // Filter types based on user access
+    $tournamentTypes = $allTournamentTypes->filter(function ($type) use ($user, $isNationalAdmin) {
+        // National admins see all types
+        if ($isNationalAdmin) {
+            return true;
+        }
+
+        // National types are always visible
+        if ($type->is_national) {
+            return true;
+        }
+
+        // Check if zone user can see this zonal type
+        return $type->isAvailableForZone($user->zone_id);
+    });
+
+    // Get zones
+    $zones = $isNationalAdmin
+        ? Zone::orderBy('name')->get()
+        : Zone::where('id', $user->zone_id)->get();
+
+    // Get clubs
+    $clubs = Club::active()
+        ->where('zone_id', $tournament->zone_id)
+        ->ordered()
+        ->get();
+
+    return view('admin.tournaments.edit', compact('tournament', 'tournamentTypes', 'zones', 'clubs'));
+}
+
+
+    /**
+     * Store a newly created tournament in storage.
+     */
+    public function store(TournamentRequest $request)
+    {
+        $data = $request->validated();
+
+        // Set zone_id from club if not national admin
+        if (auth()->user()->user_type !== 'national_admin') {
+            $club = club::findOrFail($data['club_id']);
+            $data['zone_id'] = $club->zone_id;
+        }
+
+        // Create tournament
+        $tournament = Tournament::create($data);
+
+        return redirect()
+            ->route('tournaments.show', $tournament)
+            ->with('success', 'Torneo creato con successo!');
+    }
+
+    /**
+     * Display the specified tournament for admin view
+     */
+    public function show(Tournament $tournament)
+    {
+        $user = auth()->user();
+
+        // Check permissions (zone admin can only see their zone tournaments)
+        if ($user->user_type === 'admin' && $user->zone_id !== $tournament->zone_id) {
+            abort(403, 'Non hai i permessi per visualizzare questo torneo.');
+        }
+
+        // ✅ FIXED: Load tournamentType relationship
+        $tournament->load([
+            'tournamentType',
+            'zone',
+            'club',
+            'assignments.referee',
+            'availabilities.referee'
+        ]);
+
+        // Get statistics
+        $stats = [
+            'total_assignments' => $tournament->assignments()->count(),
+            'total_availabilities' => $tournament->availabilities()->count(),
+            'total_referees' => $tournament->availabilities()->count(),
+            'assigned_referees' => $tournament->assignments()->count(),
+            // ✅ FIXED: Use tournamentType relationship
+            'required_referees' => $tournament->required_referees ?? $tournament->tournamentType->min_referees ?? 1,
+            'max_referees' => $tournament->max_referees ?? $tournament->tournamentType->max_referees ?? 4,
+            'days_until_deadline' => $tournament->days_until_deadline,
+            'is_editable' => method_exists($tournament, 'isEditable') ? $tournament->isEditable() : true,
+        ];
+
+        $assignedReferees = $tournament->assignments()->with('user')->get();
+        $availableReferees = $tournament->availabilities()->with('user')->get();
+
+        return view('admin.tournaments.show', compact(
+            'tournament',
+            'assignedReferees', // ← AGGIUNGI QUESTO
+            'availableReferees',  // ← AGGIUNGI
+            'stats'               // ← AGGIUNGI
+        ));
+    }
+
+
+    /**
+     * Update the specified tournament in storage.
+     */
+    public function update(TournamentRequest $request, Tournament $tournament)
+    {
+        // Check access
+        $this->checkTournamentAccess($tournament);
+
+        // Check if editable
+        if (!$tournament->isEditable()) {
+            return redirect()
+                ->route('tournaments.show', $tournament)
+                ->with('error', 'Questo torneo non può essere modificato nel suo stato attuale.');
+        }
+
+        $data = $request->validated();
+
+        // Update zone_id from club if changed
+        if (isset($data['club_id']) && $data['club_id'] != $tournament->club_id) {
+            $club = club::findOrFail($data['club_id']);
+            $data['zone_id'] = $club->zone_id;
+        }
+
+        $tournament->update($data);
+
+        return redirect()
+            ->route('tournaments.show', $tournament)
+            ->with('success', 'Torneo aggiornato con successo!');
+    }
+
+    /**
+     * Remove the specified tournament from storage.
+     */
+    public function destroy(Tournament $tournament)
+    {
+        // Check access
+        $this->checkTournamentAccess($tournament);
+
+        // Check if can be deleted
+        if ($tournament->assignments()->exists()) {
+            return redirect()
+                ->route('admin.tournaments.index')
+                ->with('error', 'Impossibile eliminare un torneo con assegnazioni.');
+        }
+
+        if ($tournament->status !== 'draft') {
+            return redirect()
+                ->route('admin.tournaments.index')
+                ->with('error', 'Solo i tornei in bozza possono essere eliminati.');
+        }
+
+        $tournament->delete();
+
+        return redirect()
+            ->route('admin.tournaments.index')
+            ->with('success', 'Torneo eliminato con successo!');
+    }
+
+    /**
+     * Update tournament status.
+     */
+    public function updateStatus(Request $request, Tournament $tournament)
+    {
+        // Check access
+        $this->checkTournamentAccess($tournament);
+
+        $request->validate([
+            'status' => ['required', 'in:' . implode(',', array_keys(Tournament::STATUSES))],
+        ]);
+
+        $newStatus = $request->status;
+        $currentStatus = $tournament->status;
+
+        // Validate status transition
+        $validTransitions = [
+            'draft' => ['open'],
+            'open' => ['closed'],
+            'closed' => ['open', 'assigned'],
+            'assigned' => ['completed'],
+            'completed' => [],
+        ];
+
+        if (!in_array($newStatus, $validTransitions[$currentStatus] ?? [])) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Transizione di stato non valida.'
+            ], 400);
+        }
+
+        // Additional checks
+        if ($newStatus === 'assigned' && $tournament->assignments()->count() < $tournament->required_referees) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Non ci sono abbastanza arbitri assegnati.'
+            ], 400);
+        }
+
+        $tournament->update(['status' => $newStatus]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Stato aggiornato con successo.',
+            'new_status' => $newStatus,
+            'new_status_label' => Tournament::STATUSES[$newStatus],
+            'new_status_color' => $tournament->status_color,
+        ]);
+    }
+
+    /**
+     * Show availabilities for a tournament.
+     */
+    public function availabilities(Tournament $tournament)
+    {
+        // Check access
+        $this->checkTournamentAccess($tournament);
+
+        // Get available referees with their level and zone
+        $availabilities = $tournament->availabilities()
+            ->with(['user' => function ($query) {
+                $query->with('zone');
+            }])
+            ->get()
+            ->sortBy('user.name');
+
+        // Get all eligible referees who haven't declared availability
+        $eligibleReferees = \App\Models\User::where('user_type', 'referee')
+            ->where('is_active', true)
+            // ✅ FIXED: Use tournamentType relationship
+            ->when($tournament->tournamentType->is_national, function ($q) {
+                $q->whereIn('level', ['nazionale', 'internazionale']);
+            }, function ($q) use ($tournament) {
+                $q->where('zone_id', $tournament->zone_id);
+            })
+            ->whereNotIn('id', $tournament->availabilities()->pluck('user_id'))
+            ->whereNotIn('id', $tournament->assignments()->pluck('user_id'))
+            ->orderBy('name')
+            ->get();
+
+        return view('admin.tournaments.availabilities', compact(
+            'tournament',
+            'availabilities',
+            'eligibleReferees'
+        ));
+    }
+
+    /**
+     * Check if user can access tournament.
+     */
+    private function checkTournamentAccess(Tournament $tournament)
+    {
+        $user = auth()->user();
+
+        if ($user->user_type === 'super_admin' || $user->user_type === 'national_admin') {
+            return;
+        }
+
+        if ($user->user_type === 'admin' && $tournament->zone_id !== $user->zone_id) {
+            abort(403, 'Non sei autorizzato ad accedere a questo torneo.');
+        }
+    }
+
+    /**
+     * Get clubs for a specific zone (AJAX).
+     */
+    public function getclubsByZone(Request $request)
+    {
+        $request->validate([
+            'zone_id' => 'required|exists:zones,id',
+        ]);
+
+        $clubs = club::active()
+            ->where('zone_id', $request->zone_id)
+            ->ordered()
+            ->get(['id', 'name', 'short_name']);
+
+        return response()->json($clubs);
+    }
+
+    /**
+     * Configurazione per il trait
+     */
+    protected function getEntityName($model): string
+    {
+        return 'Torneo';
+    }
+
+    protected function getIndexRoute(): string
+    {
+        return 'admin.tournaments.index';
+    }
+
+    protected function getDeleteErrorMessage($model): string
+    {
+        return 'Impossibile eliminare un torneo con assegnazioni.';
+    }
+
+    protected function canBeDeleted($tournament): bool
+    {
+        return !$tournament->assignments()->exists() && $tournament->status === 'draft';
+    }
+
+    protected function checkAccess($tournament): void
+    {
+        $this->checkTournamentAccess($tournament);
+    }
+
+    /**
+     * Display a public listing of tournaments (for all authenticated users including referees)
+     */
+    public function publicIndex(Request $request)
+    {
+        $user = auth()->user();
+        $isNationalReferee = in_array($user->level ?? '', ['nazionale', 'internazionale']);
+
+        // ✅ FIXED: tournamentType relationship
+        $query = Tournament::with(['tournamentType', 'zone', 'club'])
+            ->where('status', '!=', 'draft'); // Hide drafts from public view
+
+        // Zone filtering logic
+        if (!$isNationalReferee && $user->zone_id) {
+            $query->where('zone_id', $user->zone_id);
+        }
+
+        // Simple search
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                    ->orWhereHas('club', function ($q2) use ($search) {
+                        $q2->where('name', 'like', "%{$search}%");
+                    });
+            });
+        }
+
+        $tournaments = $query->orderBy('start_date', 'desc')->paginate(20);
+
+        return view('tournaments.index', compact('tournaments'));
+    }
+
+    /**
+     * Display public calendar view
+     */
+    public function publicCalendar(Request $request)
+    {
+        $user = auth()->user();
+        $isNationalReferee = in_array($user->level ?? '', ['nazionale', 'internazionale']);
+
+        // ✅ FIXED: tournamentType relationship
+        $tournaments = Tournament::with(['tournamentType', 'zone', 'club'])
+            ->where('status', '!=', 'draft')
+            ->when(!$isNationalReferee, function ($q) use ($user) {
+                $q->where('zone_id', $user->zone_id);
+            })
+            ->get();
+
+        // Get user's availabilities and assignments if referee
+        $userAvailabilities = [];
+        $userAssignments = [];
+
+        if ($user->user_type === 'referee') {
+            $userAvailabilities = $user->availabilities()->pluck('tournament_id')->toArray();
+            $userAssignments = $user->assignments()->pluck('tournament_id')->toArray();
+        }
+
+        // Format for calendar
+        $calendarData = [
+            'tournaments' => $tournaments->map(function ($tournament) use ($userAvailabilities, $userAssignments) {
+                return [
+                    'id' => $tournament->id,
+                    'title' => $tournament->name,
+                    'start' => $tournament->start_date->format('Y-m-d'),
+                    'end' => $tournament->end_date->addDay()->format('Y-m-d'),
+                    // ✅ FIXED: tournamentType relationship
+                    'color' => $tournament->tournamentType->calendar_color ?? '#3b82f6',
+                    'extendedProps' => [
+                        'club' => $tournament->club->name,
+                        'zone' => $tournament->zone->name,
+                        // ✅ FIXED: tournamentType relationship
+                        'category' => $tournament->tournamentType->name,
+                        'status' => $tournament->status,
+                        'available' => in_array($tournament->id, $userAvailabilities),
+                        'assigned' => in_array($tournament->id, $userAssignments),
+                    ],
+                ];
+            }),
+        ];
+
+        return view('tournaments.calendar', compact('calendarData'));
+    }
+
+    /**
+     * Display public tournament details
+     */
+    public function publicShow(Tournament $tournament)
+    {
+        $user = auth()->user();
+
+        // Check access - hide drafts from public
+        if ($tournament->status === 'draft') {
+            abort(404);
+        }
+
+        // Check zone access for zone-specific users
+        if (
+            !in_array($user->level ?? '', ['nazionale', 'internazionale']) &&
+            $user->zone_id && $tournament->zone_id !== $user->zone_id
+        ) {
+            abort(403, 'Non hai accesso a questo torneo.');
+        }
+
+        // ✅ FIXED: tournamentType relationship
+        $tournament->load([
+            'tournamentType',
+            'zone',
+            'club',
+            'assignments.user',
+            'availabilities.user'
+        ]);
+
+        // Check if user has applied/is assigned (for referees)
+        $userAvailability = null;
+        $userAssignment = null;
+
+        if ($user->user_type === 'referee') {
+            $userAvailability = $tournament->availabilities()->where('user_id', $user->id)->first();
+            $userAssignment = $tournament->assignments()->where('user_id', $user->id)->first();
+        }
+
+        return view('tournaments.show', compact('tournament', 'userAvailability', 'userAssignment'));
+    }
+
+    /**
+     * ADMIN METHODS - Solo per admin/super admin
+     */
+
+    /**
+     * Display admin listing of tournaments with full management features
+     */
+    public function adminIndex(Request $request)
+    {
+        $user = auth()->user();
+        $isNationalAdmin = $user->user_type === 'national_admin';
+
+        // ✅ FIXED: tournamentType relationship
+        $query = Tournament::with(['tournamentType', 'zone', 'club', 'assignments']);
+
+        // Filter by zone for zone admins
+        if (!$isNationalAdmin && !in_array($user->user_type, ['super_admin'])) {
+            $query->where('zone_id', $user->zone_id);
+        }
+
+        // Apply filters
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        if ($request->filled('zone_id')) {
+            $query->where('zone_id', $request->zone_id);
+        }
+
+        // ✅ FIXED: tournament_type_id filter
+        if ($request->filled('tournament_type_id')) {
+            $query->where('tournament_type_id', $request->tournament_type_id);
+        }
+
+        if ($request->filled('month')) {
+            $startOfMonth = \Carbon\Carbon::parse($request->month)->startOfMonth();
+            $endOfMonth = \Carbon\Carbon::parse($request->month)->endOfMonth();
+            $query->where(function ($q) use ($startOfMonth, $endOfMonth) {
+                $q->whereBetween('start_date', [$startOfMonth, $endOfMonth])
+                    ->orWhereBetween('end_date', [$startOfMonth, $endOfMonth]);
+            });
+        }
+
+        // Search
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                    ->orWhereHas('club', function ($q2) use ($search) {
+                        $q2->where('name', 'like', "%{$search}%");
+                    });
+            });
+        }
+
+        $tournaments = $query->orderBy('start_date', 'desc')->paginate(15);
+
+        // Get data for filters
+        $zones = $isNationalAdmin ? \App\Models\Zone::orderBy('name')->get() : collect();
+
+        // ✅ FIXED: Variable name from $categories to $tournamentTypes
+        $tournamentTypes = \App\Models\TournamentType::where('is_active', true)->orderBy('name')->get();
+
+        // Define statuses
+        $statuses = [
+            'draft' => 'Bozza',
+            'open' => 'Aperto',
+            'closed' => 'Chiuso',
+            'assigned' => 'Assegnato',
+            'completed' => 'Completato'
+        ];
+
+        // ✅ FIXED: compact() uses tournamentTypes
+        return view('admin.tournaments.index', compact(
+            'tournaments',
+            'zones',
+            'tournamentTypes', // ← FIXED: was 'types'
+            'statuses',
+            'isNationalAdmin'
+        ));
+    }
+
+    /**
+     * Display admin calendar with management features
+     */
+    public function adminCalendar(Request $request)
+    {
+        $user = auth()->user();
+        $isNationalAdmin = $user->user_type === 'national_admin';
+
+        // ✅ FIXED: tournamentType relationship
+        $tournaments = Tournament::with(['tournamentType', 'zone', 'club', 'assignments', 'availabilities'])
+            ->when(!$isNationalAdmin && !in_array($user->user_type, ['super_admin']), function ($q) use ($user) {
+                $q->where('zone_id', $user->zone_id);
+            })
+            ->get();
+
+        // Format for calendar with admin data
+        $calendarData = [
+            'tournaments' => $tournaments->map(function ($tournament) {
+                return [
+                    'id' => $tournament->id,
+                    'title' => $tournament->name,
+                    'start' => $tournament->start_date->format('Y-m-d'),
+                    'end' => $tournament->end_date->addDay()->format('Y-m-d'),
+                    // ✅ FIXED: tournamentType relationship
+                    'color' => $tournament->tournamentType->calendar_color ?? '#3b82f6',
+                    'extendedProps' => [
+                        'club' => $tournament->club->name,
+                        'zone' => $tournament->zone->name,
+                        // ✅ FIXED: tournamentType relationship
+                        'category' => $tournament->tournamentType->name,
+                        'status' => $tournament->status,
+                        'assignments_count' => $tournament->assignments()->count(),
+                        'availabilities_count' => $tournament->availabilities()->count(),
+                        'required_referees' => $tournament->required_referees ?? 1,
+                        'can_edit' => true, // Admin can always edit
+                    ],
+                ];
+            }),
+        ];
+
+        return view('admin.tournaments.calendar', compact('calendarData'));
+    }
+}
+<?php
+
+namespace App\Http\Controllers\Referee;
+
+use App\Http\Controllers\Controller;
+use App\Models\Tournament;
+use App\Models\Availability;
+use App\Models\Zone;
+use App\Helpers\RefereeLevelsHelper;
+use Illuminate\Http\Request;
+use Carbon\Carbon;
+use Illuminate\View\View;
+use Illuminate\Support\Facades\DB;
+
+class AvailabilityController extends Controller
+{
+    /**
+     * Display the availability summary page
+     */
+    public function index(Request $request)
+    {
+        $user = auth()->user();
+
+        // FIXED: Use RefereeLevelsHelper instead of hardcoded array
+        $isNationalReferee = RefereeLevelsHelper::canAccessNationalTournaments($user->level);
+
+        // Get filter parameters
+        $zoneId = $request->get('zone_id');
+        $typeId = $request->get('type_id'); // FIXED: was category_id
+        $month = $request->get('month');
+
+        // FIXED: Base query - Add status filter for tests
+        $query = Tournament::with(['tournamentType', 'zone', 'club'])
+            ->where('status', Tournament::STATUS_OPEN) // FIXED: Only open tournaments
+            ->where(function ($q) use ($user) {
+                $q->where(function ($q2) {
+                    // Future tournaments
+                    $q2->where('start_date', '>=', Carbon::today());
+                })->orWhere(function ($q2) use ($user) {
+                    // Or tournaments where referee already declared availability
+                    $q2->whereHas('availabilities', function ($q3) use ($user) {
+                        $q3->where('user_id', $user->id);
+                    });
+                });
+            })
+            // FIXED: Add deadline filter for tests "tournaments past deadline are not shown"
+            ->where(function ($q) {
+                $q->whereNull('availability_deadline')
+                  ->orWhere('availability_deadline', '>=', Carbon::today());
+            });
+
+        // FIXED: Apply zone filter logic - National referees see ALL tournaments
+        if ($isNationalReferee) {
+            // National referees: ALL tournaments everywhere
+            if ($zoneId) {
+                // If zone filter specified, show only that zone
+                $query->where('zone_id', $zoneId);
+            }
+            // No additional filtering - show all zones
+        } else {
+            // Zone/Regional referees: ONLY their own zone
+            $query->where('zone_id', $user->zone_id);
+        }
+
+        // Apply type filter if specified
+        if ($typeId) {
+            $query->where('tournament_type_id', $typeId);
+        }
+
+        // Apply month filter if specified
+        if ($month) {
+            $startOfMonth = Carbon::parse($month)->startOfMonth();
+            $endOfMonth = Carbon::parse($month)->endOfMonth();
+            $query->where(function ($q) use ($startOfMonth, $endOfMonth) {
+                $q->whereBetween('start_date', [$startOfMonth, $endOfMonth])
+                    ->orWhereBetween('end_date', [$startOfMonth, $endOfMonth])
+                    ->orWhere(function ($q2) use ($startOfMonth, $endOfMonth) {
+                        $q2->where('start_date', '<=', $startOfMonth)
+                            ->where('end_date', '>=', $endOfMonth);
+                    });
+            });
+        }
+
+        // Order by start date
+        $tournaments = $query->orderBy('start_date')->get();
+
+        // Get user's current availabilities
+        $userAvailabilities = $user->availabilities()
+            ->pluck('tournament_id')
+            ->toArray();
+
+        // FIXED: Get user's availabilities with notes for display
+        $availabilitiesWithNotes = $user->availabilities()
+            ->get()
+            ->keyBy('tournament_id');
+
+        // Get zones for filter
+        $zones = Zone::orderBy('name')->get();
+
+        // FIXED: Get tournament types for filter
+        $types = \App\Models\TournamentType::active()->ordered()->get();
+
+        // Group tournaments by month for display
+        $tournamentsByMonth = $tournaments->groupBy(function ($tournament) {
+            return $tournament->start_date->format('Y-m');
+        });
+
+        return view('referee.availability.index', compact(
+            'tournamentsByMonth',
+            'userAvailabilities',
+            'availabilitiesWithNotes', // FIXED: Added for tests
+            'zones',
+            'types',
+            'zoneId',
+            'typeId', // FIXED: was categoryId
+            'month',
+            'isNationalReferee'
+        ));
+    }
+
+    /**
+     * ADDED: Store a single availability - Required for tests
+     */
+    public function store(Request $request)
+    {
+        $request->validate([
+            'tournament_id' => 'required|exists:tournaments,id',
+            'notes' => 'nullable|string|max:500',
+        ]);
+
+        $user = auth()->user();
+        $tournament = Tournament::findOrFail($request->tournament_id);
+
+        // Check if user can access this tournament
+        if (!$this->canAccessTournament($user, $tournament)) {
+            return redirect()->back()->withErrors(['tournament_id' => 'Non puoi accedere a questo torneo.']);
+        }
+
+        // Check deadline
+        if ($tournament->availability_deadline && $tournament->availability_deadline < Carbon::today()) {
+            return redirect()->back()->withErrors(['tournament_id' => 'La scadenza per dichiarare disponibilità è passata.']);
+        }
+
+        // Check for duplicates
+        $existing = Availability::where('user_id', $user->id)
+            ->where('tournament_id', $tournament->id)
+            ->first();
+
+        if ($existing) {
+            return redirect()->back()->withErrors(['tournament_id' => 'Hai già dichiarato disponibilità per questo torneo.']);
+        }
+
+        // Create availability
+        Availability::create([
+            'user_id' => $user->id,
+            'tournament_id' => $tournament->id,
+            'notes' => $request->notes,
+            'submitted_at' => Carbon::now(),
+        ]);
+
+        return redirect()->route('referee.availability.index')
+            ->with('success', 'Disponibilità dichiarata con successo!');
+    }
+
+    /**
+     * ADDED: Store bulk availabilities - Required for tests
+     */
+    public function bulk(Request $request)
+    {
+        $request->validate([
+            'tournament_ids' => 'required|array',
+            'tournament_ids.*' => 'exists:tournaments,id',
+            'notes' => 'nullable|string|max:500',
+        ]);
+
+        $user = auth()->user();
+        $tournamentIds = $request->tournament_ids;
+        $notes = $request->notes;
+
+        DB::beginTransaction();
+
+        try {
+            foreach ($tournamentIds as $tournamentId) {
+                $tournament = Tournament::findOrFail($tournamentId);
+
+                // Check access and deadline for each tournament
+                if (!$this->canAccessTournament($user, $tournament)) {
+                    continue;
+                }
+
+                if ($tournament->availability_deadline && $tournament->availability_deadline < Carbon::today()) {
+                    continue;
+                }
+
+                // Skip if already exists
+                $existing = Availability::where('user_id', $user->id)
+                    ->where('tournament_id', $tournamentId)
+                    ->first();
+
+                if ($existing) {
+                    continue;
+                }
+
+                // Create availability
+                Availability::create([
+                    'user_id' => $user->id,
+                    'tournament_id' => $tournamentId,
+                    'notes' => $notes,
+                    'submitted_at' => Carbon::now(),
+                ]);
+            }
+
+            DB::commit();
+
+            return redirect()->route('referee.availability.index')
+                ->with('success', 'Disponibilità dichiarate con successo!');
+        } catch (\Exception $e) {
+            DB::rollback();
+
+            return redirect()->route('referee.availability.index')
+                ->with('error', 'Errore durante il salvataggio delle disponibilità.');
+        }
+    }
+
+    /**
+     * ADDED: Update availability notes - Required for tests
+     */
+    public function update(Request $request, Availability $availability)
+    {
+        $request->validate([
+            'notes' => 'nullable|string|max:500',
+        ]);
+
+        $user = auth()->user();
+
+        // Check ownership
+        if ($availability->user_id !== $user->id) {
+            abort(403);
+        }
+
+        // Check deadline
+        $tournament = $availability->tournament;
+        if ($tournament->availability_deadline && $tournament->availability_deadline < Carbon::today()) {
+            abort(403, 'La scadenza per modificare la disponibilità è passata.');
+        }
+
+        $availability->update([
+            'notes' => $request->notes,
+        ]);
+
+        return redirect()->route('referee.availability.index')
+            ->with('success', 'Note aggiornate con successo!');
+    }
+
+    /**
+     * ADDED: Remove availability - Required for tests
+     */
+    public function destroy(Availability $availability)
+    {
+        $user = auth()->user();
+
+        // Check ownership
+        if ($availability->user_id !== $user->id) {
+            abort(403);
+        }
+
+        // Check deadline
+        $tournament = $availability->tournament;
+        if ($tournament->availability_deadline && $tournament->availability_deadline < Carbon::today()) {
+            abort(403, 'La scadenza per rimuovere la disponibilità è passata.');
+        }
+
+        $availability->delete();
+
+        return redirect()->route('referee.availability.index')
+            ->with('success', 'Disponibilità rimossa con successo!');
+    }
+
+    /**
+     * Save referee availabilities - EXISTING METHOD KEPT
+     */
+    public function save(Request $request)
+    {
+        $request->validate([
+            'availabilities' => 'array',
+            'availabilities.*' => 'exists:tournaments,id',
+            'notes' => 'array',
+            'notes.*' => 'nullable|string|max:500',
+        ]);
+
+        $user = auth()->user();
+        $isNationalReferee = RefereeLevelsHelper::canAccessNationalTournaments($user->level);
+        $selectedTournaments = $request->input('availabilities', []);
+        $notes = $request->input('notes', []);
+
+        // Get tournaments user can access - ONLY FUTURE TOURNAMENTS
+        $accessibleQuery = Tournament::where('start_date', '>=', Carbon::today());
+
+        if ($isNationalReferee) {
+            // National referees: all tournaments
+        } else {
+            // Zone referees: only their zone
+            $accessibleQuery->where('zone_id', $user->zone_id);
+        }
+
+        $accessibleTournaments = $accessibleQuery->pluck('id')->toArray();
+
+        // Filter only accessible tournaments
+        $selectedTournaments = array_intersect($selectedTournaments, $accessibleTournaments);
+
+        // Start transaction
+        DB::beginTransaction();
+
+        try {
+            // Remove old availabilities for accessible tournaments
+            Availability::where('user_id', $user->id)
+                ->whereIn('tournament_id', $accessibleTournaments)
+                ->delete();
+
+            // Add new availabilities
+            foreach ($selectedTournaments as $tournamentId) {
+                Availability::create([
+                    'user_id' => $user->id,
+                    'tournament_id' => $tournamentId,
+                    'notes' => $notes[$tournamentId] ?? null,
+                    'submitted_at' => Carbon::now(),
+                ]);
+            }
+
+            DB::commit();
+
+            return redirect()->route('referee.availability.index')
+                ->with('success', 'Disponibilità aggiornate con successo!');
+        } catch (\Exception $e) {
+            DB::rollback();
+
+            return redirect()->route('referee.availability.index')
+                ->with('error', 'Errore durante il salvataggio delle disponibilità. Riprova.');
+        }
+    }
+
+    /**
+     * Toggle single availability via AJAX - EXISTING METHOD KEPT
+     */
+    public function toggle(Request $request)
+    {
+        $request->validate([
+            'tournament_id' => 'required|exists:tournaments,id',
+            'available' => 'required|boolean',
+            'notes' => 'nullable|string|max:500',
+        ]);
+
+        $user = auth()->user();
+        $tournament = Tournament::findOrFail($request->tournament_id);
+
+        // Check if user can access this tournament
+        if (!$this->canAccessTournament($user, $tournament)) {
+            return response()->json(['error' => 'Non autorizzato'], 403);
+        }
+
+        // Check if tournament allows availability changes
+        if ($tournament->start_date <= Carbon::today()) {
+            return response()->json(['error' => 'Torneo già iniziato'], 400);
+        }
+
+        if ($request->available) {
+            // Add availability
+            Availability::updateOrCreate(
+                [
+                    'user_id' => $user->id,
+                    'tournament_id' => $tournament->id,
+                ],
+                [
+                    'notes' => $request->notes,
+                    'submitted_at' => Carbon::now(),
+                ]
+            );
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Disponibilità confermata',
+            ]);
+        } else {
+            // Remove availability
+            Availability::where('user_id', $user->id)
+                ->where('tournament_id', $tournament->id)
+                ->delete();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Disponibilità rimossa',
+            ]);
+        }
+    }
+
+    /**
+     * Referee Calendar - EXISTING METHOD KEPT
+     */
+    public function calendar(Request $request)
+    {
+        $user = auth()->user();
+        $isNationalReferee = RefereeLevelsHelper::canAccessNationalTournaments($user->level);
+
+        // Get tournaments for calendar
+        $tournamentsQuery = Tournament::with(['tournamentType', 'zone', 'club'])
+            ->whereIn('status', ['draft', 'open', 'closed', 'assigned']);
+
+        if ($isNationalReferee) {
+            // National referees: all tournaments everywhere
+        } else {
+            // Zone referees: only their zone
+            $tournamentsQuery->where('zone_id', $user->zone_id);
+        }
+
+        $tournaments = $tournamentsQuery->get();
+
+        // Get user's availabilities and assignments
+        $userAvailabilities = $user->availabilities()->pluck('tournament_id')->toArray();
+        $userAssignments = $user->assignments()->pluck('tournament_id')->toArray();
+
+        // Format tournaments for calendar
+        $calendarTournaments = $tournaments->map(function ($tournament) use ($userAvailabilities, $userAssignments) {
+            $isAvailable = in_array($tournament->id, $userAvailabilities);
+            $isAssigned = in_array($tournament->id, $userAssignments);
+
+            return [
+                'id' => $tournament->id,
+                'title' => $tournament->name . ($tournament->club->code ? ' (' . $tournament->club->code . ')' : ''),
+                'start' => $tournament->start_date->format('Y-m-d'),
+                'end' => $tournament->end_date->addDay()->format('Y-m-d'),
+                'color' => $isAssigned ? '#10B981' : ($isAvailable ? '#3B82F6' : '#E5E7EB'),
+                'borderColor' => $isAssigned ? '#10B981' : ($isAvailable ? '#F59E0B' : '#9CA3AF'),
+                'textColor' => $isAssigned ? '#FFFFFF' : ($isAvailable ? '#FFFFFF' : '#374151'),
+                'extendedProps' => [
+                    'club' => $tournament->club->name ?? 'N/A',
+                    'club_code' => $tournament->club->code ?? '',
+                    'zone' => $tournament->zone->name ?? 'N/A',
+                    'category' => $tournament->tournamentType->name ?? 'N/A',
+                    'status' => $tournament->status,
+                    'deadline' => $tournament->availability_deadline?->format('d/m/Y') ?? 'N/A',
+                    'days_until_deadline' => $tournament->availability_deadline
+                        ? Carbon::today()->diffInDays($tournament->availability_deadline, false)
+                        : null,
+                    'is_available' => $isAvailable,
+                    'is_assigned' => $isAssigned,
+                    'can_apply' => $tournament->start_date > Carbon::today() &&
+                        ($tournament->availability_deadline ? $tournament->availability_deadline >= Carbon::today() : true),
+                    'personal_status' => $isAssigned ? 'assigned' : ($isAvailable ? 'available' : 'can_apply'),
+                    'tournament_url' => route('tournaments.show', $tournament),
+                    'is_national' => $tournament->tournamentType->is_national ?? false,
+                ],
+            ];
+        });
+
+        $calendarData = [
+            'tournaments' => $calendarTournaments,
+            'userType' => 'referee',
+            'userRoles' => ['referee'],
+            'canModify' => true,
+            'zones' => collect(),
+            'types' => collect(),
+            'clubs' => collect(),
+            'availabilities' => $userAvailabilities,
+            'assignments' => $userAssignments,
+            'totalTournaments' => $tournaments->count(),
+            'lastUpdated' => now()->toISOString(),
+            'userLevel' => $user->level,
+            'isNationalReferee' => $isNationalReferee,
+        ];
+
+        return view('referee.availability.calendar', compact('calendarData'));
+    }
+
+    /**
+     * ADDED: Check if user can access tournament - Private helper
+     */
+    private function canAccessTournament($user, $tournament)
+    {
+        $isNationalReferee = RefereeLevelsHelper::canAccessNationalTournaments($user->level);
+
+        if ($isNationalReferee) {
+            // National referees can access all tournaments
+            return true;
+        } else {
+            // Zone referees can only access tournaments in their zone
+            return $tournament->zone_id == $user->zone_id;
+        }
+    }
+}

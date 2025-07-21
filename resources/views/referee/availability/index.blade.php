@@ -48,7 +48,7 @@
                 <select name="category_id" id="category_id" class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
                     <option value="">Tutte le categorie</option>
                     @foreach($types as $type)
-                        <option value="{{ $type->id }}" {{ $categoryId == $type->id ? 'selected' : '' }}>
+                        <option value="{{ $type->id }}" {{ $typeId == $type->id ? 'selected' : '' }}>
                             {{ $type->name }}
                             @if($type->is_national)
                                 (Nazionale)

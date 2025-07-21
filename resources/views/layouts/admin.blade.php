@@ -64,7 +64,7 @@
                             </a>
 
                             {{-- CALENDAR LINK - STANDARDIZED --}}
-                            <a href="{{ route('admin.calendar.index') }}"
+                            <a href="{{ route('tournaments.calendar') }}"
                                 class="inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition duration-150 ease-in-out
        {{ request()->routeIs('admin.calendar.*') ? 'border-white text-white' : 'border-transparent text-blue-100 hover:text-white hover:border-blue-300' }}">
                                 <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -322,7 +322,7 @@
                     </a>
 
                     {{-- MOBILE CALENDAR LINK --}}
-                    <a href="{{ route('admin.calendar.index') }}"
+                    <a href="{{ route('tournaments.calendar') }}"
                         class="block pl-3 pr-4 py-2 border-l-4 text-base font-medium transition duration-150 ease-in-out
            {{ request()->routeIs('admin.calendar.*') ? 'border-white text-white bg-blue-800' : 'border-transparent text-blue-100 hover:text-white hover:bg-blue-800 hover:border-blue-300' }}">
                         📅 Calendario

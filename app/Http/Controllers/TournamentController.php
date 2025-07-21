@@ -2,147 +2,468 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Controller;
+use App\Models\Tournament;
+use App\Models\Zone;
+use App\Models\TournamentType;
+use App\Models\Club;
 use Illuminate\Http\Request;
+use Illuminate\View\View;
+use Carbon\Carbon;
 
+/**
+ * 🎯 TournamentController Unificato con Codifica Colori Recuperata
+ */
 class TournamentController extends Controller
 {
-/**
- * Public Calendar - View only focus
- * Route: /tournaments/calendar
- */
-public function calendar(Request $request)
-{
-    $user = auth()->user();
+    /**
+     * ✅ Lista tornei unificata
+     */
+    public function index(Request $request): View
+    {
+        $user = auth()->user();
+        $isAdmin = $this->isAdmin($user);
+        $isNationalReferee = $this->isNationalReferee($user);
 
-    try {
-        // Get all published tournaments (public view)
-        $tournaments = Tournament::with(['tournamentType', 'zone', 'club'])
-            ->where('status', 'published') // Only published for public
-            ->orderBy('start_date', 'asc')
-            ->get();
+        $query = Tournament::with(['tournamentType', 'zone', 'club']);
 
-        // Get filter data for public filtering
-        $zones = \App\Models\Zone::orderBy('name')->get();
-        $tournamentTypes = \App\Models\TournamentType::orderBy('name')->get();
-        $clubs = \App\Models\Club::orderBy('name')->get();
+        // 🔐 FILTRO ACCESSO
+        if ($isAdmin) {
+            if (!$this->isNationalAdmin($user)) {
+                $query->where('zone_id', $user->zone_id);
+            }
+        } else {
+            $query->whereIn('status', ['open', 'closed', 'assigned', 'completed']);
 
-        // === STANDARDIZED CALENDAR DATA ===
+            if (!$isNationalReferee && $user->zone_id) {
+                $query->where('zone_id', $user->zone_id);
+            }
+        }
+
+        // 🔍 FILTRI
+        $this->applyFilters($query, $request);
+
+        $tournaments = $query->orderBy('start_date', 'desc')->paginate(20);
+
+        // 📊 STATISTICHE per admin
+        $stats = [];
+        if ($isAdmin) {
+            $stats = $this->calculateStats($tournaments);
+        }
+
+        return view('tournaments.index', compact('tournaments', 'isAdmin', 'stats'));
+    }
+
+    /**
+     * ✅ Calendario unificato con CODIFICA COLORI RECUPERATA
+     */
+    public function calendar(Request $request): View
+    {
+        $user = auth()->user();
+        $isAdmin = $this->isAdmin($user);
+        $isNationalReferee = $this->isNationalReferee($user);
+
+        // Query base con relazioni necessarie
+        $query = Tournament::with(['tournamentType', 'zone', 'club']);
+
+        // Load additional relations based on user type
+        if ($isAdmin) {
+            $query->with(['assignments', 'availabilities']);
+        }
+
+        // 🔐 STESSO FILTRO ACCESSO di index()
+        if ($isAdmin) {
+            if (!$this->isNationalAdmin($user)) {
+                $query->where('zone_id', $user->zone_id);
+            }
+        } else {
+            $query->whereIn('status', ['open', 'closed', 'assigned', 'completed']);
+            if (!$isNationalReferee && $user->zone_id) {
+                $query->where('zone_id', $user->zone_id);
+            }
+        }
+
+        $tournaments = $query->get();
+
+        // 👤 USER-SPECIFIC DATA
+        $userAvailabilities = [];
+        $userAssignments = [];
+
+        if ($user->user_type === 'referee') {
+            $userAvailabilities = $user->availabilities()->pluck('tournament_id')->toArray();
+            $userAssignments = $user->assignments()->pluck('tournament_id')->toArray();
+        }
+
+        // 📅 FORMAT FOR CALENDAR WITH COLORS
         $calendarData = [
-            // Core tournament data
-            'tournaments' => $tournaments->map(function ($tournament) {
-                return [
-                    'id' => $tournament->id,
-                    'title' => $tournament->name,
-                    'start' => $tournament->start_date->format('Y-m-d'),
-                    'end' => $tournament->end_date->addDay()->format('Y-m-d'),
-                    'color' => $this->getEventColor($tournament),
-                    'borderColor' => $this->getPublicBorderColor($tournament),
-                    'extendedProps' => [
-                        // Basic info
-                        'club' => $tournament->club->name ?? 'N/A',
-                        'zone' => $tournament->zone->name ?? 'N/A',
-                        'zone_id' => $tournament->zone_id,
-                        'category' => $tournament->tournamentType->name ?? 'N/A',
-                        'status' => $tournament->status,
-                        'tournament_url' => route('tournaments.show', $tournament),
-
-                        // Dates & deadlines
-                        'deadline' => $tournament->availability_deadline?->format('d/m/Y') ?? 'N/A',
-                        'days_until_deadline' => $tournament->days_until_deadline ?? 0,
-
-                        // Type info (important for public filtering)
-                        'type_id' => $tournament->tournament_type_id,
-                        'type' => $tournament->tournamentType,
-
-                        // Admin-specific (not applicable for public)
-                        'availabilities_count' => 0,
-                        'assignments_count' => 0,
-                        'required_referees' => 0,
-                        'max_referees' => 0,
-                        'management_priority' => 'none',
-
-                        // Referee-specific (not applicable for public)
-                        'is_available' => false,
-                        'is_assigned' => false,
-                        'can_apply' => false,
-                        'personal_status' => 'none',
-                    ],
-                ];
+            'tournaments' => $tournaments->map(function ($tournament) use ($userAvailabilities, $userAssignments, $isAdmin, $user) {
+                return $this->formatTournamentForCalendar($tournament, $userAvailabilities, $userAssignments, $isAdmin, $user);
             }),
 
-            // Context data
-            'userType' => 'public',
-            'userRoles' => $user ? [$user->user_type] : ['guest'],
-            'canModify' => false, // Public view is read-only
+            // 🎯 CONTEXT DATA
+            'userType' => $isAdmin ? 'admin' : 'referee',
+            'userRoles' => [$user->user_type],
+            'canModify' => true,
+            'isAdmin' => $isAdmin,
 
-            // === FILTER DATA (important for public) ===
-            'zones' => $zones,
-            'types' => $tournamentTypes,
-            'clubs' => $clubs,
+            // 🔧 FILTER DATA
+            'zones' => Zone::orderBy('name')->get(),
+            'types' => TournamentType::active()->ordered()->get(),
+            'clubs' => Club::active()->ordered()->get(),
 
-            // User-specific data (not applicable)
-            'availabilities' => [],
-            'assignments' => [],
+            // 👤 USER DATA
+            'availabilities' => $userAvailabilities,
+            'assignments' => $userAssignments,
 
-            // Metadata
+            // 📊 METADATA
             'totalTournaments' => $tournaments->count(),
             'lastUpdated' => now()->toISOString(),
         ];
 
         return view('tournaments.calendar', compact('calendarData'));
+    }
 
-    } catch (\Exception $e) {
-        \Log::error('Public calendar error', [
-            'user_id' => auth()->id(),
-            'error' => $e->getMessage()
-        ]);
+    /**
+     * ✅ Dettagli torneo
+     */
+    public function show(Tournament $tournament): View
+    {
+        $user = auth()->user();
+        $isAdmin = $this->isAdmin($user);
 
-        // Return error state
-        return view('tournaments.calendar', [
-            'calendarData' => [
-                'tournaments' => collect(),
-                'userType' => 'public',
-                'userRoles' => ['guest'],
-                'canModify' => false,
-                'zones' => collect(),
-                'types' => collect(),
-                'clubs' => collect(),
-                'availabilities' => [],
-                'assignments' => [],
-                'totalTournaments' => 0,
-                'lastUpdated' => now()->toISOString(),
-                'error_state' => 'error',
-                'error' => 'Errore nel caricamento del calendario pubblico.'
-            ]
-        ]);
+        // 🔐 CHECK ACCESS
+        $this->checkTournamentAccess($tournament, $user, $isAdmin);
+
+        // 📚 LOAD RELATIONS
+        $tournament->load(['tournamentType', 'zone', 'club']);
+
+        if ($isAdmin) {
+            $tournament->load(['assignments.user', 'availabilities.user']);
+        }
+
+        // 👤 REFEREE-SPECIFIC DATA
+        $userAvailability = null;
+        $userAssignment = null;
+
+        if ($user->user_type === 'referee') {
+            $userAvailability = $tournament->availabilities()->where('user_id', $user->id)->first();
+            $userAssignment = $tournament->assignments()->where('user_id', $user->id)->first();
+        }
+
+        // 📊 ADMIN-SPECIFIC STATS
+        $stats = [];
+        $assignedReferees = collect();
+        $availableReferees = collect();
+
+        if ($isAdmin) {
+            $stats = [
+                'total_assignments' => $tournament->assignments()->count(),
+                'total_availabilities' => $tournament->availabilities()->count(),
+                'required_referees' => $tournament->required_referees ?? 1,
+                'max_referees' => $tournament->max_referees ?? 4,
+                'days_until_deadline' => $tournament->availability_deadline
+                    ? $tournament->availability_deadline->diffInDays(now(), false)
+                    : null,
+                'is_editable' => method_exists($tournament, 'isEditable') ? $tournament->isEditable() : true,
+            ];
+
+            $assignedReferees = $tournament->assignments()->with('user')->get();
+            $availableReferees = $tournament->availabilities()->with('user')->get();
+        }
+
+        return view('tournaments.show', compact(
+            'tournament',
+            'userAvailability',
+            'userAssignment',
+            'stats',
+            'assignedReferees',
+            'availableReferees',
+            'isAdmin'
+        ));
+    }
+
+    // ===============================================
+    // 🛠️ HELPER METHODS
+    // ===============================================
+
+    private function isAdmin($user): bool
+    {
+        return in_array($user->user_type, ['admin', 'national_admin', 'super_admin']);
+    }
+
+    private function isNationalAdmin($user): bool
+    {
+        return in_array($user->user_type, ['national_admin', 'super_admin']);
+    }
+
+    private function isNationalReferee($user): bool
+    {
+        return in_array($user->level ?? '', ['nazionale', 'internazionale']);
+    }
+
+    private function applyFilters($query, Request $request): void
+    {
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                    ->orWhereHas('club', function ($q2) use ($search) {
+                        $q2->where('name', 'like', "%{$search}%");
+                    });
+            });
+        }
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        if ($request->filled('zone_id')) {
+            $query->where('zone_id', $request->zone_id);
+        }
+
+        if ($request->filled('tournament_type_id')) {
+            $query->where('tournament_type_id', $request->tournament_type_id);
+        }
+
+        if ($request->filled('month')) {
+            $startOfMonth = Carbon::parse($request->month)->startOfMonth();
+            $endOfMonth = Carbon::parse($request->month)->endOfMonth();
+            $query->where(function ($q) use ($startOfMonth, $endOfMonth) {
+                $q->whereBetween('start_date', [$startOfMonth, $endOfMonth])
+                    ->orWhereBetween('end_date', [$startOfMonth, $endOfMonth])
+                    ->orWhere(function ($q2) use ($startOfMonth, $endOfMonth) {
+                        $q2->where('start_date', '<=', $startOfMonth)
+                            ->where('end_date', '>=', $endOfMonth);
+                    });
+            });
+        }
+    }
+
+    /**
+     * 🎨 Format tournament for calendar display WITH COLOR LOGIC
+     */
+    private function formatTournamentForCalendar($tournament, $userAvailabilities, $userAssignments, $isAdmin, $user): array
+    {
+        $isAvailable = in_array($tournament->id, $userAvailabilities);
+        $isAssigned = in_array($tournament->id, $userAssignments);
+
+        return [
+            'id' => $tournament->id,
+            'title' => $tournament->name,
+            'start' => $tournament->start_date->format('Y-m-d'),
+            'end' => $tournament->end_date->addDay()->format('Y-m-d'),
+            // 🎨 RECUPERATA LOGICA COLORI ORIGINALE
+            'color' => $this->getEventColor($tournament, $isAssigned, $isAvailable, $isAdmin),
+            'borderColor' => $this->getBorderColor($tournament, $isAssigned, $isAvailable, $isAdmin),
+            'extendedProps' => [
+                // Basic info
+                'club' => $tournament->club->name ?? 'N/A',
+                'zone' => $tournament->zone->name ?? 'N/A',
+                'zone_id' => $tournament->zone_id,
+                'category' => $tournament->tournamentType->name ?? 'N/A',
+                'status' => $tournament->status,
+
+                // 🎯 DIFFERENT URL BASED ON USER TYPE
+                'tournament_url' => $isAdmin
+                    ? route('admin.tournaments.edit', $tournament)
+                    : route('tournaments.show', $tournament),
+
+                'deadline' => $tournament->availability_deadline?->format('d/m/Y') ?? 'N/A',
+                'type_id' => $tournament->tournament_type_id,
+
+                // Referee-specific
+                'is_available' => $isAvailable,
+                'is_assigned' => $isAssigned,
+                'can_apply' => $this->canApply($tournament, $user),
+                'personal_status' => $isAssigned ? 'assigned' : ($isAvailable ? 'available' : 'can_apply'),
+
+                // Admin-specific
+                'availabilities_count' => $isAdmin ? $tournament->availabilities()->count() : 0,
+                'assignments_count' => $isAdmin ? $tournament->assignments()->count() : 0,
+                'required_referees' => $tournament->required_referees ?? 1,
+                'max_referees' => $tournament->max_referees ?? 4,
+                'management_priority' => $isAdmin ? $this->getManagementPriority($tournament) : 'none',
+
+                // 🎯 UI BEHAVIOR FLAGS
+                'show_edit_button' => $isAdmin,
+                'show_delete_button' => $isAdmin && $tournament->status === 'draft',
+                'click_action' => $isAdmin ? 'edit' : 'show',
+            ],
+        ];
+    }
+
+    private function checkTournamentAccess($tournament, $user, $isAdmin): void
+    {
+        if (!$isAdmin) {
+            if ($tournament->status === 'draft') {
+                abort(404);
+            }
+
+            if (!$this->isNationalReferee($user) && $user->zone_id && $tournament->zone_id !== $user->zone_id) {
+                abort(403, 'Non hai accesso a questo torneo.');
+            }
+        } else {
+            if (!$this->isNationalAdmin($user) && $tournament->zone_id !== $user->zone_id) {
+                abort(403, 'Non hai accesso a questo torneo.');
+            }
+        }
+    }
+
+    private function calculateStats($tournaments): array
+    {
+        if (method_exists($tournaments, 'getCollection')) {
+            $collection = $tournaments->getCollection();
+            $total = $tournaments->total();
+        } else {
+            $collection = $tournaments;
+            $total = $tournaments->count();
+        }
+
+        $byStatus = $collection->groupBy('status');
+
+        return [
+            'total' => $total,
+            'draft' => $byStatus->get('draft', collect())->count(),
+            'open' => $byStatus->get('open', collect())->count(),
+            'closed' => $byStatus->get('closed', collect())->count(),
+            'assigned' => $byStatus->get('assigned', collect())->count(),
+            'completed' => $byStatus->get('completed', collect())->count(),
+        ];
+    }
+
+    // ===============================================
+    // 🎨 COLOR LOGIC RECUPERATA DA Admin\CalendarController
+    // ===============================================
+
+    /**
+     * 🎨 Get event color - RECUPERATA LOGICA ORIGINALE
+     */
+    private function getEventColor($tournament, $isAssigned = false, $isAvailable = false, $isAdmin = false): string
+    {
+        if ($isAdmin) {
+            // Admin: colore basato su CATEGORIA TORNEO (logica originale)
+            return match ($tournament->tournamentType->name ?? 'default') {
+                'Categoria A' => '#FF6B6B',  // Rosso
+                'Categoria B' => '#4ECDC4',  // Teal
+                'Categoria C' => '#45B7D1',  // Blu
+                'Categoria D' => '#96CEB4',  // Verde
+                default => '#3B82F6'         // Blu default
+            };
+        } else {
+            // Referee: colore basato su personal status
+            if ($isAssigned) return '#10B981';  // Green - Assigned
+            if ($isAvailable) return '#F59E0B'; // Yellow - Available
+            return '#3B82F6';                   // Blue - Can apply
+        }
+    }
+
+    /**
+     * 🎨 Get border color - RECUPERATA LOGICA ORIGINALE
+     */
+    private function getBorderColor($tournament, $isAssigned = false, $isAvailable = false, $isAdmin = false): string
+    {
+        if ($isAdmin) {
+            // Admin border: basato su STATUS TORNEO (logica originale)
+            return match ($tournament->status) {
+                'draft' => '#F59E0B',       // Amber - Draft
+                'open' => '#10B981',        // Green - Published/Open
+                'closed' => '#6B7280',      // Gray - Closed
+                'assigned' => '#059669',    // Dark Green - Assigned
+                'completed' => '#374151',   // Dark Gray - Completed
+                'cancelled' => '#EF4444',  // Red - Cancelled
+                default => '#10B981'        // Green default
+            };
+        } else {
+            // Referee border: basato su personal status
+            if ($isAssigned) return '#059669';  // Dark green
+            if ($isAvailable) return '#D97706'; // Dark yellow
+            return '#1E40AF';                   // Dark blue
+        }
+    }
+
+    /**
+     * 🎨 Calculate management priority - RECUPERATA LOGICA ORIGINALE
+     */
+    private function getManagementPriority($tournament): string
+    {
+        try {
+            $availabilities = $tournament->availabilities()->count();
+            $assignments = $tournament->assignments()->count();
+            $required = $tournament->required_referees ?? $tournament->tournamentType->min_referees ?? 1;
+
+            // Calcola giorni fino alla deadline
+            $daysUntilDeadline = 999;
+            if ($tournament->availability_deadline) {
+                $daysUntilDeadline = $tournament->availability_deadline->diffInDays(now(), false);
+            }
+
+            // Urgent: Missing referees or overdue deadline
+            if ($daysUntilDeadline < 0 || $assignments < $required) {
+                return 'urgent';
+            }
+
+            // Complete: Fully staffed
+            if ($assignments >= $required) {
+                return 'complete';
+            }
+
+            // In progress: Has some availability/assignments but not complete
+            if ($availabilities > 0 || $assignments > 0) {
+                return 'in_progress';
+            }
+
+            // Open: Ready for availability submissions
+            return 'open';
+        } catch (\Exception $e) {
+            return 'unknown';
+        }
+    }
+
+    private function canApply($tournament, $user): bool
+    {
+        if ($user->user_type !== 'referee') return false;
+        if ($tournament->status !== 'open') return false;
+        if ($tournament->start_date <= now()) return false;
+        if ($tournament->availability_deadline && $tournament->availability_deadline < now()) return false;
+
+        return true;
     }
 }
 
-/**
- * Get event color based on tournament type (same as admin/referee)
- */
-private function getEventColor($tournament): string
-{
-    return match($tournament->tournamentType->name ?? 'default') {
-        'Categoria A' => '#FF6B6B',
-        'Categoria B' => '#4ECDC4',
-        'Categoria C' => '#45B7D1',
-        'Categoria D' => '#96CEB4',
-        default => '#3B82F6'
-    };
-}
+/*
+=================================================================
+🎨 CODIFICA COLORI RECUPERATA:
+=================================================================
 
-/**
- * Public border color - based on tournament status (like admin)
- */
-private function getPublicBorderColor($tournament): string
-{
-    return match($tournament->status) {
-        'published' => '#10B981',   // Green - Published
-        'in_progress' => '#3B82F6', // Blue - In progress
-        'completed' => '#6B7280',   // Gray - Completed
-        'cancelled' => '#EF4444',   // Red - Cancelled
-        default => '#10B981'        // Green default (published)
-    };
-}
-}
+ADMIN VIEW:
+- Colore principale: Categoria Torneo
+  * Categoria A: #FF6B6B (Rosso)
+  * Categoria B: #4ECDC4 (Teal)
+  * Categoria C: #45B7D1 (Blu)
+  * Categoria D: #96CEB4 (Verde)
+
+- Bordo: Status Torneo
+  * Draft: #F59E0B (Amber)
+  * Open: #10B981 (Green)
+  * Closed: #6B7280 (Gray)
+  * Assigned: #059669 (Dark Green)
+  * Completed: #374151 (Dark Gray)
+  * Cancelled: #EF4444 (Red)
+
+REFEREE VIEW:
+- Colore: Personal Status
+  * Assigned: #10B981 (Green)
+  * Available: #F59E0B (Yellow)
+  * Can Apply: #3B82F6 (Blue)
+
+- Bordo: Personal Status
+  * Assigned: #059669 (Dark Green)
+  * Available: #D97706 (Dark Yellow)
+  * Can Apply: #1E40AF (Dark Blue)
+
+MANAGEMENT PRIORITY:
+- urgent: deadline passata o arbitri mancanti
+- complete: completamente staffato
+- in_progress: parzialmente staffato
+- open: pronto per disponibilità
+*/
