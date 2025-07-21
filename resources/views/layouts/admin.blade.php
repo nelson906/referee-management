@@ -271,9 +271,9 @@
                                         class="absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5"
                                         style="display: none;">
                                         <div class="py-1">
-                                            <a href="#"
+                                            <a href="{{ route('profile.edit') }}"
                                                 class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Profilo</a>
-                                            <a href="#"
+                                            <a href="{{ route('admin.settings') }}"
                                                 class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Impostazioni</a>
                                             <div class="border-t border-gray-100"></div>
                                             <form method="POST" action="{{ route('logout') }}">

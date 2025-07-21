@@ -87,7 +87,7 @@
 
                             <div x-show="open" @click.away="open = false" x-transition:enter="transition ease-out duration-200" x-transition:enter-start="transform opacity-0 scale-95" x-transition:enter-end="transform opacity-100 scale-100" x-transition:leave="transition ease-in duration-75" x-transition:leave-start="transform opacity-100 scale-100" x-transition:leave-end="transform opacity-0 scale-95" class="origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 focus:outline-none" style="display: none;">
                                 <div class="py-1">
-                                    <a href="{{ route('referee.profile.edit') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Profilo</a>
+                                    <a href="{{ route('profile.edit') }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Profilo</a>
                                     <form method="POST" action="{{ route('logout') }}">
                                         @csrf
                                         <button type="submit" class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
@@ -152,7 +152,7 @@
                         <div class="text-sm text-blue-300 ml-2">({{ auth()->user()->email }})</div>
                     </div>
                     <div class="mt-3 space-y-1">
-                        <a href="{{ route('referee.profile.edit') }}" class="block px-3 py-2 text-base font-medium text-blue-100 hover:text-white hover:bg-blue-700">Profilo</a>
+                        <a href="{{ route('profile.edit') }}" class="block px-3 py-2 text-base font-medium text-blue-100 hover:text-white hover:bg-blue-700">Profilo</a>
                         <form method="POST" action="{{ route('logout') }}">
                             @csrf
                             <button type="submit" class="block w-full text-left px-3 py-2 text-base font-medium text-blue-100 hover:text-white hover:bg-blue-700">

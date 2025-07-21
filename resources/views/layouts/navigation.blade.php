@@ -71,7 +71,7 @@
                                         📋 Le Mie Assegnazioni
                                     </x-dropdown-link>
                                     <div class="border-t border-gray-100"></div>
-                                    <x-dropdown-link :href="route('referee.profile.show')">
+                                    <x-dropdown-link :href="route('profile.edit')">
                                         👤 Il Mio Profilo
                                     </x-dropdown-link>
                                 </x-slot>
@@ -228,7 +228,7 @@
                             </x-dropdown-link>
 
                             @if(auth()->user()->user_type === 'referee')
-                                <x-dropdown-link :href="route('referee.profile.show')">
+                                <x-dropdown-link :href="route('profile.edit')">
                                     ⚽ Profilo Arbitro
                                 </x-dropdown-link>
                             @endif

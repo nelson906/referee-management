@@ -1,6 +1,8 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use Illuminate\Http\Request; // ← AGGIUNGERE
+use Illuminate\Foundation\Auth\EmailVerificationRequest; // ← AGGIUNGERE
 use App\Http\Controllers\SuperAdmin;
 use App\Http\Controllers\Admin;
 use App\Http\Controllers\Referee;
@@ -8,6 +10,7 @@ use App\Http\Controllers\Reports;
 use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\TournamentController; // ← UNIFICATO
 
 /*
@@ -26,12 +29,36 @@ Route::get('/', function () {
 Route::get('login', [AuthenticatedSessionController::class, 'create'])->name('login');
 Route::post('login', [AuthenticatedSessionController::class, 'store']);
 Route::post('logout', [AuthenticatedSessionController::class, 'destroy'])->name('logout');
+Route::middleware('auth')->group(function () {
+    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
+    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
+    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+    Route::put('/password', [ProfileController::class, 'updatePassword'])->name('password.update');
+});
+
 
 // Authenticated Routes
 Route::middleware(['auth'])->group(function () {
 
     // Dashboard - redirect based on user type
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+
+
+    // ✅ AGGIUNGERE QUESTE ROUTE DI VERIFICA EMAIL:
+    Route::get('/email/verify', function () {
+        return view('auth.verify-email');
+    })->name('verification.notice');
+
+    Route::get('/email/verify/{id}/{hash}', function (EmailVerificationRequest $request) {
+        $request->fulfill();
+        return redirect('/dashboard');
+    })->middleware(['signed'])->name('verification.verify');
+
+    Route::post('/email/verification-notification', function (Request $request) {
+        $request->user()->sendEmailVerificationNotification();
+        return back()->with('message', 'Verification link sent!');
+    })->middleware(['throttle:6,1'])->name('verification.send');
+
 
     // =================================================================
     // ✅ UNIFIED TOURNAMENT ROUTES (tutti gli utenti autorizzati)
@@ -185,6 +212,9 @@ Route::middleware(['auth'])->group(function () {
             Route::get('/{document}/download', [DocumentController::class, 'download'])->name('download');
             Route::delete('/{document}', [DocumentController::class, 'destroy'])->name('destroy');
         });
+
+        Route::get('/settings', [Admin\SettingsController::class, 'index'])->name('settings');
+        Route::post('/settings', [Admin\SettingsController::class, 'update'])->name('settings.update');
     });
 
     // =================================================================
@@ -235,12 +265,6 @@ Route::middleware(['auth'])->group(function () {
 
         // Dashboard
         Route::get('/', [Referee\DashboardController::class, 'index'])->name('dashboard');
-
-        // Profile Management
-        Route::get('/profile', [Referee\ProfileController::class, 'show'])->name('profile.show');
-        Route::put('/profile', [Referee\ProfileController::class, 'update'])->name('profile.update');
-        Route::get('profile', [Referee\ProfileController::class, 'edit'])->name('profile.edit');
-        Route::put('profile/password', [Referee\ProfileController::class, 'updatePassword'])->name('profile.update-password');
 
         // Availability Management - SEZIONE UNIFICATA E CORRETTA
         Route::prefix('availability')->name('availability.')->group(function () {
@@ -342,7 +366,7 @@ Route::middleware(['auth'])->group(function () {
             return \App\Models\InstitutionalEmail::where('is_active', true)
                 ->where(function ($query) use ($zoneId) {
                     $query->where('zone_id', $zoneId)
-                          ->orWhere('receive_all_notifications', true);
+                        ->orWhere('receive_all_notifications', true);
                 })
                 ->select('id', 'name', 'email', 'category')
                 ->get()

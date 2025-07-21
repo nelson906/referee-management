@@ -237,13 +237,13 @@
             {{-- Calendario Tornei Pubblico --}}
             <a href="{{ route('tournaments.calendar') }}"
                class="flex items-center space-x-3 p-3 rounded-lg transition duration-200 group text-indigo-200 hover:bg-indigo-700 hover:text-white"
-               title="Calendario Pubblico">
+               title="Calendario">
                 <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
                 </svg>
-                <span x-show="sidebarOpen">Calendario Pubblico</span>
-                <span x-show="!sidebarOpen" class="absolute left-full ml-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">Calendario Pubblico</span>
+                <span x-show="sidebarOpen">Calendario</span>
+                <span x-show="!sidebarOpen" class="absolute left-full ml-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">Calendario</span>
             </a>
         </div>
     </div>
