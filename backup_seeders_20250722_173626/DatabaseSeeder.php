@@ -23,30 +23,30 @@ class DatabaseSeeder extends Seeder
         // Disabilita controlli foreign key temporaneamente
         Schema::disableForeignKeyConstraints();
 
-try {
+        try {
             // 1. Zone Geografiche (base del sistema)
-            $this->callSeederWithTiming(ZoneSeeder::class);
+            $this->callSeederWithTiming('ZoneSeeder');
 
             // 2. Utenti Amministratori (gestione sistema)
-            $this->callSeederWithTiming(UserSeeder::class);
+            $this->callSeederWithTiming('UserSeeder');
 
             // 3. Tipologie Tornei (categorie e regole)
-            $this->callSeederWithTiming(TournamentTypeSeeder::class);
+            $this->callSeederWithTiming('TournamentTypeSeeder');
 
             // 4. Circoli Golf (location tornei)
-            $this->callSeederWithTiming(ClubsSeeder::class);
+            $this->callSeederWithTiming('ClubSeeder');
 
             // 5. Arbitri (utenti principali del sistema)
-            $this->callSeederWithTiming(RefereeSeeder::class);
+            $this->callSeederWithTiming('RefereeSeeder');
 
             // 6. Tornei (eventi da arbitrare)
-            $this->callSeederWithTiming(TournamentSeeder::class);
+            $this->callSeederWithTiming('TournamentSeeder');
 
             // 7. Disponibilità Arbitri (workflow principale)
-            $this->callSeederWithTiming(AvailabilitySeeder::class);
+            $this->callSeederWithTiming('AvailabilitySeeder');
 
             // 8. Assegnazioni Arbitri (completamento workflow)
-            $this->callSeederWithTiming(AssignmentsSeeder::class);
+            $this->callSeederWithTiming('AssignmentSeeder');
 
             // 9. Seeder opzionali
             $this->callOptionalSeeders();

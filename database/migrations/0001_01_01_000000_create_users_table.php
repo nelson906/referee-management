@@ -15,8 +15,10 @@ return new class extends Migration
         Schema::create('zones', function (Blueprint $table) {
             $table->id();
             $table->string('name');
+            $table->string('code', 10)->unique();  // ✅ AGGIUNGI QUESTA RIGA
             $table->text('description')->nullable();
             $table->boolean('is_national')->default(false);
+            $table->boolean('is_active')->default(true);
             $table->string('header_document_path')->nullable();
             $table->timestamp('header_updated_at')->nullable();
             $table->unsignedBigInteger('header_updated_by')->nullable();
@@ -34,7 +36,7 @@ return new class extends Migration
             $table->string('email')->unique();
             $table->enum('user_type', ['super_admin', 'national_admin', 'admin', 'referee'])->default('referee');
             $table->enum('level', ['Aspirante', '1_livello', 'Regionale', 'Nazionale', 'Internazionale', 'Archivio'])->default('1_livello');
-            $table->string('referee_code');
+            $table->string('referee_code')->nullable();
             $table->string(column: 'category')->nullable();
             $table->string(column: 'certified_date')->nullable();
             $table->foreignId('zone_id')->nullable()->constrained('zones');

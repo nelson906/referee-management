@@ -1,4 +1,5 @@
 <?php
+
 /**
  * MIGRATION CORRETTA - TOURNAMENT TYPES
  *
@@ -26,7 +27,7 @@ return new class extends Migration
             $table->boolean('is_national')->default(false);
             $table->enum('level', ['zonale', 'nazionale'])->default('zonale');
             $table->enum('required_level', ['aspirante', 'primo_livello', 'regionale', 'nazionale', 'internazionale'])
-                  ->default('aspirante');
+                ->default('aspirante');
 
             // ✅ FIXED: Physical columns per compatibility
             $table->integer('min_referees')->default(1);
@@ -36,6 +37,11 @@ return new class extends Migration
             $table->boolean('is_active')->default(true);
             $table->json('settings')->nullable();
             $table->timestamps();
+
+            // ✅ POTREBBERO SERVIRE ANCHE QUESTI (dal seeder):
+            $table->boolean('requires_approval')->default(false);
+            $table->integer('priority_level')->default(1);
+            $table->boolean('active')->default(true);  // Alias di is_active?
 
             // Indexes
             $table->index(['is_active', 'sort_order']);

@@ -4,12 +4,10 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\Schema;
 use App\Models\Availability;
 use App\Models\Tournament;
 use App\Models\User;
 use App\Models\Zone;
-use App\Models\TournamentType;
 use Database\Seeders\Helpers\SeederHelper;
 use Carbon\Carbon;
 
@@ -22,30 +20,22 @@ class AvailabilitySeeder extends Seeder
     {
         $this->command->info('📅 Creando Disponibilità Arbitri per Tornei...');
 
-        // Gestisci foreign keys
-        Schema::disableForeignKeyConstraints();
+        // Elimina disponibilità esistenti per evitare duplicati
+        Availability::truncate();
 
-        try {
-            // Elimina disponibilità esistenti per evitare duplicati
-            Availability::truncate();
+        $totalAvailabilities = 0;
 
-            $totalAvailabilities = 0;
+        // Crea disponibilità per tornei aperti (zonali)
+        $totalAvailabilities += $this->createZonalAvailabilities();
 
-            // Crea disponibilità per tornei aperti (zonali)
-            $totalAvailabilities += $this->createZonalAvailabilities();
+        // Crea disponibilità per tornei nazionali
+        $totalAvailabilities += $this->createNationalAvailabilities();
 
-            // Crea disponibilità per tornei nazionali
-            $totalAvailabilities += $this->createNationalAvailabilities();
+        // Valida e mostra riassunto
+        $this->validateAvailabilities();
+        $this->showAvailabilitySummary();
 
-            // Valida e mostra riassunto
-            $this->validateAvailabilities();
-            $this->showAvailabilitySummary();
-
-            $this->command->info("🏆 Disponibilità create con successo: {$totalAvailabilities} dichiarazioni totali");
-
-        } finally {
-            Schema::enableForeignKeyConstraints();
-        }
+        $this->command->info("🏆 Disponibilità create con successo: {$totalAvailabilities} dichiarazioni totali");
     }
 
     /**
@@ -55,17 +45,14 @@ class AvailabilitySeeder extends Seeder
     {
         $this->command->info("📍 Creando disponibilità per tornei zonali...");
 
-        // ✅ FIXED: Tornei zonali (non nazionali)
         $openTournaments = Tournament::where('status', 'open')
                                    ->whereNotNull('zone_id')
                                    ->where('availability_deadline', '>', now())
-                                   ->whereHas('tournamentType', function($query) {
-                                       $query->where('is_national', false);
-                                   })
-                                   ->with(['zone', 'tournamentType'])
+                                   ->with(['zone'])
                                    ->get();
 
         $totalCreated = 0;
+        $config = SeederHelper::getConfig();
 
         foreach ($openTournaments as $tournament) {
             $created = $this->createAvailabilitiesForTournament($tournament, 'zonal');
@@ -82,14 +69,9 @@ class AvailabilitySeeder extends Seeder
     {
         $this->command->info("🌍 Creando disponibilità per tornei nazionali...");
 
-        // ✅ FIXED: Tornei nazionali (hanno zone ma tipo nazionale)
         $nationalTournaments = Tournament::where('status', 'open')
-                                        ->whereNotNull('zone_id')  // ✅ FIXED: Anche nazionali hanno zone
+                                        ->whereNull('zone_id')
                                         ->where('availability_deadline', '>', now())
-                                        ->whereHas('tournamentType', function($query) {
-                                            $query->where('is_national', true);
-                                        })
-                                        ->with(['zone', 'tournamentType'])
                                         ->get();
 
         $totalCreated = 0;
@@ -118,7 +100,7 @@ class AvailabilitySeeder extends Seeder
         }
 
         // Calcola quanti arbitri dovrebbero dichiarare disponibilità (70% circa)
-        $availabilityRate = 0.7;  // ✅ FIXED: Hardcoded per evitare config
+        $availabilityRate = SeederHelper::getConfig()['availability_rate'];
         $availableCount = (int) ceil($eligibleReferees->count() * $availabilityRate);
 
         // Seleziona arbitri casuali che dichiareranno disponibilità
@@ -145,7 +127,7 @@ class AvailabilitySeeder extends Seeder
             // Per tornei nazionali: tutti gli arbitri di livello nazionale e internazionale
             return User::where('user_type', 'referee')
                       ->where('is_active', true)
-                      ->whereIn('level', ['Nazionale', 'Internazionale'])  // ✅ FIXED: Valori ENUM corretti
+                      ->whereIn('level', ['nazionale', 'internazionale'])
                       ->get();
         } else {
             // Per tornei zonali: arbitri della stessa zona + nazionali/internazionali
@@ -156,7 +138,7 @@ class AvailabilitySeeder extends Seeder
 
             $nationalReferees = User::where('user_type', 'referee')
                                    ->where('is_active', true)
-                                   ->whereIn('level', ['Nazionale', 'Internazionale'])  // ✅ FIXED: Valori ENUM corretti
+                                   ->whereIn('level', ['nazionale', 'internazionale'])
                                    ->get();
 
             return $zoneReferees->merge($nationalReferees)->unique('id');
@@ -168,9 +150,9 @@ class AvailabilitySeeder extends Seeder
      */
     private function createAvailabilityRecord(Tournament $tournament, User $referee): ?Availability
     {
-        // ✅ FIXED: Usa user_id invece di referee_id
+        // Verifica che non esista già
         $existing = Availability::where('tournament_id', $tournament->id)
-                                ->where('user_id', $referee->id)
+                                ->where('referee_id', $referee->id)
                                 ->first();
 
         if ($existing) {
@@ -183,9 +165,14 @@ class AvailabilitySeeder extends Seeder
 
         return Availability::create([
             'tournament_id' => $tournament->id,
-            'user_id' => $referee->id,  // ✅ FIXED: user_id invece di referee_id
+            'referee_id' => $referee->id,
+            'is_available' => $isAvailable,
             'submitted_at' => $this->generateSubmissionTime($tournament),
             'notes' => $notes,
+            'travel_required' => $this->determineTravelRequired($tournament, $referee),
+            'accommodation_needed' => $this->determineAccommodationNeeded($tournament, $referee),
+            'preferred_role' => $this->generatePreferredRole($referee->level),
+            'conflicts' => $this->generateConflicts($isAvailable),
             'created_at' => now(),
             'updated_at' => now(),
         ]);
@@ -196,17 +183,17 @@ class AvailabilitySeeder extends Seeder
      */
     private function generateAvailabilityStatus(User $referee, Tournament $tournament): bool
     {
-        // ✅ FIXED: Valori ENUM corretti
+        // Probabilità più alta per arbitri di livello superiore
         $baseRate = match($referee->level) {
-            'Internazionale' => 0.9,
-            'Nazionale' => 0.85,
-            'Regionale' => 0.75,
-            '1_livello' => 0.7,
-            'Aspirante' => 0.65,
+            'internazionale' => 0.9,
+            'nazionale' => 0.85,
+            'regionale' => 0.75,
+            'primo_livello' => 0.7,
+            'aspirante' => 0.65,
             default => 0.7
         };
 
-        // Riduce probabilità per tornei durante weekend estivi
+        // Riduce probabilità per tornei durante weekend estivi (più impegni personali)
         $tournamentDate = Carbon::parse($tournament->start_date);
         if ($tournamentDate->month >= 6 && $tournamentDate->month <= 8) {
             $baseRate *= 0.8;
@@ -261,15 +248,86 @@ class AvailabilitySeeder extends Seeder
     }
 
     /**
+     * Determina se è richiesto viaggio
+     */
+    private function determineTravelRequired(Tournament $tournament, User $referee): bool
+    {
+        // Se il torneo è nella stessa zona dell'arbitro, probabilmente non serve viaggio
+        if ($tournament->zone_id === $referee->zone_id) {
+            return rand(1, 100) <= 20; // 20% di possibilità anche nella stessa zona
+        }
+
+        // Se zone diverse o torneo nazionale, probabile viaggio
+        return rand(1, 100) <= 80;
+    }
+
+    /**
+     * Determina se serve alloggio
+     */
+    private function determineAccommodationNeeded(Tournament $tournament, User $referee): bool
+    {
+        // Se non serve viaggio, non serve alloggio
+        if (!$this->determineTravelRequired($tournament, $referee)) {
+            return false;
+        }
+
+        // Se serve viaggio, 60% di possibilità di servire alloggio
+        return rand(1, 100) <= 60;
+    }
+
+    /**
+     * Genera ruolo preferito
+     */
+    private function generatePreferredRole(string $level): ?string
+    {
+        $roles = SeederHelper::getAssignmentRoles();
+
+        // Arbitri senior preferiscono ruoli di responsabilità
+        if (in_array($level, ['nazionale', 'internazionale'])) {
+            $preferredRoles = ['Direttore Torneo', 'Supervisore', 'Arbitro'];
+            return $preferredRoles[array_rand($preferredRoles)];
+        }
+
+        // Arbitri junior preferiscono ruoli di supporto
+        if (in_array($level, ['aspirante', 'primo_livello'])) {
+            $preferredRoles = ['Arbitro', 'Assistente', 'Osservatore'];
+            return $preferredRoles[array_rand($preferredRoles)];
+        }
+
+        // Arbitri intermedi: qualsiasi ruolo
+        return rand(1, 100) <= 50 ? $roles[array_rand($roles)] : null;
+    }
+
+    /**
+     * Genera conflitti se non disponibile
+     */
+    private function generateConflicts(bool $isAvailable): ?array
+    {
+        if ($isAvailable || rand(1, 100) > 40) {
+            return null;
+        }
+
+        $conflicts = [
+            'Altro torneo stesso weekend',
+            'Corso di aggiornamento',
+            'Matrimonio familiare',
+            'Viaggio programmato',
+            'Impegno lavorativo'
+        ];
+
+        return [array_rand(array_flip($conflicts))];
+    }
+
+    /**
      * Valida disponibilità create
      */
     private function validateAvailabilities(): void
     {
         $this->command->info('🔍 Validando disponibilità create...');
 
-        // ✅ FIXED: Usa user_id invece di referee_id
+        // Verifica che non ci siano duplicati
         $totalAvailabilities = Availability::count();
-        $uniqueAvailabilities = Availability::distinct(['tournament_id', 'user_id'])->count();
+        $uniqueAvailabilities = Availability::distinct(['tournament_id', 'referee_id'])->count();
 
         if ($totalAvailabilities !== $uniqueAvailabilities) {
             $this->command->error("❌ Errore: disponibilità duplicate trovate");
@@ -286,14 +344,34 @@ class AvailabilitySeeder extends Seeder
             return;
         }
 
-        // ✅ FIXED: Usa relazione corretta 'user' invece di 'referee'
-        $inactiveReferees = Availability::whereHas('user', function($query) {
+        // Verifica che tutte le disponibilità siano per arbitri attivi
+        $inactiveReferees = Availability::whereHas('referee', function($query) {
             $query->where('is_active', false);
         })->count();
 
         if ($inactiveReferees > 0) {
             $this->command->error("❌ Errore: {$inactiveReferees} disponibilità per arbitri inattivi");
             return;
+        }
+
+        // Verifica coerenza zone per tornei zonali
+        $inconsistentZones = Availability::whereHas('tournament', function($query) {
+            $query->whereNotNull('zone_id');
+        })->whereHas('referee', function($query) {
+            $query->whereNotNull('zone_id');
+        })->whereRaw('
+            NOT EXISTS (
+                SELECT 1 FROM tournaments t
+                WHERE t.id = availabilities.tournament_id
+                AND (
+                    t.zone_id = (SELECT zone_id FROM users WHERE id = availabilities.referee_id)
+                    OR (SELECT level FROM users WHERE id = availabilities.referee_id) IN ("nazionale", "internazionale")
+                )
+            )
+        ')->count();
+
+        if ($inconsistentZones > 0) {
+            $this->command->warn("⚠️ Attenzione: {$inconsistentZones} disponibilità con possibili incoerenze di zona");
         }
 
         $this->command->info('✅ Validazione disponibilità completata con successo');
@@ -314,36 +392,67 @@ class AvailabilitySeeder extends Seeder
             ->get()
             ->map(function($tournament) {
                 $total = $tournament->availabilities->count();
+                $available = $tournament->availabilities->where('is_available', true)->count();
+                $unavailable = $total - $available;
 
                 return [
                     'name' => $tournament->name,
                     'zone' => $tournament->zone ? $tournament->zone->code : 'NAZIONALE',
                     'total' => $total,
+                    'available' => $available,
+                    'unavailable' => $unavailable,
+                    'rate' => $total > 0 ? round(($available / $total) * 100, 1) : 0
                 ];
             });
 
         foreach ($tournamentStats as $stats) {
             $this->command->info("🏆 {$stats['name']} ({$stats['zone']}):");
             $this->command->info("   Totale risposte: {$stats['total']}");
+            $this->command->info("   🟢 Disponibili: {$stats['available']} ({$stats['rate']}%)");
+            $this->command->info("   🔴 Non disponibili: {$stats['unavailable']}");
             $this->command->info('');
         }
 
         // Statistiche generali
         $totalAvailabilities = Availability::count();
+        $totalAvailable = Availability::where('is_available', true)->count();
+        $totalUnavailable = $totalAvailabilities - $totalAvailable;
+        $overallRate = $totalAvailabilities > 0 ? round(($totalAvailable / $totalAvailabilities) * 100, 1) : 0;
 
         $this->command->info('📊 STATISTICHE GENERALI:');
         $this->command->info("   Dichiarazioni totali: {$totalAvailabilities}");
+        $this->command->info("   🟢 Disponibili: {$totalAvailable} ({$overallRate}%)");
+        $this->command->info("   🔴 Non disponibili: {$totalUnavailable}");
 
-        // ✅ FIXED: Join corretto con user_id
-        $levelStats = Availability::join('users', 'availabilities.user_id', '=', 'users.id')
-            ->selectRaw('users.level, COUNT(*) as total')
+        // Statistiche per livello arbitro
+        $this->command->info('');
+        $this->command->info('👨‍⚖️ DISPONIBILITÀ PER LIVELLO:');
+        $levelStats = Availability::join('users', 'availabilities.referee_id', '=', 'users.id')
+            ->selectRaw('users.level,
+                        COUNT(*) as total,
+                        SUM(CASE WHEN is_available = 1 THEN 1 ELSE 0 END) as available')
             ->groupBy('users.level')
             ->get();
 
-        $this->command->info('');
-        $this->command->info('👨‍⚖️ DISPONIBILITÀ PER LIVELLO:');
         foreach ($levelStats as $stat) {
-            $this->command->info("   {$stat->level}: {$stat->total}");
+            $rate = $stat->total > 0 ? round(($stat->available / $stat->total) * 100, 1) : 0;
+            $this->command->info("   {$stat->level}: {$stat->available}/{$stat->total} ({$rate}%)");
+        }
+
+        // Tornei con più richieste
+        $this->command->info('');
+        $this->command->info('🔥 TORNEI PIÙ RICHIESTI:');
+        $popularTournaments = Tournament::withCount(['availabilities' => function($query) {
+            $query->where('is_available', true);
+        }])
+        ->where('status', 'open')
+        ->orderBy('availabilities_count', 'desc')
+        ->limit(5)
+        ->get();
+
+        foreach ($popularTournaments as $tournament) {
+            $zone = $tournament->zone ? $tournament->zone->code : 'NAZ';
+            $this->command->info("   🏆 {$tournament->name} ({$zone}): {$tournament->availabilities_count} disponibili");
         }
 
         $this->command->info('=====================================');

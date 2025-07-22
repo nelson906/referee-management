@@ -197,16 +197,15 @@ class GolfSeedCommand extends Command
             'zones' => 'ZoneSeeder',
             'users' => 'UserSeeder',
             'tournament-types' => 'TournamentTypeSeeder',
-            'clubs' => 'ClubSeeder',
+            'clubs' => 'ClubsSeeder',  // ✅ FIXED: era ClubSeeder
             'referees' => 'RefereeSeeder',
             'tournaments' => 'TournamentSeeder',
             'availabilities' => 'AvailabilitySeeder',
-            'assignments' => 'AssignmentSeeder',
+            'assignments' => 'AssignmentsSeeder',  // ✅ FIXED: nota la 's'
             'notifications' => 'NotificationSeeder',
             'letter-templates' => 'LetterTemplateSeeder',
         ];
     }
-
     /**
      * Mostra statistiche completamento
      */

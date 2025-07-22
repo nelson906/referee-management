@@ -29,6 +29,14 @@ return new class extends Migration
             $table->string('contact_email')->nullable();
             $table->boolean('is_active')->default(true);
             $table->string('federation_code')->nullable();
+
+            // ✅ AGGIUNGI QUESTI CAMPI GOLF:
+            $table->integer('founded_year')->nullable();
+            $table->integer('holes_count')->nullable();
+            $table->integer('par')->nullable();
+            $table->decimal('course_rating', 4, 1)->nullable();
+            $table->integer('slope_rating')->nullable();
+
             $table->json('settings')->nullable();
             $table->text('notes')->nullable();
             $table->timestamps();

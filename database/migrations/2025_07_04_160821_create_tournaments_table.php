@@ -30,6 +30,7 @@ return new class extends Migration
             $table->foreignId('tournament_type_id')->constrained('tournament_types');
 
             $table->foreignId('zone_id')->constrained('zones');
+            $table->text('description')->nullable();
             $table->text('notes')->nullable();
             $table->enum('status', ['draft', 'open', 'closed', 'assigned', 'completed'])->default('draft');
 
