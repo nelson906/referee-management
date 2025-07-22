@@ -10,6 +10,7 @@ use App\Models\Availability;
 use App\Models\User;
 use Database\Seeders\Helpers\SeederHelper;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Schema;
 
 class AssignmentsSeeder extends Seeder
 {
@@ -21,6 +22,8 @@ class AssignmentsSeeder extends Seeder
         $this->command->info('🎯 Creando Assegnazioni Arbitri per Tornei...');
 
         // Elimina assegnazioni esistenti per evitare duplicati
+        Schema::disableForeignKeyConstraints();
+        try {
         Assignment::truncate();
 
         $totalAssignments = 0;
@@ -39,8 +42,10 @@ class AssignmentsSeeder extends Seeder
         $this->showAssignmentSummary();
 
         $this->command->info("🏆 Assegnazioni create con successo: {$totalAssignments} assegnazioni totali");
+        } finally {
+            Schema::enableForeignKeyConstraints();
     }
-
+    }
     /**
      * Crea assegnazioni per tornei chiusi
      */
