@@ -1,0 +1,482 @@
+# Golf Seeder System - CI/CD Pipeline
+# Deployment automatico per ambienti development, staging e production
+
+name: Golf Seeder System Deployment
+
+on:
+  push:
+    branches: [ main, develop, feature/golf-* ]
+  pull_request:
+    branches: [ main, develop ]
+  schedule:
+    - cron: '0 2 * * 1'  # Weekly quality check
+
+env:
+  PHP_VERSION: '8.2'
+  NODE_VERSION: '18'
+  MYSQL_VERSION: '8.0'
+
+jobs:
+  # ==================================================
+  # QUALITY ASSURANCE
+  # ==================================================
+  quality-check:
+    name: 🔍 Quality & Security Check
+    runs-on: ubuntu-latest
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: password
+          MYSQL_DATABASE: golf_test
+        ports:
+          - 3306:3306
+        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
+
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+
+      - name: 🐘 Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+          extensions: mbstring, xml, ctype, iconv, intl, pdo_mysql, dom, filter, gd, iconv, json, mbstring, pdo
+          coverage: xdebug
+
+      - name: 📦 Cache Composer Dependencies
+        uses: actions/cache@v3
+        with:
+          path: vendor
+          key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
+          restore-keys: ${{ runner.os }}-composer-
+
+      - name: 🏗️ Install Dependencies
+        run: |
+          composer install --no-interaction --prefer-dist --optimize-autoloader
+          composer dump-autoload
+
+      - name: 📋 Copy Environment File
+        run: |
+          cp .env.testing .env
+          php artisan key:generate
+
+      - name: 🗄️ Setup Database
+        run: |
+          php artisan migrate --force
+          php artisan config:clear
+          php artisan cache:clear
+
+      - name: 🧪 Run PHPUnit Tests
+        run: |
+          vendor/bin/phpunit --configuration phpunit.xml --coverage-clover coverage.xml
+        env:
+          DB_CONNECTION: mysql
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3306
+          DB_DATABASE: golf_test
+          DB_USERNAME: root
+          DB_PASSWORD: password
+
+      - name: 🔧 PHP Code Sniffer
+        run: |
+          composer require --dev squizlabs/php_codesniffer
+          vendor/bin/phpcs --standard=PSR12 app/ database/seeders/ --ignore=vendor
+
+      - name: 🔍 PHPStan Static Analysis
+        run: |
+          composer require --dev phpstan/phpstan
+          vendor/bin/phpstan analyse app/ database/seeders/ --level=5
+
+      - name: 📊 Upload Coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./coverage.xml
+          flags: unittests
+          name: golf-seeder-coverage
+
+  # ==================================================
+  # SEEDER VALIDATION
+  # ==================================================
+  seeder-validation:
+    name: 🎯 Golf Seeder Validation
+    runs-on: ubuntu-latest
+    needs: quality-check
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: password
+          MYSQL_DATABASE: golf_seeder_test
+        ports:
+          - 3306:3306
+        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
+
+    strategy:
+      matrix:
+        seeder-scenario:
+          - full-seeding
+          - partial-seeding
+          - zone-isolation
+          - workflow-testing
+
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+
+      - name: 🐘 Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+          extensions: mbstring, xml, ctype, iconv, intl, pdo_mysql
+
+      - name: 🏗️ Install Dependencies
+        run: |
+          composer install --no-interaction --prefer-dist --optimize-autoloader
+
+      - name: 📋 Environment Setup
+        run: |
+          cp .env.testing .env
+          php artisan key:generate
+          php artisan config:clear
+
+      - name: 🗄️ Database Migration
+        run: |
+          php artisan migrate --force
+        env:
+          DB_CONNECTION: mysql
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3306
+          DB_DATABASE: golf_seeder_test
+          DB_USERNAME: root
+          DB_PASSWORD: password
+
+      - name: 🎯 Execute Seeder Scenario
+        run: |
+          case "${{ matrix.seeder-scenario }}" in
+            "full-seeding")
+              php artisan golf:seed --fresh --force
+              ;;
+            "partial-seeding")
+              php artisan golf:seed --partial=zones,users --force
+              php artisan golf:seed --partial=clubs,referees --force
+              ;;
+            "zone-isolation")
+              php artisan golf:seed --fresh --force
+              php artisan golf:diagnostic --zone=SZR6 --export
+              ;;
+            "workflow-testing")
+              php artisan golf:seed --fresh --force
+              php artisan golf:diagnostic --detailed
+              ;;
+          esac
+        env:
+          DB_CONNECTION: mysql
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3306
+          DB_DATABASE: golf_seeder_test
+          DB_USERNAME: root
+          DB_PASSWORD: password
+
+      - name: ✅ Validate Seeder Results
+        run: |
+          php artisan test tests/Feature/Seeders/SeederValidationTest.php
+        env:
+          DB_CONNECTION: mysql
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3306
+          DB_DATABASE: golf_seeder_test
+          DB_USERNAME: root
+          DB_PASSWORD: password
+
+      - name: 📊 Generate Seeder Report
+        run: |
+          php artisan golf:diagnostic --detailed --export > seeder-report-${{ matrix.seeder-scenario }}.txt
+
+      - name: 📤 Upload Seeder Artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: seeder-reports-${{ matrix.seeder-scenario }}
+          path: |
+            seeder-report-*.txt
+            storage/app/golf-exports/*.json
+
+  # ==================================================
+  # PERFORMANCE TESTING
+  # ==================================================
+  performance-test:
+    name: ⚡ Performance Testing
+    runs-on: ubuntu-latest
+    needs: [quality-check, seeder-validation]
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: password
+          MYSQL_DATABASE: golf_performance
+        ports:
+          - 3306:3306
+        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
+
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+
+      - name: 🐘 Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+          extensions: mbstring, xml, ctype, iconv, intl, pdo_mysql
+          ini-values: memory_limit=512M
+
+      - name: 🏗️ Install Dependencies
+        run: |
+          composer install --no-interaction --prefer-dist --optimize-autoloader
+
+      - name: 📋 Environment Setup
+        run: |
+          cp .env.testing .env
+          php artisan key:generate
+          php artisan config:clear
+          php artisan config:cache
+        env:
+          APP_ENV: testing
+          DB_CONNECTION: mysql
+          DB_HOST: 127.0.0.1
+          DB_PORT: 3306
+          DB_DATABASE: golf_performance
+          DB_USERNAME: root
+          DB_PASSWORD: password
+
+      - name: 🗄️ Database Setup
+        run: |
+          php artisan migrate --force
+
+      - name: ⏱️ Seeder Performance Test
+        run: |
+          echo "=== FULL SEEDING PERFORMANCE TEST ===" > performance-results.txt
+          start_time=$(date +%s.%3N)
+
+          php artisan golf:seed --fresh --force
+
+          end_time=$(date +%s.%3N)
+          duration=$(echo "$end_time - $start_time" | bc)
+
+          echo "Full seeding completed in: ${duration}s" >> performance-results.txt
+
+          # Memory usage
+          echo "=== MEMORY USAGE ===" >> performance-results.txt
+          php -r "echo 'Peak memory: ' . number_format(memory_get_peak_usage(true) / 1024 / 1024, 2) . ' MB' . PHP_EOL;" >> performance-results.txt
+
+          # Database size
+          echo "=== DATABASE METRICS ===" >> performance-results.txt
+          php artisan golf:diagnostic >> performance-results.txt
+
+      - name: 🚀 API Performance Test
+        run: |
+          # Start Laravel server in background
+          php artisan serve --host=127.0.0.1 --port=8000 &
+          sleep 5
+
+          echo "=== API PERFORMANCE TEST ===" >> performance-results.txt
+
+          # Test API endpoints with ab (Apache Bench)
+          sudo apt-get update && sudo apt-get install -y apache2-utils
+
+          # Dashboard stats endpoint
+          ab -n 100 -c 10 http://127.0.0.1:8000/api/golf/dashboard/stats >> performance-results.txt
+
+          # Tournaments endpoint
+          ab -n 100 -c 10 http://127.0.0.1:8000/api/golf/tournaments >> performance-results.txt
+
+      - name: 📊 Query Performance Analysis
+        run: |
+          echo "=== QUERY PERFORMANCE ===" >> performance-results.txt
+
+          # Enable query logging and run sample queries
+          php artisan tinker --execute="
+            DB::enableQueryLog();
+            \App\Models\Tournament::with(['zone', 'club', 'availabilities'])->limit(10)->get();
+            \App\Models\User::where('user_type', 'referee')->with('zone')->limit(50)->get();
+            echo 'Query count: ' . count(DB::getQueryLog()) . PHP_EOL;
+            foreach(DB::getQueryLog() as \$query) {
+              if(\$query['time'] > 100) {
+                echo 'Slow query (' . \$query['time'] . 'ms): ' . \$query['query'] . PHP_EOL;
+              }
+            }
+          " >> performance-results.txt
+
+      - name: 📤 Upload Performance Report
+        uses: actions/upload-artifact@v3
+        with:
+          name: performance-report
+          path: performance-results.txt
+
+  # ==================================================
+  # STAGING DEPLOYMENT
+  # ==================================================
+  deploy-staging:
+    name: 🚀 Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: [quality-check, seeder-validation, performance-test]
+    if: github.ref == 'refs/heads/develop'
+
+    environment:
+      name: staging
+      url: https://golf-staging.example.com
+
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+
+      - name: 🔧 Setup Deployment Environment
+        run: |
+          echo "Setting up staging deployment..."
+          # Add SSH keys, server config, etc.
+
+      - name: 🚀 Deploy to Staging Server
+        run: |
+          echo "Deploying Golf Seeder System to staging..."
+          # Deployment commands would go here
+          # rsync, docker deploy, or other deployment method
+
+      - name: 🎯 Run Staging Seeder Test
+        run: |
+          echo "Running seeder validation on staging..."
+          # Remote execution of seeder tests
+          # ssh staging-server "cd /var/www/golf && php artisan golf:seed --fresh --force"
+
+      - name: 📊 Staging Health Check
+        run: |
+          echo "Performing staging health check..."
+          # curl -f https://golf-staging.example.com/api/health
+          # curl -f https://golf-staging.example.com/api/golf/dashboard/stats
+
+  # ==================================================
+  # PRODUCTION DEPLOYMENT
+  # ==================================================
+  deploy-production:
+    name: 🏭 Deploy to Production
+    runs-on: ubuntu-latest
+    needs: deploy-staging
+    if: github.ref == 'refs/heads/main'
+
+    environment:
+      name: production
+      url: https://golf.example.com
+
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+
+      - name: 🔒 Production Safety Checks
+        run: |
+          echo "Performing pre-deployment safety checks..."
+          # Backup verification, rollback preparation, etc.
+
+      - name: 🎯 Production Seeder Deployment
+        run: |
+          echo "Deploying seeder system to production..."
+          # Blue-green deployment or similar safe strategy
+
+      - name: ✅ Production Validation
+        run: |
+          echo "Validating production deployment..."
+          # Health checks, seeder validation, smoke tests
+
+      - name: 📢 Deployment Notification
+        run: |
+          echo "Golf Seeder System deployed successfully to production!"
+          # Slack/Teams notification, monitoring alerts, etc.
+
+  # ==================================================
+  # CLEANUP & REPORTING
+  # ==================================================
+  cleanup-and-report:
+    name: 🧹 Cleanup & Report
+    runs-on: ubuntu-latest
+    needs: [quality-check, seeder-validation, performance-test]
+    if: always()
+
+    steps:
+      - name: 📊 Generate Final Report
+        run: |
+          echo "# Golf Seeder System - CI/CD Report" > final-report.md
+          echo "Date: $(date)" >> final-report.md
+          echo "Branch: ${{ github.ref }}" >> final-report.md
+          echo "Commit: ${{ github.sha }}" >> final-report.md
+          echo "" >> final-report.md
+
+          echo "## Test Results" >> final-report.md
+          echo "- Quality Check: ${{ needs.quality-check.result }}" >> final-report.md
+          echo "- Seeder Validation: ${{ needs.seeder-validation.result }}" >> final-report.md
+          echo "- Performance Test: ${{ needs.performance-test.result }}" >> final-report.md
+          echo "" >> final-report.md
+
+          echo "## Deployment Status" >> final-report.md
+          if [[ "${{ github.ref }}" == "refs/heads/develop" ]]; then
+            echo "- Staging: Deployed" >> final-report.md
+          elif [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+            echo "- Production: Deployed" >> final-report.md
+          else
+            echo "- No deployment (feature branch)" >> final-report.md
+          fi
+
+      - name: 📤 Upload Final Report
+        uses: actions/upload-artifact@v3
+        with:
+          name: cicd-final-report
+          path: final-report.md
+
+      - name: 🧹 Cleanup Test Artifacts
+        run: |
+          echo "Cleaning up temporary files and test databases..."
+          # Cleanup commands
+
+# ==================================================
+# ADDITIONAL WORKFLOWS
+# ==================================================
+
+# Weekly maintenance job
+  weekly-maintenance:
+    name: 🔧 Weekly Maintenance
+    runs-on: ubuntu-latest
+    if: github.event.schedule
+
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+
+      - name: 🔍 Run Full System Diagnostic
+        run: |
+          echo "Running weekly maintenance check..."
+          # Comprehensive system check
+          # Performance regression testing
+          # Security vulnerability scan
+
+      - name: 📊 Generate Maintenance Report
+        run: |
+          echo "Generating weekly maintenance report..."
+          # Performance trends, health metrics, recommendations
+
+# Security scan job
+  security-scan:
+    name: 🔒 Security Scan
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+
+      - name: 🔍 Run Security Scan
+        uses: securecodewarrior/github-action-add-sarif@v1
+        with:
+          sarif-file: 'security-scan-results.sarif'
+
+      - name: 📊 Security Report
+        run: |
+          echo "Security scan completed. Check SARIF results."

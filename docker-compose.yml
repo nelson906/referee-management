@@ -1,0 +1,369 @@
+# Docker Compose per Golf Seeder System
+# Setup completo per development, testing e production
+
+version: '3.8'
+
+services:
+  # ==================================================
+  # APPLICATION SERVER
+  # ==================================================
+  golf-app:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      target: ${APP_ENV:-development}
+    container_name: golf_app
+    restart: unless-stopped
+    working_dir: /var/www/html
+    volumes:
+      - ./:/var/www/html
+      - golf_storage:/var/www/html/storage
+      - golf_bootstrap_cache:/var/www/html/bootstrap/cache
+    environment:
+      - APP_ENV=${APP_ENV:-local}
+      - APP_DEBUG=${APP_DEBUG:-true}
+      - APP_KEY=${APP_KEY}
+      - DB_CONNECTION=mysql
+      - DB_HOST=golf-db
+      - DB_PORT=3306
+      - DB_DATABASE=${DB_DATABASE:-golf_system}
+      - DB_USERNAME=${DB_USERNAME:-golf_user}
+      - DB_PASSWORD=${DB_PASSWORD:-golf_password}
+      - REDIS_HOST=golf-redis
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-golf_redis}
+      - CACHE_DRIVER=redis
+      - SESSION_DRIVER=redis
+      - QUEUE_CONNECTION=redis
+    networks:
+      - golf-network
+    depends_on:
+      golf-db:
+        condition: service_healthy
+      golf-redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "php", "artisan", "tinker", "--execute=echo 'OK'"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # ==================================================
+  # WEB SERVER
+  # ==================================================
+  golf-nginx:
+    image: nginx:alpine
+    container_name: golf_nginx
+    restart: unless-stopped
+    ports:
+      - "${NGINX_PORT:-8080}:80"
+      - "${NGINX_SSL_PORT:-8443}:443"
+    volumes:
+      - ./:/var/www/html:ro
+      - ./docker/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./docker/nginx/ssl:/etc/nginx/ssl:ro
+      - golf_nginx_cache:/var/cache/nginx
+    networks:
+      - golf-network
+    depends_on:
+      - golf-app
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ==================================================
+  # DATABASE
+  # ==================================================
+  golf-db:
+    image: mysql:8.0
+    container_name: golf_database
+    restart: unless-stopped
+    ports:
+      - "${DB_PORT:-3306}:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-root_password}
+      MYSQL_DATABASE: ${DB_DATABASE:-golf_system}
+      MYSQL_USER: ${DB_USERNAME:-golf_user}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-golf_password}
+      MYSQL_CHARACTER_SET_SERVER: utf8mb4
+      MYSQL_COLLATION_SERVER: utf8mb4_unicode_ci
+    volumes:
+      - golf_mysql_data:/var/lib/mysql
+      - ./docker/mysql/init:/docker-entrypoint-initdb.d:ro
+      - ./docker/mysql/conf.d:/etc/mysql/conf.d:ro
+    networks:
+      - golf-network
+    command: >
+      --default-authentication-plugin=mysql_native_password
+      --innodb-buffer-pool-size=256M
+      --innodb-log-file-size=64M
+      --max-connections=200
+      --query-cache-size=0
+      --query-cache-type=0
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_ROOT_PASSWORD:-root_password}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # ==================================================
+  # REDIS CACHE & SESSIONS
+  # ==================================================
+  golf-redis:
+    image: redis:7-alpine
+    container_name: golf_redis
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:-golf_redis}
+    volumes:
+      - golf_redis_data:/data
+      - ./docker/redis/redis.conf:/usr/local/etc/redis/redis.conf:ro
+    networks:
+      - golf-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # ==================================================
+  # QUEUE WORKER
+  # ==================================================
+  golf-worker:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      target: ${APP_ENV:-development}
+    container_name: golf_worker
+    restart: unless-stopped
+    working_dir: /var/www/html
+    volumes:
+      - ./:/var/www/html
+      - golf_storage:/var/www/html/storage
+    environment:
+      - APP_ENV=${APP_ENV:-local}
+      - DB_CONNECTION=mysql
+      - DB_HOST=golf-db
+      - DB_PORT=3306
+      - DB_DATABASE=${DB_DATABASE:-golf_system}
+      - DB_USERNAME=${DB_USERNAME:-golf_user}
+      - DB_PASSWORD=${DB_PASSWORD:-golf_password}
+      - REDIS_HOST=golf-redis
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-golf_redis}
+      - QUEUE_CONNECTION=redis
+    command: php artisan queue:work redis --sleep=3 --tries=3 --max-time=3600
+    networks:
+      - golf-network
+    depends_on:
+      golf-db:
+        condition: service_healthy
+      golf-redis:
+        condition: service_healthy
+
+  # ==================================================
+  # SCHEDULER
+  # ==================================================
+  golf-scheduler:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      target: ${APP_ENV:-development}
+    container_name: golf_scheduler
+    restart: unless-stopped
+    working_dir: /var/www/html
+    volumes:
+      - ./:/var/www/html
+      - golf_storage:/var/www/html/storage
+    environment:
+      - APP_ENV=${APP_ENV:-local}
+      - DB_CONNECTION=mysql
+      - DB_HOST=golf-db
+      - DB_PORT=3306
+      - DB_DATABASE=${DB_DATABASE:-golf_system}
+      - DB_USERNAME=${DB_USERNAME:-golf_user}
+      - DB_PASSWORD=${DB_PASSWORD:-golf_password}
+      - REDIS_HOST=golf-redis
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-golf_redis}
+    command: sh -c "while true; do php artisan schedule:run; sleep 60; done"
+    networks:
+      - golf-network
+    depends_on:
+      golf-db:
+        condition: service_healthy
+
+  # ==================================================
+  # MONITORING & METRICS
+  # ==================================================
+  golf-monitoring:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      target: monitoring
+    container_name: golf_monitoring
+    restart: unless-stopped
+    working_dir: /var/www/html
+    volumes:
+      - ./:/var/www/html:ro
+      - golf_monitoring_data:/var/lib/monitoring
+    environment:
+      - APP_ENV=${APP_ENV:-local}
+      - DB_HOST=golf-db
+      - REDIS_HOST=golf-redis
+    command: sh -c "while true; do php artisan golf:monitor; sleep 300; done"
+    networks:
+      - golf-network
+    depends_on:
+      - golf-app
+      - golf-db
+
+  # ==================================================
+  # DEVELOPMENT TOOLS (only in dev mode)
+  # ==================================================
+  golf-mailhog:
+    image: mailhog/mailhog:latest
+    container_name: golf_mailhog
+    restart: unless-stopped
+    ports:
+      - "${MAILHOG_PORT:-8025}:8025"
+      - "${MAILHOG_SMTP_PORT:-1025}:1025"
+    networks:
+      - golf-network
+    profiles:
+      - development
+
+  golf-phpmyadmin:
+    image: phpmyadmin/phpmyadmin:latest
+    container_name: golf_phpmyadmin
+    restart: unless-stopped
+    ports:
+      - "${PHPMYADMIN_PORT:-8081}:80"
+    environment:
+      PMA_HOST: golf-db
+      PMA_PORT: 3306
+      PMA_USER: ${DB_USERNAME:-golf_user}
+      PMA_PASSWORD: ${DB_PASSWORD:-golf_password}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-root_password}
+    networks:
+      - golf-network
+    depends_on:
+      - golf-db
+    profiles:
+      - development
+
+  # ==================================================
+  # TESTING ENVIRONMENT
+  # ==================================================
+  golf-test:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      target: testing
+    container_name: golf_test
+    working_dir: /var/www/html
+    volumes:
+      - ./:/var/www/html
+    environment:
+      - APP_ENV=testing
+      - DB_CONNECTION=mysql
+      - DB_HOST=golf-test-db
+      - DB_PORT=3306
+      - DB_DATABASE=golf_test
+      - DB_USERNAME=test_user
+      - DB_PASSWORD=test_password
+    networks:
+      - golf-network
+    depends_on:
+      golf-test-db:
+        condition: service_healthy
+    profiles:
+      - testing
+
+  golf-test-db:
+    image: mysql:8.0
+    container_name: golf_test_database
+    environment:
+      MYSQL_ROOT_PASSWORD: test_root
+      MYSQL_DATABASE: golf_test
+      MYSQL_USER: test_user
+      MYSQL_PASSWORD: test_password
+    tmpfs:
+      - /var/lib/mysql
+    networks:
+      - golf-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-ptest_root"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    profiles:
+      - testing
+
+# ==================================================
+# NETWORKS
+# ==================================================
+networks:
+  golf-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+# ==================================================
+# VOLUMES
+# ==================================================
+volumes:
+  golf_mysql_data:
+    driver: local
+  golf_redis_data:
+    driver: local
+  golf_storage:
+    driver: local
+  golf_bootstrap_cache:
+    driver: local
+  golf_nginx_cache:
+    driver: local
+  golf_monitoring_data:
+    driver: local
+
+# ==================================================
+# CONFIGURATION FILES
+# ==================================================
+# Questo file richiede i seguenti file di configurazione:
+#
+# docker/Dockerfile - Multi-stage build per app
+# docker/nginx/nginx.conf - Configurazione Nginx
+# docker/nginx/default.conf - Virtual host configuration
+# docker/mysql/init/01-init.sql - Script inizializzazione DB
+# docker/mysql/conf.d/mysql.cnf - Configurazione MySQL
+# docker/redis/redis.conf - Configurazione Redis
+# .env.docker - Environment variables per Docker
+#
+# ==================================================
+# USAGE EXAMPLES
+# ==================================================
+#
+# Development:
+# docker-compose --profile development up -d
+#
+# Testing:
+# docker-compose --profile testing up -d golf-test golf-test-db
+# docker-compose exec golf-test php artisan test
+#
+# Production:
+# docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+#
+# Seeding:
+# docker-compose exec golf-app php artisan golf:seed --fresh
+#
+# Monitoring:
+# docker-compose exec golf-app php artisan golf:diagnostic
+#
+# Backup:
+# docker-compose exec golf-db mysqldump -u root -p golf_system > backup.sql
+#
+# ==================================================

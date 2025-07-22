@@ -1,0 +1,763 @@
+# Production Deployment Configuration for Golf Seeder System
+# Kubernetes deployment for enterprise production environment
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: golf-production
+  labels:
+    app: golf-seeder-system
+    environment: production
+
+---
+# ConfigMap for application configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: golf-config
+  namespace: golf-production
+data:
+  APP_ENV: "production"
+  APP_DEBUG: "false"
+  LOG_CHANNEL: "stack"
+  LOG_LEVEL: "warning"
+  CACHE_DRIVER: "redis"
+  SESSION_DRIVER: "redis"
+  QUEUE_CONNECTION: "redis"
+
+  # Golf Seeder specific configuration
+  GOLF_SEED_PRODUCTION: "false"
+  GOLF_OPTIMIZE_SPEED: "true"
+  GOLF_VERBOSE: "false"
+
+  # Backup configuration
+  GOLF_BACKUP_RETENTION_DAYS: "90"
+  GOLF_BACKUP_COMPRESS: "true"
+  GOLF_BACKUP_ENCRYPT: "true"
+
+  # Monitoring configuration
+  GOLF_MONITORING_ENABLED: "true"
+  GOLF_MONITORING_INTERVAL: "300"
+  GOLF_ALERT_EMAIL: "alerts@golf-production.com"
+
+---
+# Secret for sensitive data
+apiVersion: v1
+kind: Secret
+metadata:
+  name: golf-secrets
+  namespace: golf-production
+type: Opaque
+data:
+  # Base64 encoded values - replace with actual production values
+  APP_KEY: "YmFzZTY0LWVuY29kZWQtYXBwLWtleQ=="
+  DB_PASSWORD: "cHJvZHVjdGlvbi1kYi1wYXNzd29yZA=="
+  REDIS_PASSWORD: "cHJvZHVjdGlvbi1yZWRpcy1wYXNzd29yZA=="
+  GOLF_BACKUP_ENCRYPTION_KEY: "YmFja3VwLWVuY3J5cHRpb24ta2V5"
+
+---
+# Persistent Volume Claim for database
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: golf-db-pvc
+  namespace: golf-production
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 50Gi
+  storageClassName: ssd-encrypted
+
+---
+# Persistent Volume Claim for application storage
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: golf-storage-pvc
+  namespace: golf-production
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 20Gi
+  storageClassName: nfs-storage
+
+---
+# MySQL Database Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: golf-database
+  namespace: golf-production
+  labels:
+    app: golf-database
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: golf-database
+  template:
+    metadata:
+      labels:
+        app: golf-database
+    spec:
+      containers:
+      - name: mysql
+        image: mysql:8.0.35
+        env:
+        - name: MYSQL_ROOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: golf-secrets
+              key: DB_PASSWORD
+        - name: MYSQL_DATABASE
+          value: "golf_production"
+        - name: MYSQL_USER
+          value: "golf_user"
+        - name: MYSQL_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: golf-secrets
+              key: DB_PASSWORD
+        ports:
+        - containerPort: 3306
+        volumeMounts:
+        - name: mysql-storage
+          mountPath: /var/lib/mysql
+        - name: mysql-config
+          mountPath: /etc/mysql/conf.d
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "500m"
+          limits:
+            memory: "2Gi"
+            cpu: "1000m"
+        livenessProbe:
+          exec:
+            command:
+            - mysqladmin
+            - ping
+            - -h
+            - localhost
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          exec:
+            command:
+            - mysqladmin
+            - ping
+            - -h
+            - localhost
+          initialDelaySeconds: 5
+          periodSeconds: 5
+      volumes:
+      - name: mysql-storage
+        persistentVolumeClaim:
+          claimName: golf-db-pvc
+      - name: mysql-config
+        configMap:
+          name: mysql-config
+
+---
+# MySQL Configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mysql-config
+  namespace: golf-production
+data:
+  mysql.cnf: |
+    [mysqld]
+    innodb_buffer_pool_size = 1G
+    innodb_log_file_size = 256M
+    max_connections = 500
+    query_cache_size = 0
+    query_cache_type = 0
+    slow_query_log = 1
+    slow_query_log_file = /var/log/mysql/slow.log
+    long_query_time = 1
+
+    # Security settings
+    skip-name-resolve
+    bind-address = 0.0.0.0
+
+    # Character set
+    character-set-server = utf8mb4
+    collation-server = utf8mb4_unicode_ci
+
+---
+# Redis Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: golf-redis
+  namespace: golf-production
+  labels:
+    app: golf-redis
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: golf-redis
+  template:
+    metadata:
+      labels:
+        app: golf-redis
+    spec:
+      containers:
+      - name: redis
+        image: redis:7-alpine
+        command:
+        - redis-server
+        - /usr/local/etc/redis/redis.conf
+        - --requirepass
+        - $(REDIS_PASSWORD)
+        env:
+        - name: REDIS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: golf-secrets
+              key: REDIS_PASSWORD
+        ports:
+        - containerPort: 6379
+        volumeMounts:
+        - name: redis-config
+          mountPath: /usr/local/etc/redis
+        - name: redis-data
+          mountPath: /data
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+      volumes:
+      - name: redis-config
+        configMap:
+          name: redis-config
+      - name: redis-data
+        emptyDir: {}
+
+---
+# Redis Configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: redis-config
+  namespace: golf-production
+data:
+  redis.conf: |
+    appendonly yes
+    appendfsync everysec
+    save 900 1
+    save 300 10
+    save 60 10000
+    maxmemory 400mb
+    maxmemory-policy allkeys-lru
+    timeout 300
+    tcp-keepalive 60
+
+---
+# Golf Application Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: golf-app
+  namespace: golf-production
+  labels:
+    app: golf-app
+spec:
+  replicas: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: golf-app
+  template:
+    metadata:
+      labels:
+        app: golf-app
+    spec:
+      initContainers:
+      - name: migration
+        image: golf-seeder-system:latest
+        command: ['php', 'artisan', 'migrate', '--force']
+        envFrom:
+        - configMapRef:
+            name: golf-config
+        - secretRef:
+            name: golf-secrets
+        env:
+        - name: DB_HOST
+          value: "golf-database-service"
+        - name: REDIS_HOST
+          value: "golf-redis-service"
+      containers:
+      - name: golf-app
+        image: golf-seeder-system:latest
+        ports:
+        - containerPort: 9000
+        envFrom:
+        - configMapRef:
+            name: golf-config
+        - secretRef:
+            name: golf-secrets
+        env:
+        - name: DB_HOST
+          value: "golf-database-service"
+        - name: REDIS_HOST
+          value: "golf-redis-service"
+        volumeMounts:
+        - name: storage
+          mountPath: /var/www/html/storage
+        - name: cache
+          mountPath: /var/www/html/bootstrap/cache
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /api/health
+            port: 9000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /api/health
+            port: 9000
+          initialDelaySeconds: 5
+          periodSeconds: 5
+      - name: nginx
+        image: nginx:alpine
+        ports:
+        - containerPort: 80
+        volumeMounts:
+        - name: nginx-config
+          mountPath: /etc/nginx/conf.d
+        - name: app-code
+          mountPath: /var/www/html
+          readOnly: true
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "100m"
+          limits:
+            memory: "128Mi"
+            cpu: "200m"
+      volumes:
+      - name: storage
+        persistentVolumeClaim:
+          claimName: golf-storage-pvc
+      - name: cache
+        emptyDir: {}
+      - name: nginx-config
+        configMap:
+          name: nginx-config
+      - name: app-code
+        emptyDir: {}
+
+---
+# Nginx Configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-config
+  namespace: golf-production
+data:
+  default.conf: |
+    upstream golf-backend {
+        server 127.0.0.1:9000;
+    }
+
+    server {
+        listen 80;
+        server_name golf-production.local;
+        root /var/www/html/public;
+        index index.php;
+
+        # Security headers
+        add_header X-Frame-Options "SAMEORIGIN";
+        add_header X-Content-Type-Options "nosniff";
+        add_header X-XSS-Protection "1; mode=block";
+        add_header Strict-Transport-Security "max-age=31536000; includeSubDomains";
+
+        # Gzip compression
+        gzip on;
+        gzip_types text/plain text/css application/json application/javascript text/xml application/xml;
+
+        location / {
+            try_files $uri $uri/ /index.php?$query_string;
+        }
+
+        location ~ \.php$ {
+            fastcgi_pass golf-backend;
+            fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
+            include fastcgi_params;
+        }
+
+        # Security: deny access to sensitive files
+        location ~ /\.ht {
+            deny all;
+        }
+
+        location ~ /\.env {
+            deny all;
+        }
+
+        # Cache static assets
+        location ~* \.(css|js|png|jpg|jpeg|gif|ico|svg)$ {
+            expires 1y;
+            add_header Cache-Control "public, immutable";
+        }
+    }
+
+---
+# Queue Worker Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: golf-worker
+  namespace: golf-production
+  labels:
+    app: golf-worker
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: golf-worker
+  template:
+    metadata:
+      labels:
+        app: golf-worker
+    spec:
+      containers:
+      - name: worker
+        image: golf-seeder-system:latest
+        command: ['php', 'artisan', 'queue:work', 'redis', '--sleep=3', '--tries=3', '--max-time=3600']
+        envFrom:
+        - configMapRef:
+            name: golf-config
+        - secretRef:
+            name: golf-secrets
+        env:
+        - name: DB_HOST
+          value: "golf-database-service"
+        - name: REDIS_HOST
+          value: "golf-redis-service"
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+
+---
+# Scheduler Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: golf-scheduler
+  namespace: golf-production
+  labels:
+    app: golf-scheduler
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: golf-scheduler
+  template:
+    metadata:
+      labels:
+        app: golf-scheduler
+    spec:
+      containers:
+      - name: scheduler
+        image: golf-seeder-system:latest
+        command: ['sh', '-c', 'while true; do php artisan schedule:run; sleep 60; done']
+        envFrom:
+        - configMapRef:
+            name: golf-config
+        - secretRef:
+            name: golf-secrets
+        env:
+        - name: DB_HOST
+          value: "golf-database-service"
+        - name: REDIS_HOST
+          value: "golf-redis-service"
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "200m"
+
+---
+# Monitoring Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: golf-monitoring
+  namespace: golf-production
+  labels:
+    app: golf-monitoring
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: golf-monitoring
+  template:
+    metadata:
+      labels:
+        app: golf-monitoring
+    spec:
+      containers:
+      - name: monitoring
+        image: golf-seeder-system:latest
+        command: ['sh', '-c', 'while true; do php artisan golf:monitor; sleep 300; done']
+        envFrom:
+        - configMapRef:
+            name: golf-config
+        - secretRef:
+            name: golf-secrets
+        env:
+        - name: DB_HOST
+          value: "golf-database-service"
+        - name: REDIS_HOST
+          value: "golf-redis-service"
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "200m"
+
+---
+# Services
+apiVersion: v1
+kind: Service
+metadata:
+  name: golf-database-service
+  namespace: golf-production
+spec:
+  selector:
+    app: golf-database
+  ports:
+  - port: 3306
+    targetPort: 3306
+  type: ClusterIP
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: golf-redis-service
+  namespace: golf-production
+spec:
+  selector:
+    app: golf-redis
+  ports:
+  - port: 6379
+    targetPort: 6379
+  type: ClusterIP
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: golf-app-service
+  namespace: golf-production
+spec:
+  selector:
+    app: golf-app
+  ports:
+  - port: 80
+    targetPort: 80
+  type: ClusterIP
+
+---
+# Ingress for external access
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: golf-ingress
+  namespace: golf-production
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    nginx.ingress.kubernetes.io/rate-limit: "100"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+spec:
+  tls:
+  - hosts:
+    - golf-production.example.com
+    secretName: golf-tls-cert
+  rules:
+  - host: golf-production.example.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: golf-app-service
+            port:
+              number: 80
+
+---
+# Horizontal Pod Autoscaler
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: golf-app-hpa
+  namespace: golf-production
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: golf-app
+  minReplicas: 3
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80
+
+---
+# Network Policy for security
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: golf-network-policy
+  namespace: golf-production
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: golf-production
+  egress:
+  - {}
+
+---
+# Backup CronJob
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: golf-backup
+  namespace: golf-production
+spec:
+  schedule: "0 2 * * *"  # Daily at 2 AM
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: backup
+            image: golf-seeder-system:latest
+            command: ['php', 'artisan', 'golf:backup', '--type=full', '--compress', '--encrypt']
+            envFrom:
+            - configMapRef:
+                name: golf-config
+            - secretRef:
+                name: golf-secrets
+            env:
+            - name: DB_HOST
+              value: "golf-database-service"
+            - name: REDIS_HOST
+              value: "golf-redis-service"
+            volumeMounts:
+            - name: backup-storage
+              mountPath: /var/www/html/storage/app/golf-backups
+          volumes:
+          - name: backup-storage
+            persistentVolumeClaim:
+              claimName: golf-storage-pvc
+          restartPolicy: OnFailure
+
+---
+# Monitoring CronJob
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: golf-health-check
+  namespace: golf-production
+spec:
+  schedule: "*/15 * * * *"  # Every 15 minutes
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: health-check
+            image: golf-seeder-system:latest
+            command: ['php', 'artisan', 'golf:diagnostic', '--alert-only']
+            envFrom:
+            - configMapRef:
+                name: golf-config
+            - secretRef:
+                name: golf-secrets
+            env:
+            - name: DB_HOST
+              value: "golf-database-service"
+            - name: REDIS_HOST
+              value: "golf-redis-service"
+          restartPolicy: OnFailure
+
+---
+# Resource Quotas
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: golf-resource-quota
+  namespace: golf-production
+spec:
+  hard:
+    requests.cpu: "4"
+    requests.memory: 8Gi
+    limits.cpu: "8"
+    limits.memory: 16Gi
+    persistentvolumeclaims: "10"
+    pods: "20"
+
+---
+# Pod Disruption Budget
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: golf-app-pdb
+  namespace: golf-production
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: golf-app
