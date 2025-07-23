@@ -188,24 +188,31 @@ class GolfSeedCommand extends Command
         Schema::enableForeignKeyConstraints();
     }
 
-    /**
-     * Ottieni seeder disponibili
-     */
-    private function getAvailableSeeders(): array
-    {
-        return [
-            'zones' => 'ZoneSeeder',
-            'users' => 'UserSeeder',
-            'tournament-types' => 'TournamentTypeSeeder',
-            'clubs' => 'ClubsSeeder',  // ✅ FIXED: era ClubSeeder
-            'referees' => 'RefereeSeeder',
-            'tournaments' => 'TournamentSeeder',
-            'availabilities' => 'AvailabilitySeeder',
-            'assignments' => 'AssignmentsSeeder',  // ✅ FIXED: nota la 's'
-            'notifications' => 'NotificationSeeder',
-            'letter-templates' => 'LetterTemplateSeeder',
-        ];
-    }
+/**
+ * ✅ FIXED: Class resolution con namespace completo
+ */
+private function getAvailableSeeders(): array
+{
+    return [
+        // ✅ CORE FOUNDATION
+        'settings' => \Database\Seeders\SettingsSeeder::class,
+
+        // ✅ MASTER DATA
+        'zones' => \Database\Seeders\ZoneSeeder::class,
+        'tournament-types' => \Database\Seeders\TournamentTypeSeeder::class,
+        'users' => \Database\Seeders\UserSeeder::class,
+
+        // ✅ BUSINESS DATA
+        'clubs' => \Database\Seeders\ClubsSeeder::class,
+        'tournaments' => \Database\Seeders\TournamentSeeder::class,
+        'availabilities' => \Database\Seeders\AvailabilitySeeder::class,
+        'assignments' => \Database\Seeders\AssignmentsSeeder::class,
+
+        // ✅ SUPPORT SYSTEMS
+        'support-data' => \Database\Seeders\SupportDataSeeder::class,
+        'notifications' => \Database\Seeders\NotificationSeeder::class, // ✅ FIXED: namespace completo
+    ];
+}
     /**
      * Mostra statistiche completamento
      */

@@ -4,7 +4,7 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
-use App\Models\Notification;
+use Illuminate\Support\Facades\DB;
 use App\Models\User;
 use App\Models\Tournament;
 use App\Models\Assignment;
@@ -15,65 +15,64 @@ class NotificationSeeder extends Seeder
 {
     /**
      * Run the database seeds.
+     * ✅ FIXED: FK constraints safe pattern like TournamentSeeder
      */
     public function run(): void
     {
         $this->command->info('🔔 Creando Notifiche Sistema...');
 
-        if (Schema::hasTable('notifications')) {
-            Notification::truncate();
-        } else {
+        if (!Schema::hasTable('notifications')) {
             $this->command->warn('⚠️ Tabella notifications non trovata - saltando seeder');
             return;
         }
 
-        $totalNotifications = 0;
+        // ✅ FIXED: Same pattern as TournamentSeeder
+        Schema::disableForeignKeyConstraints();
+        try {
+            DB::table('notifications')->truncate();
 
-        // Crea notifiche per assegnazioni
-        $totalNotifications += $this->createAssignmentNotifications();
+            $totalNotifications = 0;
 
-        // Crea notifiche per scadenze
-        $totalNotifications += $this->createDeadlineNotifications();
+            // Crea notifiche per assegnazioni
+            $totalNotifications += $this->createAssignmentNotifications();
 
-        // Crea notifiche di sistema
-        $totalNotifications += $this->createSystemNotifications();
-
-        $this->command->info("🏆 Notifiche create con successo: {$totalNotifications} notifiche totali");
+            $this->command->info("🏆 Notifiche create con successo: {$totalNotifications} notifiche totali");
+        } finally {
+            Schema::enableForeignKeyConstraints();
+        }
     }
 
     /**
-     * Crea notifiche per assegnazioni arbitri
+     * ✅ Crea notifiche email per assegnazioni (schema personalizzato)
      */
     private function createAssignmentNotifications(): int
     {
         $this->command->info("📋 Creando notifiche assegnazioni...");
 
-        $assignments = Assignment::with(['referee', 'tournament'])
-                                ->where('is_confirmed', false)
+        // Use correct relationship and field names
+        $assignments = Assignment::with(['user', 'tournament.club'])
+                                ->where('is_confirmed', true)  // Solo confermate
                                 ->get();
 
+        if ($assignments->isEmpty()) {
+            $this->command->warn('⚠️ Nessun assignment confermato trovato');
+            return 0;
+        }
+
         $created = 0;
 
-        foreach ($assignments as $assignment) {
-            $notification = $this->createNotification([
-                'user_id' => $assignment->referee_id,
-                'type' => 'assignment_received',
-                'title' => 'Nuova Assegnazione Torneo',
-                'message' => "Sei stato assegnato come {$assignment->role} per il torneo '{$assignment->tournament->name}'",
-                'data' => [
-                    'tournament_id' => $assignment->tournament_id,
-                    'assignment_id' => $assignment->id,
-                    'role' => $assignment->role,
-                    'tournament_name' => $assignment->tournament->name,
-                    'tournament_date' => $assignment->tournament->start_date
-                ],
-                'action_url' => "/assignments/{$assignment->id}",
-                'priority' => 'high',
-                'expires_at' => Carbon::parse($assignment->tournament->start_date)->subDays(1)
-            ]);
+        foreach ($assignments->take(20) as $assignment) { // Limite per non esagerare
+            // Notifica email all'arbitro
+            $created += $this->createRefereeEmailNotification($assignment);
 
-            if ($notification) {
-                $created++;
+            // Alcune notifiche al circolo (50% chance)
+            if (rand(0, 1)) {
+                $created += $this->createClubEmailNotification($assignment);
+            }
+
+            // Alcune notifiche istituzionali (30% chance)
+            if (rand(0, 9) < 3) {
+                $created += $this->createInstitutionalEmailNotification($assignment);
             }
         }
 
@@ -81,174 +80,177 @@ class NotificationSeeder extends Seeder
     }
 
     /**
-     * Crea notifiche per scadenze disponibilità
+     * ✅ Notifica email all'arbitro
      */
-    private function createDeadlineNotifications(): int
-    {
-        $this->command->info("⏰ Creando notifiche scadenze...");
-
-        $openTournaments = Tournament::where('status', 'open')
-                                   ->where('availability_deadline', '>', now())
-                                   ->where('availability_deadline', '<', now()->addDays(7))
-                                   ->get();
-
-        $created = 0;
-
-        foreach ($openTournaments as $tournament) {
-            // Notifica a tutti gli arbitri della zona
-            $eligibleReferees = $this->getEligibleRefereesForTournament($tournament);
-
-            foreach ($eligibleReferees as $referee) {
-                // Controlla se ha già dichiarato disponibilità
-                $hasAvailability = $tournament->availabilities()
-                                            ->where('referee_id', $referee->id)
-                                            ->exists();
-
-                if (!$hasAvailability) {
-                    $notification = $this->createNotification([
-                        'user_id' => $referee->id,
-                        'type' => 'deadline_reminder',
-                        'title' => 'Scadenza Disponibilità',
-                        'message' => "Ricorda di dichiarare la tua disponibilità per '{$tournament->name}' entro il " .
-                                   Carbon::parse($tournament->availability_deadline)->format('d/m/Y'),
-                        'data' => [
-                            'tournament_id' => $tournament->id,
-                            'tournament_name' => $tournament->name,
-                            'deadline' => $tournament->availability_deadline
-                        ],
-                        'action_url' => "/tournaments/{$tournament->id}/availability",
-                        'priority' => 'medium',
-                        'expires_at' => Carbon::parse($tournament->availability_deadline)
-                    ]);
-
-                    if ($notification) {
-                        $created++;
-                    }
-                }
-            }
-        }
-
-        return $created;
-    }
-
-    /**
-     * Crea notifiche di sistema
-     */
-    private function createSystemNotifications(): int
-    {
-        $this->command->info("⚙️ Creando notifiche sistema...");
-
-        $created = 0;
-
-        // Notifica benvenuto per nuovi arbitri
-        $newReferees = User::where('user_type', 'referee')
-                          ->where('created_at', '>', now()->subDays(30))
-                          ->get();
-
-        foreach ($newReferees as $referee) {
-            $notification = $this->createNotification([
-                'user_id' => $referee->id,
-                'type' => 'welcome',
-                'title' => 'Benvenuto nel Sistema Golf',
-                'message' => "Benvenuto {$referee->name}! Completa il tuo profilo e inizia a dichiarare le tue disponibilità.",
-                'data' => [
-                    'referee_level' => $referee->level,
-                    'zone' => $referee->zone ? $referee->zone->name : null
-                ],
-                'action_url' => '/profile/complete',
-                'priority' => 'low',
-                'expires_at' => now()->addDays(30)
-            ]);
-
-            if ($notification) {
-                $created++;
-            }
-        }
-
-        // Notifiche per admin su tornei senza assegnazioni
-        $problematicTournaments = Tournament::where('status', 'closed')
-                                           ->whereDoesntHave('assignments')
-                                           ->where('start_date', '>', now())
-                                           ->get();
-
-        foreach ($problematicTournaments as $tournament) {
-            $admin = $tournament->zone_id
-                ? User::where('user_type', 'admin')->where('zone_id', $tournament->zone_id)->first()
-                : User::where('user_type', 'national_admin')->first();
-
-            if ($admin) {
-                $notification = $this->createNotification([
-                    'user_id' => $admin->id,
-                    'type' => 'admin_alert',
-                    'title' => 'Torneo Senza Assegnazioni',
-                    'message' => "Il torneo '{$tournament->name}' è chiuso ma non ha ancora assegnazioni.",
-                    'data' => [
-                        'tournament_id' => $tournament->id,
-                        'tournament_name' => $tournament->name,
-                        'tournament_date' => $tournament->start_date
-                    ],
-                    'action_url' => "/admin/tournaments/{$tournament->id}/assignments",
-                    'priority' => 'high',
-                    'expires_at' => Carbon::parse($tournament->start_date)->subDays(3)
-                ]);
-
-                if ($notification) {
-                    $created++;
-                }
-            }
-        }
-
-        return $created;
-    }
-
-    /**
-     * Crea una notifica
-     */
-    private function createNotification(array $data): ?Notification
+    private function createRefereeEmailNotification(Assignment $assignment): int
     {
         try {
-            return Notification::create([
-                'id' => \Illuminate\Support\Str::uuid(),
-                'type' => $data['type'],
-                'notifiable_type' => User::class,
-                'notifiable_id' => $data['user_id'],
-                'data' => json_encode([
-                    'title' => $data['title'],
-                    'message' => $data['message'],
-                    'action_url' => $data['action_url'] ?? null,
-                    'priority' => $data['priority'] ?? 'medium',
-                    'additional_data' => $data['data'] ?? []
-                ]),
-                'read_at' => rand(0, 1) ? now()->subDays(rand(1, 5)) : null, // Alcune già lette
-                'created_at' => now()->subDays(rand(0, 7)),
+            DB::table('notifications')->insert([
+                'assignment_id' => $assignment->id,
+                'recipient_type' => 'referee',
+                'recipient_email' => $assignment->user->email,
+                'subject' => "Assegnazione Confermata: {$assignment->tournament->name}",
+                'body' => $this->generateRefereeEmailBody($assignment),
+                'template_used' => 'assignment_referee',
+                'status' => $this->getRandomEmailStatus(),
+                'sent_at' => $this->generateSentDate($assignment),
+                'error_message' => null,
+                'retry_count' => 0,
+                'attachments' => null,
+                'created_at' => now(),
                 'updated_at' => now(),
             ]);
+
+            return 1;
         } catch (\Exception $e) {
-            $this->command->warn("⚠️ Errore creazione notifica: " . $e->getMessage());
-            return null;
+            $this->command->warn("⚠️ Errore creazione notifica arbitro: " . $e->getMessage());
+            return 0;
         }
     }
 
     /**
-     * Ottieni arbitri eleggibili per torneo
+     * ✅ Notifica email al circolo
      */
-    private function getEligibleRefereesForTournament(Tournament $tournament): \Illuminate\Database\Eloquent\Collection
+    private function createClubEmailNotification(Assignment $assignment): int
     {
-        if ($tournament->zone_id) {
-            // Torneo zonale: arbitri zona + nazionali
-            return User::where('user_type', 'referee')
-                      ->where('is_active', true)
-                      ->where(function($query) use ($tournament) {
-                          $query->where('zone_id', $tournament->zone_id)
-                                ->orWhereIn('level', ['nazionale', 'internazionale']);
-                      })
-                      ->get();
-        } else {
-            // Torneo nazionale: solo arbitri nazionali
-            return User::where('user_type', 'referee')
-                      ->where('is_active', true)
-                      ->whereIn('level', ['nazionale', 'internazionale'])
-                      ->get();
+        try {
+            // Email fittizia del circolo basata sul nome
+            $clubSlug = \Illuminate\Support\Str::slug($assignment->tournament->club->name);
+            $clubEmail = "segreteria@{$clubSlug}.golf.it";
+
+            DB::table('notifications')->insert([
+                'assignment_id' => $assignment->id,
+                'recipient_type' => 'club',
+                'recipient_email' => $clubEmail,
+                'subject' => "Arbitri Assegnati: {$assignment->tournament->name}",
+                'body' => $this->generateClubEmailBody($assignment),
+                'template_used' => 'assignment_club',
+                'status' => 'sent', // Club emails usually sent successfully
+                'sent_at' => $this->generateSentDate($assignment),
+                'error_message' => null,
+                'retry_count' => 0,
+                'attachments' => null,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            return 1;
+        } catch (\Exception $e) {
+            $this->command->warn("⚠️ Errore creazione notifica circolo: " . $e->getMessage());
+            return 0;
         }
+    }
+
+    /**
+     * ✅ Notifica email istituzionale
+     */
+    private function createInstitutionalEmailNotification(Assignment $assignment): int
+    {
+        try {
+            $institutionalEmails = [
+                'crc@federgolf.it',
+                'segreteria@federgolf.it',
+                'arbitri@federgolf.it'
+            ];
+
+            DB::table('notifications')->insert([
+                'assignment_id' => $assignment->id,
+                'recipient_type' => 'institutional',
+                'recipient_email' => $institutionalEmails[array_rand($institutionalEmails)],
+                'subject' => "Report Assegnazione: {$assignment->tournament->name}",
+                'body' => $this->generateInstitutionalEmailBody($assignment),
+                'template_used' => 'assignment_institutional',
+                'status' => 'sent',
+                'sent_at' => $this->generateSentDate($assignment),
+                'error_message' => null,
+                'retry_count' => 0,
+                'attachments' => null,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+
+            return 1;
+        } catch (\Exception $e) {
+            $this->command->warn("⚠️ Errore creazione notifica istituzionale: " . $e->getMessage());
+            return 0;
+        }
+    }
+
+    /**
+     * ✅ Corpo email per arbitro
+     */
+    private function generateRefereeEmailBody(Assignment $assignment): string
+    {
+        return "Gentile {$assignment->user->name},\n\n" .
+               "La confermiamo che è stato assegnato come {$assignment->role} per il torneo:\n\n" .
+               "**{$assignment->tournament->name}**\n" .
+               "Date: {$assignment->tournament->start_date->format('d/m/Y')} - {$assignment->tournament->end_date->format('d/m/Y')}\n" .
+               "Circolo: {$assignment->tournament->club->name}\n" .
+               "Ruolo: {$assignment->role}\n\n" .
+               ($assignment->notes ? "Note: {$assignment->notes}\n\n" : "") .
+               "La convocazione ufficiale verrà inviata dal circolo.\n\n" .
+               "Cordiali saluti,\n" .
+               "Sezione Zonale Regole";
+    }
+
+    /**
+     * ✅ Corpo email per circolo
+     */
+    private function generateClubEmailBody(Assignment $assignment): string
+    {
+        return "Gentile Segreteria,\n\n" .
+               "Vi confermiamo l'arbitro assegnato al vostro torneo:\n\n" .
+               "**{$assignment->tournament->name}**\n" .
+               "Arbitro: {$assignment->user->name} ({$assignment->role})\n" .
+               "Email: {$assignment->user->email}\n" .
+               "Telefono: {$assignment->user->phone}\n\n" .
+               "Vi preghiamo di inviare la convocazione ufficiale.\n\n" .
+               "Cordiali saluti,\n" .
+               "Sezione Zonale Regole";
+    }
+
+    /**
+     * ✅ Corpo email istituzionale
+     */
+    private function generateInstitutionalEmailBody(Assignment $assignment): string
+    {
+        return "REPORT ASSEGNAZIONE\n\n" .
+               "Torneo: {$assignment->tournament->name}\n" .
+               "Date: {$assignment->tournament->start_date->format('d/m/Y')} - {$assignment->tournament->end_date->format('d/m/Y')}\n" .
+               "Circolo: {$assignment->tournament->club->name}\n" .
+               "Zona: {$assignment->tournament->zone->name}\n\n" .
+               "ARBITRO ASSEGNATO:\n" .
+               "Nome: {$assignment->user->name}\n" .
+               "Ruolo: {$assignment->role}\n" .
+               "Livello: {$assignment->user->level}\n" .
+               "Email: {$assignment->user->email}\n\n" .
+               "Assegnato da: {$assignment->assignedBy->name}\n" .
+               "Data assegnazione: {$assignment->assigned_at->format('d/m/Y H:i')}\n\n" .
+               "---\n" .
+               "Sistema Gestione Arbitri Golf";
+    }
+
+    /**
+     * ✅ Status email realistico
+     */
+    private function getRandomEmailStatus(): string
+    {
+        $statuses = ['sent', 'sent', 'sent', 'pending', 'failed']; // 60% sent, 20% pending, 20% failed
+        return $statuses[array_rand($statuses)];
+    }
+
+    /**
+     * ✅ Data invio realistica
+     */
+    private function generateSentDate(Assignment $assignment): ?Carbon
+    {
+        $status = $this->getRandomEmailStatus();
+
+        if ($status === 'pending') {
+            return null; // Non ancora inviata
+        }
+
+        // Email inviate 0-3 giorni dopo l'assegnazione
+        return $assignment->assigned_at->copy()->addDays(rand(0, 3))->addHours(rand(0, 23));
     }
 }
