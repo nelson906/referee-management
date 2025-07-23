@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use App\Models\SystemConfig;
+use Illuminate\Support\Facades\Schema;
 use Carbon\Carbon;
 
 class SystemConfigSeeder extends Seeder
@@ -17,7 +18,7 @@ class SystemConfigSeeder extends Seeder
         $this->command->info('⚙️ Creando Configurazioni Sistema Golf...');
 
         // Elimina configurazioni esistenti per evitare duplicati
-        if (schema()->hasTable('system_configs')) {
+        if (Schema::hasTable('system_configs')) {
             SystemConfig::truncate();
         } else {
             $this->command->warn('⚠️ Tabella system_configs non trovata - saltando seeder');
