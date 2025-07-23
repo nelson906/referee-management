@@ -22,6 +22,7 @@ return new class extends Migration
             $table->string('address')->nullable();
             $table->string('postal_code', 10)->nullable();
             $table->string('tax_code', 16)->nullable();
+            $table->text('notes')->nullable();
 
             // ✅ CERTIFICATION DETAILS
             $table->string('badge_number')->nullable();

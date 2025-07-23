@@ -20,17 +20,24 @@ return new class extends Migration
             $table->text('body');
             $table->string('template_used')->nullable();
             $table->enum('status', ['pending', 'sent', 'failed', 'cancelled'])->default('pending');
-            $table->timestamp('sent_at')->nullable();
+            $table->timestamp(column: 'sent_at')->nullable();
+            $table->timestamp('scheduled_at')->nullable();
+            $table->timestamp('expires_at')->nullable();
             $table->text('error_message')->nullable();
             $table->integer('retry_count')->default(0);
+            $table->integer('priority')->default(0);
             $table->json('attachments')->nullable();
+            $table->json('metadata')->nullable();
             $table->timestamps();
 
             $table->index(['assignment_id', 'recipient_type']);
             $table->index(['status', 'created_at']);
             $table->index(['recipient_email', 'status']);
+            // $table->index(['status', 'priority', 'created_at'], 'idx_notifications_queue');
+            // $table->index(['recipient_type', 'created_at'], 'idx_notifications_type_date');
         });
     }
+
 
     /**
      * Reverse the migrations.

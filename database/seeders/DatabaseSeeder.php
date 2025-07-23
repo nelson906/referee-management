@@ -89,19 +89,17 @@ try {
         $this->command->info('📋 Eseguendo seeder opzionali...');
 
         // Seeder per notifiche (se esiste)
-        if (class_exists('Database\Seeders\NotificationSeeder')) {
-            $this->callSeederWithTiming('NotificationSeeder');
-        }
+    if (class_exists('Database\Seeders\NotificationSeeder')) {
+        $this->callSeederWithTiming('Database\Seeders\NotificationSeeder');
+    }
 
-        // Seeder per template lettere (se esiste)
-        if (class_exists('Database\Seeders\LetterTemplateSeeder')) {
-            $this->callSeederWithTiming('LetterTemplateSeeder');
-        }
+    if (class_exists('Database\Seeders\LetterTemplateSeeder')) {
+        $this->callSeederWithTiming('Database\Seeders\LetterTemplateSeeder');
+    }
 
-        // Seeder per configurazioni sistema (se esiste)
-        if (class_exists('Database\Seeders\SystemConfigSeeder')) {
-            $this->callSeederWithTiming('SystemConfigSeeder');
-        }
+    if (class_exists('Database\Seeders\SystemConfigSeeder')) {
+        $this->callSeederWithTiming('Database\Seeders\SystemConfigSeeder');
+    }
     }
 
     /**
