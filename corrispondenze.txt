@@ -1,0 +1,30 @@
+chiave di ricerca => (`arbitri`.`Nome` + `arbitri`.`Cognome`) = `users`.`name`
+Sql1466239_4.`arbitri`.`Casa`,	=>	`referees`.`address`,
+Sql1466239_4.`arbitri`.`Cellulare`,	=>	`users`.`phone`,
+Sql1466239_4.`arbitri`.`Citta`,	=>	`users`.`city`,
+Sql1466239_4.`arbitri`.`Email`,	=>	`users`.`email`,
+Sql1466239_4.`arbitri`.`Livello_2025`,	=>	`users`.`level`,
+Sql1466239_4.`arbitri`.`Password`,	=>	`users`.`password`,
+Sql1466239_4.`arbitri`.`Prima_Nomina`,	=>	`referees`.`first_certification_date`,
+Sql1466239_4.`arbitri`.`Zona`	=>	`users`.`zone_id`
+
+chiave di ricerca => `circoli`.`Circolo_Id`	=`clubs`.`code`,
+Sql1466239_4.`circoli`.`CAP`,	=>	`clubs`.`postal_code`,
+Sql1466239_4.`circoli`.`Circolo_Nome`,	=>	`clubs`.`name`,
+Sql1466239_4.`circoli`.`Città`,	=>	`clubs`.`city`,
+Sql1466239_4.`circoli`.`Email`,	=>	`clubs`.`email`,
+Sql1466239_4.`circoli`.`Indirizzo`,	=>	`clubs`.`address`,
+Sql1466239_4.`circoli`.`Numero_Buche`,	=>	`clubs`.`holes_count`,
+Sql1466239_4.`circoli`.`Provincia`,	=>	`clubs`.`province`,
+Sql1466239_4.`circoli`.`Regione`,	=>	`clubs`.`region`,
+Sql1466239_4.`circoli`.`SedeGara`,	=>	`clubs`.`is_active`,
+Sql1466239_4.`circoli`.`Telefono`,	=>	`clubs`.`phone`,
+Sql1466239_4.`circoli`.`Web`,	=>	`clubs`.`website`,
+Sql1466239_4.`circoli`.`Zona`	=>	`clubs`.`zone_id`
+
+chiave di ricerca => `gare_2025`.`Nome_gara` =	`tournaments`.`name,
+Sql1466239_4.`gare_2025`.`Circolo`,	=>	`tournaments`.`club_id`,
+Sql1466239_4.`gare_2025`.`EndTime`,	=>	`tournaments`.`end_date`,
+Sql1466239_4.`gare_2025`.`StartTime`,	=>	`tournaments`.`start_date`,
+Sql1466239_4.`gare_2025`.`Tipo`,	=>	`tournaments`.`tournament_type_id`,
+Sql1466239_4.`gare_2025`.`Zona`	=>	`tournaments`.`zone_id`
