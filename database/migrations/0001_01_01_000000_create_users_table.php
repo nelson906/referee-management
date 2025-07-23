@@ -15,7 +15,7 @@ return new class extends Migration
         Schema::create('zones', function (Blueprint $table) {
             $table->id();
             $table->string('name');
-            $table->string('code', 10)->unique();  // ✅ AGGIUNGI QUESTA RIGA
+            $table->string('code', 10)->unique()->nullable();  // ✅ AGGIUNGI QUESTA RIGA
             $table->text('description')->nullable();
             $table->boolean('is_national')->default(false);
             $table->boolean('is_active')->default(true);

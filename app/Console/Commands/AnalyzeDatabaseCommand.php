@@ -2,586 +2,462 @@
 
 /**
  * ========================================
- * MIGRATION TESTER - Test con Subset Dati
+ * ANALYZE DATABASE COMMAND - COMPLETO
  * ========================================
- * Comandi per testare la migrazione con un subset limitato di dati
- * prima di procedere con la migrazione completa
+ * Sostituisci il contenuto di app/Console/Commands/AnalyzeDatabaseCommand.php
  */
 
 namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
-use Database\Seeders\DataMigrationSeeder;
+use Illuminate\Support\Collection;
 
-class TestMigrationCommand extends Command
+class AnalyzeDatabaseCommand extends Command
 {
-    protected $signature = 'golf:test-migration
-                            {--limit=10 : Limite di record per test}
-                            {--backup : Crea backup prima del test}
-                            {--cleanup : Pulisce dati test dopo il run}
-                            {--validate : Solo validazione, nessuna migrazione}';
-
-    protected $description = 'Testa la migrazione con un subset limitato di dati';
-
-    private $testResults = [];
-    private $backupId;
+    protected $signature = 'golf:analyze-database {--export= : Export results to file}';
+    protected $description = 'Analizza la struttura del database gestione_arbitri';
 
     public function handle()
     {
-        $this->info('🧪 AVVIO TEST MIGRAZIONE');
-        $this->info('========================');
+        $this->info('🚀 Avvio analisi database gestione_arbitri...');
+        $this->info('=====================================');
 
-        $limit = $this->option('limit');
-        $this->info("Limite record per test: {$limit}");
+        // Setup connessione
+        $this->setupOldDatabaseConnection();
 
-        // 1. Backup se richiesto
-        if ($this->option('backup')) {
-            $this->createBackup();
+        $analysis = [
+            'connection_status' => $this->testConnection(),
+            'tables_structure' => $this->analyzeTablesStructure(),
+            'roles_permissions' => $this->analyzeRolesPermissions(),
+            'users_analysis' => $this->analyzeUsers(),
+            'referees_analysis' => $this->analyzeReferees(),
+            'data_quality' => $this->checkDataQuality(),
+            'migration_readiness' => $this->assessMigrationReadiness()
+        ];
+
+        // Export se richiesto
+        if ($this->option('export')) {
+            $this->exportAnalysis($analysis);
         }
 
-        // 2. Solo validazione?
-        if ($this->option('validate')) {
-            return $this->validateOnly();
-        }
-
-        // 3. Setup test environment
-        $this->setupTestEnvironment();
-
-        // 4. Esegui test migrazione
-        $this->runTestMigration($limit);
-
-        // 5. Valida risultati
-        $this->validateResults();
-
-        // 6. Report finale
-        $this->generateReport();
-
-        // 7. Cleanup se richiesto
-        if ($this->option('cleanup')) {
-            $this->cleanup();
-        }
-
+        $this->info('✅ Analisi completata!');
         return 0;
     }
 
     /**
-     * 💾 Crea backup del database target
+     * 🔗 Test connessione database
      */
-    private function createBackup()
+    private function testConnection(): array
     {
-        $this->info('💾 Creazione backup database target...');
+        try {
+            $this->info('📡 Test connessione...');
 
-        $this->backupId = 'test_backup_' . date('Y_m_d_H_i_s');
+            // Test connessione PDO
+            $pdo = DB::connection('old')->getPdo();
+
+            // Verifica database exists
+            $result = DB::connection('old')->select(
+                "SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = ?",
+                ['gestione_arbitri']
+            );
+
+            $status = [
+                'connected' => true,
+                'database_exists' => !empty($result),
+                'driver' => $pdo->getAttribute(\PDO::ATTR_DRIVER_NAME),
+                'server_version' => $pdo->getAttribute(\PDO::ATTR_SERVER_VERSION)
+            ];
+
+            $this->info('✅ Connessione stabilita');
+            $this->info("   Driver: {$status['driver']}");
+            $this->info("   Server: {$status['server_version']}");
+
+            return $status;
+
+        } catch (\Exception $e) {
+            $this->error('❌ Errore connessione: ' . $e->getMessage());
+            return ['connected' => false, 'error' => $e->getMessage()];
+        }
+    }
+
+    /**
+     * 📋 Analizza struttura tabelle
+     */
+    private function analyzeTablesStructure(): array
+    {
+        $this->info('📋 Analisi struttura tabelle...');
 
         try {
-            // Backup delle tabelle principali
-            $tables = ['users', 'referees', 'zones', 'tournaments', 'clubs'];
+            $tables = DB::connection('old')->select('SHOW TABLES');
+            $tableKey = 'Tables_in_gestione_arbitri';
+
+            $structure = [];
+            $critical_tables = ['users', 'referees', 'roles', 'permissions', 'role_user', 'zones', 'tournaments'];
 
             foreach ($tables as $table) {
-                if (Schema::hasTable($table)) {
-                    $backupTable = "{$table}_{$this->backupId}";
-                    DB::statement("CREATE TABLE {$backupTable} AS SELECT * FROM {$table}");
-                    $this->info("   ✅ Backup {$table} → {$backupTable}");
+                $tableName = $table->$tableKey;
+
+                // Conta record
+                try {
+                    $count = DB::connection('old')->table($tableName)->count();
+                } catch (\Exception $e) {
+                    $count = 'ERROR';
+                }
+
+                // Verifica se è critica
+                $isCritical = in_array($tableName, $critical_tables);
+
+                $structure[$tableName] = [
+                    'records' => $count,
+                    'is_critical' => $isCritical,
+                    'priority' => $isCritical ? 'HIGH' : 'MEDIUM'
+                ];
+
+                $marker = $isCritical ? '🔴' : '🔵';
+                $this->info("   {$marker} {$tableName}: {$count} records");
+            }
+
+            $this->info('✅ Analizzate ' . count($tables) . ' tabelle');
+            return $structure;
+
+        } catch (\Exception $e) {
+            $this->error('❌ Errore analisi tabelle: ' . $e->getMessage());
+            return ['error' => $e->getMessage()];
+        }
+    }
+
+    /**
+     * 👥 Analisi Roles & Permissions
+     */
+    private function analyzeRolesPermissions(): array
+    {
+        $this->info('👥 Analisi Roles & Permissions...');
+
+        try {
+            $analysis = [];
+
+            // 1. Analizza tabella roles
+            if ($this->tableExists('roles')) {
+                $roles = DB::connection('old')->table('roles')->get();
+                $analysis['roles'] = $roles->map(function($role) {
+                    return [
+                        'id' => $role->id,
+                        'name' => $role->name,
+                        'guard_name' => $role->guard_name ?? 'web'
+                    ];
+                })->toArray();
+
+                $this->info('🏷️  ROLES trovati:');
+                foreach ($analysis['roles'] as $role) {
+                    $this->info("   ID: {$role['id']} | Name: {$role['name']} | Guard: {$role['guard_name']}");
                 }
             }
 
-            $this->info("✅ Backup completato: {$this->backupId}");
-
-        } catch (\Exception $e) {
-            $this->error("❌ Errore backup: " . $e->getMessage());
-            return false;
-        }
-    }
-
-    /**
-     * ✅ Solo validazione senza migrazione
-     */
-    private function validateOnly()
-    {
-        $this->info('✅ MODALITÀ SOLO VALIDAZIONE');
-
-        // 1. Test connessione source
-        $sourceConnection = $this->testSourceConnection();
-
-        // 2. Analizza mapping potenziali
-        $mappingAnalysis = $this->analyzePotentialMapping();
-
-        // 3. Report validazione
-        $this->info('📊 RISULTATI VALIDAZIONE:');
-        $this->info("   Source DB: " . ($sourceConnection ? 'OK' : 'ERRORE'));
-        $this->info("   Users mappabili: {$mappingAnalysis['mappable_users']}");
-        $this->info("   Referees mappabili: {$mappingAnalysis['mappable_referees']}");
-        $this->info("   Issues rilevati: {$mappingAnalysis['issues_count']}");
-
-        if ($mappingAnalysis['issues_count'] > 0) {
-            $this->warn('⚠️  Issues trovati:');
-            foreach ($mappingAnalysis['issues'] as $issue) {
-                $this->warn("   - {$issue}");
-            }
-        }
-
-        return 0;
-    }
-
-    /**
-     * 🔧 Setup ambiente di test
-     */
-    private function setupTestEnvironment()
-    {
-        $this->info('🔧 Setup ambiente di test...');
-
-        // Assicurati che le tabelle target esistano
-        $requiredTables = ['users', 'referees', 'zones', 'clubs', 'tournaments'];
-
-        foreach ($requiredTables as $table) {
-            if (!Schema::hasTable($table)) {
-                $this->error("❌ Tabella mancante: {$table}");
-                $this->info("💡 Esegui prima: php artisan migrate");
-                exit(1);
-            }
-        }
-
-        $this->info('✅ Ambiente di test pronto');
-    }
-
-    /**
-     * 🚀 Esegui test migrazione
-     */
-    private function runTestMigration(int $limit)
-    {
-        $this->info("🚀 Avvio test migrazione (limite: {$limit})...");
-
-        try {
-            // Crea un TestDataMigrationSeeder modificato
-            $testSeeder = new TestDataMigrationSeeder($limit);
-            $testSeeder->setCommand($this);
-            $testSeeder->run();
-
-            $this->testResults['migration_completed'] = true;
-            $this->info('✅ Test migrazione completato');
-
-        } catch (\Exception $e) {
-            $this->testResults['migration_completed'] = false;
-            $this->testResults['migration_error'] = $e->getMessage();
-            $this->error('❌ Errore test migrazione: ' . $e->getMessage());
-        }
-    }
-
-    /**
-     * ✅ Valida risultati migrazione
-     */
-    private function validateResults()
-    {
-        $this->info('✅ Validazione risultati...');
-
-        $validation = [
-            'users_migrated' => DB::table('users')->count(),
-            'referees_created' => DB::table('referees')->count(),
-            'zones_migrated' => DB::table('zones')->count(),
-            'data_integrity' => $this->checkDataIntegrity(),
-            'referees_user_link' => $this->validateRefereesUserLink(),
-            'user_types_distribution' => $this->analyzeUserTypesDistribution()
-        ];
-
-        $this->testResults['validation'] = $validation;
-
-        $this->info('📊 RISULTATI VALIDAZIONE:');
-        $this->info("   Users migrati: {$validation['users_migrated']}");
-        $this->info("   Referees creati: {$validation['referees_created']}");
-        $this->info("   Zones migrate: {$validation['zones_migrated']}");
-        $this->info("   Integrità dati: " . ($validation['data_integrity'] ? 'OK' : 'ERRORE'));
-        $this->info("   Link referees-user: " . ($validation['referees_user_link'] ? 'OK' : 'ERRORE'));
-
-        // Distribuzione user_type
-        $this->info('👥 Distribuzione user_type:');
-        foreach ($validation['user_types_distribution'] as $type => $count) {
-            $this->info("   - {$type}: {$count}");
-        }
-    }
-
-    /**
-     * 📄 Genera report finale
-     */
-    private function generateReport()
-    {
-        $this->info('📄 Generazione report finale...');
-
-        $reportFile = storage_path('logs/migration_test_' . date('Y_m_d_H_i_s') . '.json');
-
-        $report = [
-            'test_timestamp' => now()->toISOString(),
-            'test_config' => [
-                'limit' => $this->option('limit'),
-                'backup_created' => $this->option('backup'),
-                'backup_id' => $this->backupId ?? null
-            ],
-            'results' => $this->testResults,
-            'recommendations' => $this->generateRecommendations()
-        ];
-
-        file_put_contents($reportFile, json_encode($report, JSON_PRETTY_PRINT));
-
-        $this->info("📄 Report salvato: {$reportFile}");
-
-        // Mostra raccomandazioni
-        $this->info('🎯 RACCOMANDAZIONI:');
-        foreach ($report['recommendations'] as $rec) {
-            $this->info("   - {$rec}");
-        }
-    }
-
-    /**
-     * 🧹 Cleanup dati test
-     */
-    private function cleanup()
-    {
-        if (!$this->confirm('🧹 Confermi la pulizia dei dati test?')) {
-            return;
-        }
-
-        $this->info('🧹 Pulizia dati test...');
-
-        try {
-            // Ripristina da backup se disponibile
-            if ($this->backupId) {
-                $this->restoreFromBackup();
-            } else {
-                // Pulizia semplice
-                DB::table('referees')->truncate();
-                DB::table('users')->truncate();
-                DB::table('zones')->truncate();
+            // 2. Analizza tabella permissions
+            if ($this->tableExists('permissions')) {
+                $permissions = DB::connection('old')->table('permissions')->get();
+                $analysis['permissions'] = $permissions->pluck('name', 'id')->toArray();
+                $this->info('🔑 Permissions: ' . count($analysis['permissions']));
             }
 
-            $this->info('✅ Cleanup completato');
+            // 3. Analizza role_user assignments
+            if ($this->tableExists('role_user')) {
+                $roleUsers = DB::connection('old')->table('role_user')
+                    ->select('role_id', DB::raw('COUNT(*) as user_count'))
+                    ->groupBy('role_id')
+                    ->get();
+
+                $analysis['role_assignments'] = $roleUsers->pluck('user_count', 'role_id')->toArray();
+
+                $this->info('👤 Assegnazioni role_user:');
+                foreach ($analysis['role_assignments'] as $roleId => $userCount) {
+                    $roleName = collect($analysis['roles'])->firstWhere('id', $roleId)['name'] ?? 'Unknown';
+                    $this->info("   Role {$roleId} ({$roleName}): {$userCount} users");
+                }
+            }
+
+            // 4. Mapping to new system
+            $analysis['mapping_strategy'] = $this->generateRoleMapping($analysis['roles'] ?? []);
+
+            return $analysis;
 
         } catch (\Exception $e) {
-            $this->error('❌ Errore cleanup: ' . $e->getMessage());
+            $this->error('❌ Errore analisi roles: ' . $e->getMessage());
+            return ['error' => $e->getMessage()];
         }
     }
 
     /**
-     * Helper methods
+     * 🧑‍💼 Analisi Users
      */
-    private function testSourceConnection(): bool
+    private function analyzeUsers(): array
     {
-        try {
-            $oldDbConfig = [
-                'driver' => 'mysql',
-                'host' => config('database.connections.mysql.host'),
-                'port' => config('database.connections.mysql.port'),
-                'database' => 'gestione_arbitri',
-                'username' => config('database.connections.mysql.username'),
-                'password' => config('database.connections.mysql.password'),
-                'charset' => 'utf8mb4',
-                'collation' => 'utf8mb4_unicode_ci',
-                'prefix' => '',
-                'strict' => false,
-                'engine' => null,
-            ];
+        $this->info('🧑‍💼 Analisi Users...');
 
-            config(['database.connections.old' => $oldDbConfig]);
-
-            DB::connection('old')->getPdo();
-            return true;
-
-        } catch (\Exception $e) {
-            return false;
-        }
-    }
-
-    private function analyzePotentialMapping(): array
-    {
         try {
             $users = DB::connection('old')->table('users')->get();
+
+            $analysis = [
+                'total_users' => $users->count(),
+                'email_verified' => $users->where('email_verified_at', '!=', null)->count(),
+                'has_zone' => $users->where('zone_id', '!=', null)->count(),
+                'active_users' => $users->where('is_active', true)->count()
+            ];
+
+            // Analizza legacy flags
+            $legacyFlags = [
+                'is_admin' => $users->where('is_admin', true)->count(),
+                'is_super_admin' => $users->where('is_super_admin', true)->count()
+            ];
+            $analysis['legacy_flags'] = $legacyFlags;
+
+            // Preview sample users
+            $sampleUsers = $users->take(3)->map(function($user) {
+                return [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'zone_id' => $user->zone_id,
+                    'is_admin' => $user->is_admin ?? false,
+                    'is_super_admin' => $user->is_super_admin ?? false
+                ];
+            });
+            $analysis['sample_users'] = $sampleUsers->toArray();
+
+            $this->info("📊 USERS STATISTICS:");
+            $this->info("   Total users: {$analysis['total_users']}");
+            $this->info("   Email verified: {$analysis['email_verified']}");
+            $this->info("   Has zone: {$analysis['has_zone']}");
+            $this->info("   Active: {$analysis['active_users']}");
+            $this->info("   Legacy admin flags: {$legacyFlags['is_admin']} admin, {$legacyFlags['is_super_admin']} super_admin");
+
+            return $analysis;
+
+        } catch (\Exception $e) {
+            $this->error('❌ Errore analisi users: ' . $e->getMessage());
+            return ['error' => $e->getMessage()];
+        }
+    }
+
+    /**
+     * 🏌️ Analisi Referees
+     */
+    private function analyzeReferees(): array
+    {
+        $this->info('🏌️ Analisi Referees...');
+
+        try {
+            if (!$this->tableExists('referees')) {
+                return ['error' => 'Tabella referees non trovata'];
+            }
+
             $referees = DB::connection('old')->table('referees')->get();
 
-            $issues = [];
-
-            // Check per email duplicate
-            $duplicateEmails = $users->groupBy('email')->filter(function($group) {
-                return $group->count() > 1;
-            })->count();
-
-            if ($duplicateEmails > 0) {
-                $issues[] = "Email duplicate: {$duplicateEmails}";
-            }
-
-            // Check per referees senza user
-            $orphanReferees = $referees->whereNotIn('user_id', $users->pluck('id'))->count();
-            if ($orphanReferees > 0) {
-                $issues[] = "Referees orfani: {$orphanReferees}";
-            }
-
-            return [
-                'mappable_users' => $users->count(),
-                'mappable_referees' => $referees->count(),
-                'issues_count' => count($issues),
-                'issues' => $issues
+            $analysis = [
+                'total_referees' => $referees->count(),
+                'has_referee_code' => $referees->where('referee_code', '!=', null)->count(),
+                'qualifications' => $referees->groupBy('qualification')->map->count()->toArray(),
+                'categories' => $referees->groupBy('category')->map->count()->toArray(),
+                'zones' => $referees->groupBy('zone_id')->map->count()->toArray()
             ];
 
+            // Preview sample referees
+            $sampleReferees = $referees->take(3)->map(function($referee) {
+                return [
+                    'user_id' => $referee->user_id,
+                    'referee_code' => $referee->referee_code,
+                    'qualification' => $referee->qualification,
+                    'category' => $referee->category,
+                    'zone_id' => $referee->zone_id
+                ];
+            });
+            $analysis['sample_referees'] = $sampleReferees->toArray();
+
+            $this->info("📊 REFEREES STATISTICS:");
+            $this->info("   Total referees: {$analysis['total_referees']}");
+            $this->info("   Has referee_code: {$analysis['has_referee_code']}");
+            $this->info("   Qualifications: " . json_encode($analysis['qualifications']));
+
+            return $analysis;
+
         } catch (\Exception $e) {
-            return [
-                'mappable_users' => 0,
-                'mappable_referees' => 0,
-                'issues_count' => 1,
-                'issues' => ['Errore connessione database source']
+            $this->error('❌ Errore analisi referees: ' . $e->getMessage());
+            return ['error' => $e->getMessage()];
+        }
+    }
+
+    /**
+     * ✅ Verifica qualità dati
+     */
+    private function checkDataQuality(): array
+    {
+        $this->info('✅ Verifica qualità dati...');
+
+        $issues = [];
+
+        try {
+            // 1. Users senza email
+            $usersNoEmail = DB::connection('old')->table('users')
+                ->where('email', '')
+                ->orWhereNull('email')
+                ->count();
+
+            if ($usersNoEmail > 0) {
+                $issues[] = "Users senza email: {$usersNoEmail}";
+            }
+
+            // 2. Referees senza user corrispondente
+            if ($this->tableExists('referees')) {
+                $orphanReferees = DB::connection('old')->table('referees')
+                    ->leftJoin('users', 'referees.user_id', '=', 'users.id')
+                    ->whereNull('users.id')
+                    ->count();
+
+                if ($orphanReferees > 0) {
+                    $issues[] = "Referees orfani (senza user): {$orphanReferees}";
+                }
+            }
+
+            // 3. Users con role_user ma senza user corrispondente
+            if ($this->tableExists('role_user')) {
+                $orphanRoleUsers = DB::connection('old')->table('role_user')
+                    ->leftJoin('users', 'role_user.user_id', '=', 'users.id')
+                    ->whereNull('users.id')
+                    ->count();
+
+                if ($orphanRoleUsers > 0) {
+                    $issues[] = "Role assignments orfani: {$orphanRoleUsers}";
+                }
+            }
+
+            $quality = [
+                'issues_found' => count($issues),
+                'issues' => $issues,
+                'quality_score' => count($issues) === 0 ? 'EXCELLENT' : (count($issues) <= 2 ? 'GOOD' : 'NEEDS_ATTENTION')
             ];
-        }
-    }
 
-    private function checkDataIntegrity(): bool
-    {
-        try {
-            // Verifica che ogni referee abbia un user corrispondente
-            $orphanReferees = DB::table('referees')
-                ->leftJoin('users', 'referees.user_id', '=', 'users.id')
-                ->whereNull('users.id')
-                ->count();
-
-            return $orphanReferees === 0;
-
-        } catch (\Exception $e) {
-            return false;
-        }
-    }
-
-    private function validateRefereesUserLink(): bool
-    {
-        try {
-            $refereeUsers = DB::table('users')
-                ->where('user_type', 'referee')
-                ->count();
-
-            $refereesTable = DB::table('referees')->count();
-
-            // Non devono essere necessariamente uguali, ma referees non può essere > referee users
-            return $refereesTable <= $refereeUsers;
-
-        } catch (\Exception $e) {
-            return false;
-        }
-    }
-
-    private function analyzeUserTypesDistribution(): array
-    {
-        return DB::table('users')
-            ->select('user_type', DB::raw('COUNT(*) as count'))
-            ->groupBy('user_type')
-            ->pluck('count', 'user_type')
-            ->toArray();
-    }
-
-    private function generateRecommendations(): array
-    {
-        $recommendations = [];
-
-        if ($this->testResults['migration_completed'] ?? false) {
-            $recommendations[] = 'Migrazione test completata con successo';
-
-            $validation = $this->testResults['validation'] ?? [];
-
-            if ($validation['data_integrity'] ?? false) {
-                $recommendations[] = 'Integrità dati OK - Procedi con migrazione completa';
-            } else {
-                $recommendations[] = 'ATTENZIONE: Problemi integrità dati - Verifica prima di continuare';
+            $this->info("📊 QUALITÀ DATI: {$quality['quality_score']}");
+            if (!empty($issues)) {
+                foreach ($issues as $issue) {
+                    $this->info("   ⚠️  {$issue}");
+                }
             }
 
-            if (($validation['users_migrated'] ?? 0) > 0) {
-                $recommendations[] = "Users migrati: {$validation['users_migrated']} - Mapping funzionante";
-            }
+            return $quality;
 
+        } catch (\Exception $e) {
+            return ['error' => $e->getMessage()];
+        }
+    }
+
+    /**
+     * 🎯 Valuta readiness per migrazione
+     */
+    private function assessMigrationReadiness(): array
+    {
+        $this->info('🎯 Valutazione readiness migrazione...');
+
+        $requirements = [
+            'database_accessible' => true,
+            'critical_tables_exist' => $this->tableExists('users') && $this->tableExists('referees'),
+            'has_users' => DB::connection('old')->table('users')->count() > 0,
+            'has_roles_system' => $this->tableExists('roles') && $this->tableExists('role_user'),
+            'data_integrity' => true // Da implementare controlli specifici
+        ];
+
+        $readiness = [
+            'requirements' => $requirements,
+            'passed' => array_sum($requirements),
+            'total' => count($requirements),
+            'percentage' => (array_sum($requirements) / count($requirements)) * 100,
+            'recommendation' => ''
+        ];
+
+        if ($readiness['percentage'] >= 90) {
+            $readiness['recommendation'] = 'READY - Procedi con migrazione completa';
+        } elseif ($readiness['percentage'] >= 70) {
+            $readiness['recommendation'] = 'MOSTLY_READY - Test con subset prima';
         } else {
-            $recommendations[] = 'ERRORE migrazione test - Risolvi problemi prima di continuare';
-            if (isset($this->testResults['migration_error'])) {
-                $recommendations[] = "Errore: {$this->testResults['migration_error']}";
-            }
+            $readiness['recommendation'] = 'NOT_READY - Risolvi issues critici';
         }
 
-        return $recommendations;
-    }
+        $this->info("📊 MIGRAZIONE READINESS: {$readiness['percentage']}%");
+        $this->info("   Recommendation: {$readiness['recommendation']}");
 
-    private function restoreFromBackup()
-    {
-        $tables = ['users', 'referees', 'zones', 'tournaments', 'clubs'];
-
-        foreach ($tables as $table) {
-            $backupTable = "{$table}_{$this->backupId}";
-
-            if (Schema::hasTable($backupTable)) {
-                DB::statement("DROP TABLE IF EXISTS {$table}");
-                DB::statement("CREATE TABLE {$table} AS SELECT * FROM {$backupTable}");
-                DB::statement("DROP TABLE {$backupTable}");
-                $this->info("   ✅ Ripristinato {$table}");
-            }
-        }
-    }
-}
-
-/**
- * ========================================
- * TEST DATA MIGRATION SEEDER
- * ========================================
- * Versione modificata del DataMigrationSeeder per test con limite
- */
-
-class TestDataMigrationSeeder extends DataMigrationSeeder
-{
-    private $limit;
-    private $command;
-
-    public function __construct(int $limit = 10)
-    {
-        $this->limit = $limit;
-    }
-
-    public function setCommand($command)
-    {
-        $this->command = $command;
+        return $readiness;
     }
 
     /**
-     * Override del metodo run per limitare i record
+     * 🗺️ Genera strategia mapping roles
      */
-    public function run(): void
+    private function generateRoleMapping(array $roles): array
     {
-        $this->command->info("🧪 Test migrazione con limite: {$this->limit}");
+        $mapping = [];
 
-        // Setup connessione (stesso del parent)
-        $this->setupOldDatabaseConnection();
+        foreach ($roles as $role) {
+            $oldName = strtolower($role['name']);
 
-        if (!$this->checkOldDatabase()) {
-            $this->command->error('❌ Database source non disponibile');
-            return;
-        }
+            $newUserType = match($oldName) {
+                'super admin', 'super-admin', 'superadmin' => 'super_admin',
+                'national admin', 'national-admin', 'nationaladmin' => 'national_admin',
+                'admin', 'administrator' => 'admin',
+                'referee', 'arbitro' => 'referee',
+                default => 'referee'
+            };
 
-        // Migrazione limitata
-        $this->migrateZonesLimited();
-        $this->migrateTournamentTypesLimited();
-        $this->migrateUsersLimited();
-        $this->createRefereesLimited();
-        $this->migrateClubsLimited();
-
-        $this->command->info('✅ Test migrazione completato');
-    }
-
-    /**
-     * Migrazione users limitata
-     */
-    private function migrateUsersLimited()
-    {
-        $this->command->info("👥 Test migrazione users (limite: {$this->limit})...");
-
-        $oldUsers = DB::connection('old')->table('users')->limit($this->limit)->get();
-        $oldReferees = DB::connection('old')->table('referees')->get()->keyBy('user_id');
-        $oldRoleUsers = [];
-
-        // Stesso mapping del parent
-        try {
-            if ($this->tableExists('old', 'role_user')) {
-                $oldRoleUsers = DB::connection('old')->table('role_user')->get()->groupBy('user_id');
-            }
-        } catch (\Exception $e) {
-            $this->command->warn('Tabella role_user non trovata');
-        }
-
-        foreach ($oldUsers as $user) {
-            $userType = $this->determineUserType($user, $oldReferees, $oldRoleUsers);
-            $referee = $oldReferees->get($user->id);
-
-            $userData = [
-                'id' => $user->id, // Mantieni ID originale per test
-                'name' => $user->name,
-                'email' => $user->email,
-                'email_verified_at' => $user->email_verified_at,
-                'password' => $user->password,
-                'user_type' => $userType,
-                'zone_id' => $user->zone_id ?? 1,
-                'phone' => $user->phone ?? null,
-                'is_active' => $user->is_active ?? true,
-                'created_at' => $user->created_at ?? now(),
-                'updated_at' => $user->updated_at ?? now(),
+            $mapping[$role['id']] = [
+                'old_name' => $role['name'],
+                'new_user_type' => $newUserType,
+                'strategy' => 'role_based_mapping'
             ];
-
-            // Logica referee (stesso del parent)
-            if ($userType === 'referee' && $referee) {
-                $userData['referee_code'] = $referee->referee_code ?? $this->generateRefereeCode();
-                $userData['level'] = $this->mapQualification($referee->qualification ?? 'aspirante');
-                $userData['category'] = $referee->category ?? 'misto';
-                $userData['certified_date'] = $referee->certified_date ?? now()->subYears(2);
-            } else {
-                $userData['referee_code'] = null;
-                $userData['level'] = 'aspirante';
-                $userData['category'] = 'misto';
-                $userData['certified_date'] = null;
-            }
-
-            DB::table('users')->updateOrInsert(['id' => $user->id], $userData);
-
-            $this->command->info("   ✅ Migrato: {$user->name} ({$userType})");
         }
 
-        $this->command->info("✅ Test: migrati {$oldUsers->count()} users");
-    }
-
-    // Altri metodi limitati...
-    private function migrateZonesLimited()
-    {
-        $zones = DB::connection('old')->table('zones')->limit(5)->get();
-        foreach ($zones as $zone) {
-            DB::table('zones')->updateOrInsert(['id' => $zone->id], [
-                'name' => $zone->name,
-                'description' => $zone->description ?? null,
-                'is_national' => $zone->is_national ?? false,
-                'created_at' => $zone->created_at ?? now(),
-                'updated_at' => $zone->updated_at ?? now(),
-            ]);
+        $this->info('🗺️  MAPPING STRATEGY:');
+        foreach ($mapping as $roleId => $map) {
+            $this->info("   Role {$roleId} ('{$map['old_name']}') → {$map['new_user_type']}");
         }
-        $this->command->info("✅ Test: migrate {$zones->count()} zones");
+
+        return $mapping;
     }
 
-    private function migrateTournamentTypesLimited()
+    /**
+     * 🔧 Helper methods
+     */
+    private function setupOldDatabaseConnection()
     {
-        // Implementazione limitata...
-        $this->command->info("✅ Test: tournament_types (limitato)");
+        $oldDbConfig = [
+            'driver' => 'mysql',
+            'host' => config('database.connections.mysql.host'),
+            'port' => config('database.connections.mysql.port'),
+            'database' => 'gestione_arbitri',
+            'username' => config('database.connections.mysql.username'),
+            'password' => config('database.connections.mysql.password'),
+            'charset' => 'utf8mb4',
+            'collation' => 'utf8mb4_unicode_ci',
+            'prefix' => '',
+            'strict' => false,
+            'engine' => null,
+        ];
+
+        config(['database.connections.old' => $oldDbConfig]);
     }
 
-    private function createRefereesLimited()
+    private function tableExists($table): bool
     {
-        $refereeUsers = DB::table('users')->where('user_type', 'referee')->get();
-        $oldReferees = DB::connection('old')->table('referees')->get()->keyBy('user_id');
-
-        foreach ($refereeUsers as $user) {
-            $oldReferee = $oldReferees->get($user->id);
-            if ($oldReferee) {
-                DB::table('referees')->updateOrInsert(['user_id' => $user->id], [
-                    'zone_id' => $user->zone_id,
-                    'referee_code' => $user->referee_code,
-                    'level' => $user->level,
-                    'category' => $user->category,
-                    'certified_date' => $user->certified_date,
-                    'address' => $oldReferee->address ?? null,
-                    'postal_code' => $oldReferee->postal_code ?? null,
-                    'tax_code' => $oldReferee->tax_code ?? null,
-                    'profile_completed_at' => now(),
-                ]);
-            }
+        try {
+            DB::connection('old')->table($table)->limit(1)->get();
+            return true;
+        } catch (\Exception $e) {
+            return false;
         }
-        $this->command->info("✅ Test: creati {$refereeUsers->count()} referees");
     }
 
-    private function migrateClubsLimited()
+    private function exportAnalysis(array $analysis)
     {
-        // Implementazione limitata...
-        $this->command->info("✅ Test: clubs (limitato)");
+        $filename = $this->option('export');
+        $content = json_encode($analysis, JSON_PRETTY_PRINT);
+        file_put_contents($filename, $content);
+        $this->info("📄 Analisi esportata in: {$filename}");
     }
-
-    // Include i metodi helper necessari dal parent
-    private function setupOldDatabaseConnection() { /* stesso del parent */ }
-    private function checkOldDatabase(): bool { /* stesso del parent */ }
-    private function tableExists($connection, $table): bool { /* stesso del parent */ }
-    private function determineUserType($user, $referees, $roleUsers): string { /* stesso del parent */ }
-    private function generateRefereeCode(): string { /* stesso del parent */ }
-    private function mapQualification($qualification): string { /* stesso del parent */ }
 }

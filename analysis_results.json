@@ -1,0 +1,252 @@
+{
+    "connection_status": {
+        "connected": true,
+        "database_exists": true,
+        "driver": "mysql",
+        "server_version": "8.0.40"
+    },
+    "tables_structure": {
+        "assignments": {
+            "records": 17,
+            "is_critical": false,
+            "priority": "MEDIUM"
+        },
+        "availabilities": {
+            "records": 902,
+            "is_critical": false,
+            "priority": "MEDIUM"
+        },
+        "cache": {
+            "records": 1,
+            "is_critical": false,
+            "priority": "MEDIUM"
+        },
+        "cache_locks": {
+            "records": 0,
+            "is_critical": false,
+            "priority": "MEDIUM"
+        },
+        "clubs": {
+            "records": 318,
+            "is_critical": false,
+            "priority": "MEDIUM"
+        },
+        "committee_member": {
+            "records": 0,
+            "is_critical": false,
+            "priority": "MEDIUM"
+        },
+        "committees": {
+            "records": 0,
+            "is_critical": false,
+            "priority": "MEDIUM"
+        },
+        "failed_jobs": {
+            "records": 0,
+            "is_critical": false,
+            "priority": "MEDIUM"
+        },
+        "fixed_addresses": {
+            "records": 18,
+            "is_critical": false,
+            "priority": "MEDIUM"
+        },
+        "job_batches": {
+            "records": 0,
+            "is_critical": false,
+            "priority": "MEDIUM"
+        },
+        "jobs": {
+            "records": 0,
+            "is_critical": false,
+            "priority": "MEDIUM"
+        },
+        "letterheads": {
+            "records": 8,
+            "is_critical": false,
+            "priority": "MEDIUM"
+        },
+        "letterheads_backup": {
+            "records": 8,
+            "is_critical": false,
+            "priority": "MEDIUM"
+        },
+        "migrations": {
+            "records": 35,
+            "is_critical": false,
+            "priority": "MEDIUM"
+        },
+        "model_has_permissions": {
+            "records": 0,
+            "is_critical": false,
+            "priority": "MEDIUM"
+        },
+        "model_has_roles": {
+            "records": 0,
+            "is_critical": false,
+            "priority": "MEDIUM"
+        },
+        "notification_user": {
+            "records": 202,
+            "is_critical": false,
+            "priority": "MEDIUM"
+        },
+        "notifications": {
+            "records": 108,
+            "is_critical": false,
+            "priority": "MEDIUM"
+        },
+        "password_reset_tokens": {
+            "records": 0,
+            "is_critical": false,
+            "priority": "MEDIUM"
+        },
+        "permissions": {
+            "records": 0,
+            "is_critical": true,
+            "priority": "HIGH"
+        },
+        "personal_access_tokens": {
+            "records": 0,
+            "is_critical": false,
+            "priority": "MEDIUM"
+        },
+        "referees": {
+            "records": 504,
+            "is_critical": true,
+            "priority": "HIGH"
+        },
+        "role_has_permissions": {
+            "records": 0,
+            "is_critical": false,
+            "priority": "MEDIUM"
+        },
+        "role_user": {
+            "records": 513,
+            "is_critical": true,
+            "priority": "HIGH"
+        },
+        "roles": {
+            "records": 4,
+            "is_critical": true,
+            "priority": "HIGH"
+        },
+        "sessions": {
+            "records": 12,
+            "is_critical": false,
+            "priority": "MEDIUM"
+        },
+        "text_snippets": {
+            "records": 0,
+            "is_critical": false,
+            "priority": "MEDIUM"
+        },
+        "tournament_types": {
+            "records": 10,
+            "is_critical": false,
+            "priority": "MEDIUM"
+        },
+        "tournaments": {
+            "records": 247,
+            "is_critical": true,
+            "priority": "HIGH"
+        },
+        "tournaments_backup": {
+            "records": 6,
+            "is_critical": false,
+            "priority": "MEDIUM"
+        },
+        "user_preferences": {
+            "records": 0,
+            "is_critical": false,
+            "priority": "MEDIUM"
+        },
+        "users": {
+            "records": 504,
+            "is_critical": true,
+            "priority": "HIGH"
+        },
+        "zones": {
+            "records": 8,
+            "is_critical": true,
+            "priority": "HIGH"
+        }
+    },
+    "roles_permissions": {
+        "roles": [
+            {
+                "id": 1,
+                "name": "SuperAdmin",
+                "guard_name": "web"
+            },
+            {
+                "id": 2,
+                "name": "NationalAdmin",
+                "guard_name": "web"
+            },
+            {
+                "id": 3,
+                "name": "Admin",
+                "guard_name": "web"
+            },
+            {
+                "id": 4,
+                "name": "Referee",
+                "guard_name": "web"
+            }
+        ],
+        "permissions": [],
+        "role_assignments": {
+            "1": 1,
+            "2": 1,
+            "3": 7,
+            "4": 504
+        },
+        "mapping_strategy": {
+            "1": {
+                "old_name": "SuperAdmin",
+                "new_user_type": "super_admin",
+                "strategy": "role_based_mapping"
+            },
+            "2": {
+                "old_name": "NationalAdmin",
+                "new_user_type": "national_admin",
+                "strategy": "role_based_mapping"
+            },
+            "3": {
+                "old_name": "Admin",
+                "new_user_type": "admin",
+                "strategy": "role_based_mapping"
+            },
+            "4": {
+                "old_name": "Referee",
+                "new_user_type": "referee",
+                "strategy": "role_based_mapping"
+            }
+        }
+    },
+    "users_analysis": {
+        "error": "Undefined property: stdClass::$zone_id"
+    },
+    "referees_analysis": {
+        "error": "Undefined property: stdClass::$referee_code"
+    },
+    "data_quality": {
+        "issues_found": 0,
+        "issues": [],
+        "quality_score": "EXCELLENT"
+    },
+    "migration_readiness": {
+        "requirements": {
+            "database_accessible": true,
+            "critical_tables_exist": true,
+            "has_users": true,
+            "has_roles_system": true,
+            "data_integrity": true
+        },
+        "passed": 5,
+        "total": 5,
+        "percentage": 100,
+        "recommendation": "READY - Procedi con migrazione completa"
+    }
+}
