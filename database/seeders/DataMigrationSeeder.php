@@ -2,10 +2,15 @@
 
 /**
  * ========================================
- * DATAMIGRATIONSEEDER - VERSIONE FINALE
+ * DATAMIGRATIONSEEDER - VERSIONE CORRETTA
  * ========================================
  * File: database/seeders/DataMigrationSeeder.php
- * Sostituisci COMPLETAMENTE il contenuto del file con questo codice
+ *
+ * ✅ USER CENTRIC approach implementato
+ * ✅ RefereeLevelsHelper utilizzato sempre
+ * ✅ Zone mapping corretto (geografico + CRC funzionale)
+ * ✅ Logging dettagliato per validazione
+ * ✅ Solo extension data in referees table
  */
 
 namespace Database\Seeders;
@@ -46,8 +51,8 @@ class DataMigrationSeeder extends Seeder
         // ✅ ORDINE CORRETTO per evitare constraint violations
         $this->migrateZones();
         $this->migrateTournamentTypes();
-        $this->migrateUsers(); // ✅ Con RefereeLevelsHelper
-        $this->createReferees(); // ✅ Extension table
+        $this->migrateUsers(); // ✅ Con RefereeLevelsHelper e zone mapping corretto
+        $this->createReferees(); // ✅ Solo extension data
         $this->migrateClubs();
         $this->migrateTournaments();
         $this->migrateAvailabilities();
@@ -56,16 +61,19 @@ class DataMigrationSeeder extends Seeder
 
         $this->command->info('✅ Migrazione dati completata!');
 
-        // 5. Chiudi connessione
+        // 5. Statistiche finali
+        $this->showMigrationStats();
+
+        // 6. Chiudi connessione
         $this->closeOldDatabaseConnection();
     }
 
     /**
-     * ✅ MIGRAZIONE USERS con RefereeLevelsHelper
+     * ✅ MIGRAZIONE USERS con RefereeLevelsHelper e zone mapping corretto
      */
     private function migrateUsers()
     {
-        $this->command->info('👥 Migrazione users (con unificazione referees)...');
+        $this->command->info('👥 Migrazione users (approccio USER CENTRIC)...');
 
         // 1. Importa tutti gli users di base
         $oldUsers = DB::connection('old')->table('users')->get();
@@ -94,14 +102,25 @@ class DataMigrationSeeder extends Seeder
         // 4. Verifica zone esistenti prima della migrazione
         $this->verifyZones();
 
+        $migrationStats = [
+            'total_users' => 0,
+            'referees' => 0,
+            'admins' => 0,
+            'zone_mappings' => [],
+            'level_mappings' => [],
+            'errors' => []
+        ];
+
         foreach ($oldUsers as $user) {
             try {
+                $migrationStats['total_users']++;
+
                 // Determina il tipo di utente
                 $userType = $this->determineUserType($user, $oldReferees, $oldRoleUsers);
                 $referee = $oldReferees->get($user->id);
 
-                // ✅ FIX: Gestione zone_id sicura
-                $zoneId = $this->getValidZoneId($user, $userType);
+                // ✅ FIX: Gestione zone_id corretta (da referees.zone_id)
+                $zoneId = $this->getValidZoneId($user, $referee, $userType);
 
                 // Dati base per tutti gli utenti
                 $userData = [
@@ -123,20 +142,30 @@ class DataMigrationSeeder extends Seeder
                 if ($userType === 'referee' && $referee) {
                     // Dati reali dell'arbitro
                     $userData['referee_code'] = $referee->referee_code ?? $this->generateRefereeCode();
-                    $userData['level'] = $this->mapQualificationWithHelper($referee->qualification ?? 'aspirante');
+                    $userData['level'] = $this->mapQualificationWithHelper($referee->qualification ?? 'Aspirante');
                     $userData['category'] = $referee->category ?? 'misto';
                     $userData['certified_date'] = $referee->certified_date ?? now()->subYears(2);
 
-                    $this->command->info("🔄 Migrating referee: {$user->name} (code: {$userData['referee_code']}, level: {$userData['level']})");
+                    // Statistiche
+                    $migrationStats['referees']++;
+                    $this->trackLevelMapping($migrationStats, $referee->qualification ?? 'Aspirante', $userData['level']);
+
+                    $this->command->info("🔄 Migrating referee: {$user->name} (code: {$userData['referee_code']}, level: {$userData['level']}, zone: {$zoneId})");
                 } else {
-                    // ✅ FIX: Valori di default per utenti non-arbitri usando Helper
+                    // ✅ FIX: Valori corretti per utenti non-arbitri
                     $userData['referee_code'] = null; // NULL per non-arbitri
-                    $userData['level'] = RefereeLevelsHelper::normalize('aspirante');   // Usa helper
+                    $userData['level'] = RefereeLevelsHelper::normalize('Aspirante');   // Usa helper con default
                     $userData['category'] = 'misto';    // Categoria di default
                     $userData['certified_date'] = null;
 
-                    $this->command->info("🔄 Migrating user: {$user->name} ({$userType}, level: {$userData['level']})");
+                    // Statistiche
+                    $migrationStats['admins']++;
+
+                    $this->command->info("🔄 Migrating user: {$user->name} ({$userType}, level: {$userData['level']}, zone: " . ($zoneId ? $zoneId : 'NULL') . ")");
                 }
+
+                // Traccia mapping zone
+                $this->trackZoneMapping($migrationStats, $referee, $zoneId);
 
                 // Insert/Update user
                 DB::table('users')->updateOrInsert(
@@ -145,6 +174,12 @@ class DataMigrationSeeder extends Seeder
                 );
 
             } catch (\Exception $e) {
+                $migrationStats['errors'][] = [
+                    'user_id' => $user->id,
+                    'user_name' => $user->name,
+                    'error' => $e->getMessage()
+                ];
+
                 $this->command->error("❌ Errore migrazione user {$user->id} ({$user->name}): " . $e->getMessage());
 
                 // Debug dettagliato per questo user
@@ -155,9 +190,8 @@ class DataMigrationSeeder extends Seeder
             }
         }
 
-        $this->command->info("✅ Migrati " . $oldUsers->count() . " users (con unificazione referees)");
-        $this->command->info('Arbitri: ' . DB::table('users')->where('user_type', 'referee')->count());
-        $this->command->info('Admin: ' . DB::table('users')->whereIn('user_type', ['admin', 'national_admin', 'super_admin'])->count());
+        // Report finale migrazione users
+        $this->showUserMigrationReport($migrationStats);
     }
 
     /**
@@ -166,7 +200,7 @@ class DataMigrationSeeder extends Seeder
     private function mapQualificationWithHelper(?string $oldQualification): string
     {
         if (empty($oldQualification)) {
-            return RefereeLevelsHelper::normalize('aspirante');
+            return RefereeLevelsHelper::normalize('Aspirante');
         }
 
         // Usa il helper per normalizzare
@@ -210,60 +244,63 @@ class DataMigrationSeeder extends Seeder
     }
 
     /**
-     * ✅ NUOVO: Gestione sicura zone_id
+     * ✅ NUOVO: Gestione corretta zone_id (da referees.zone_id)
      */
-    private function getValidZoneId($user, string $userType): int
+    private function getValidZoneId($user, $referee, string $userType): ?int
     {
-        // 1. Se user ha zone_id valida, usala
-        if (isset($user->zone_id) && $user->zone_id > 0) {
-            $zoneExists = DB::table('zones')->where('id', $user->zone_id)->exists();
-            if ($zoneExists) {
-                return $user->zone_id;
+        // 1. Per Admin (tutti i tipi), zona = NULL
+        if (in_array($userType, ['super_admin', 'national_admin', 'admin'])) {
+            $this->command->info("   🏛️  Admin user ({$userType}): zone_id = NULL");
+            return null;
+        }
+
+        // 2. Per Referee: leggi zona da referees.zone_id
+        if ($userType === 'referee' && $referee && isset($referee->zone_id)) {
+            if ($referee->zone_id > 0) {
+                // Mappa zona per ID (1=SZR1, 2=SZR2, ..., 8=CRC)
+                $zoneName = $this->mapZoneIdToName($referee->zone_id);
+                $targetZone = DB::table('zones')->where('name', $zoneName)->first();
+
+                if ($targetZone) {
+                    $this->command->info("   📍 Referee zone mapping: DB zone_id {$referee->zone_id} → {$zoneName} → target zone {$targetZone->id}");
+                    return $targetZone->id;
+                } else {
+                    $this->command->error("   ❌ Zona target '{$zoneName}' non trovata per referee {$user->name}");
+                }
             } else {
-                $this->command->warn("   ⚠️  Zone {$user->zone_id} non esiste per user {$user->name}");
+                $this->command->warn("   ⚠️  Referee {$user->name} ha zone_id = 0 o NULL nel DB origine");
             }
         }
 
-        // 2. Per Super Admin e National Admin, usa zona nazionale (se esiste)
-        if (in_array($userType, ['super_admin', 'national_admin'])) {
-            $nationalZone = DB::table('zones')->where('is_national', true)->first();
-            if ($nationalZone) {
-                $this->command->info("   🏛️  Assegnata zona nazionale ({$nationalZone->id}) per {$userType}");
-                return $nationalZone->id;
-            }
+        // 3. ⚠️ ANOMALIA: Referee senza zona (NON dovrebbe succedere)
+        if ($userType === 'referee') {
+            $this->command->error("   🚨 ANOMALIA: Referee {$user->name} senza zona valida! Assegno SZR1 come fallback");
+
+            $fallbackZone = DB::table('zones')->where('name', 'SZR1')->first();
+            return $fallbackZone ? $fallbackZone->id : 1;
         }
 
-        // 3. Fallback: prima zona disponibile
-        $firstZone = DB::table('zones')->orderBy('id')->first();
-        if ($firstZone) {
-            $this->command->warn("   📍 Fallback zona {$firstZone->id} per user {$user->name}");
-            return $firstZone->id;
-        }
-
-        // 4. Ultimo fallback: zona 1 (dovrebbe essere creata dalla migrazione zones)
-        $this->command->error("   ❌ Nessuna zona trovata! Fallback zona 1");
-        return 1;
+        // 4. Fallback finale
+        return null;
     }
 
     /**
-     * ✅ NUOVO: Verifica zone esistenti
+     * ✅ NUOVO: Mappa zone_id del DB originale a nome zona
      */
-    private function verifyZones()
+    private function mapZoneIdToName(int $zoneId): string
     {
-        $zoneCount = DB::table('zones')->count();
-        $this->command->info("🔍 Zone disponibili nel target DB: {$zoneCount}");
+        $mapping = [
+            1 => 'SZR1',
+            2 => 'SZR2',
+            3 => 'SZR3',
+            4 => 'SZR4',
+            5 => 'SZR5',
+            6 => 'SZR6',
+            7 => 'SZR7',
+            8 => 'CRC'
+        ];
 
-        if ($zoneCount === 0) {
-            $this->command->error("❌ ERRORE: Nessuna zona presente! Esegui prima migrateZones()");
-            throw new \Exception("Nessuna zona presente nel database target");
-        }
-
-        // Mostra zone disponibili
-        $zones = DB::table('zones')->select('id', 'name', 'is_national')->get();
-        foreach ($zones as $zone) {
-            $marker = $zone->is_national ? '🏛️' : '🏢';
-            $this->command->info("   {$marker} Zone {$zone->id}: {$zone->name}");
-        }
+        return $mapping[$zoneId] ?? 'SZR1'; // Fallback a SZR1
     }
 
     /**
@@ -320,6 +357,223 @@ class DataMigrationSeeder extends Seeder
     }
 
     /**
+     * ✅ NUOVO: Crea referees (SOLO dati estesi) per approccio USER CENTRIC
+     */
+    private function createReferees()
+    {
+        $this->command->info('🏌️ Creazione referees (solo dati estesi - USER CENTRIC)...');
+
+        $refereeUsers = DB::table('users')->where('user_type', 'referee')->get();
+        $oldReferees = DB::connection('old')->table('referees')->get()->keyBy('user_id');
+
+        $extensionStats = [
+            'total_referees' => 0,
+            'with_address' => 0,
+            'with_badge' => 0,
+            'with_bio' => 0,
+            'missing_data' => []
+        ];
+
+        foreach ($refereeUsers as $user) {
+            $oldReferee = $oldReferees->get($user->id);
+            $extensionStats['total_referees']++;
+
+            // ✅ USER CENTRIC: Solo dati ESTESI, NO duplicazione
+            $refereeExtensionData = [
+                // ✅ EXTENDED ADDRESS INFO (da DB originale)
+                'address' => $oldReferee->address ?? null,
+                'postal_code' => $oldReferee->postal_code ?? null,
+                'tax_code' => $oldReferee->tax_code ?? null,
+
+                // ✅ CERTIFICATION DETAILS (da DB originale)
+                'badge_number' => $oldReferee->badge_number ?? null,
+                'first_certification_date' => $oldReferee->certified_date ?? $oldReferee->first_certification_date ?? $user->certified_date,
+                'last_renewal_date' => $oldReferee->last_renewal_date ?? null,
+                'expiry_date' => $oldReferee->expiry_date ?? null,
+
+                // ✅ REFEREE PROFILE DATA (campi nuovi - NULL se mancanti)
+                'bio' => $oldReferee->bio ?? null,
+                'experience_years' => $oldReferee->experience_years ?? 0,
+                'qualifications' => $oldReferee->qualifications ?? json_encode([]),
+                'languages' => $oldReferee->languages ?? json_encode(['italiano']),
+                'specializations' => $oldReferee->specializations ?? json_encode([]),
+
+                // ✅ AVAILABILITY & PREFERENCES (campi nuovi)
+                'available_for_international' => $oldReferee->available_for_international ?? false,
+                'preferences' => $oldReferee->preferences ?? json_encode([]),
+
+                // ✅ STATISTICS (campi nuovi)
+                'total_tournaments' => $oldReferee->total_tournaments ?? 0,
+                'tournaments_current_year' => $oldReferee->tournaments_current_year ?? 0,
+
+                // ✅ PROFILE STATUS
+                'profile_completed_at' => $oldReferee->profile_completed_at ?? now(),
+
+                'created_at' => $oldReferee->created_at ?? now(),
+                'updated_at' => $oldReferee->updated_at ?? now(),
+            ];
+
+            // Statistiche sui dati disponibili
+            if ($refereeExtensionData['address']) $extensionStats['with_address']++;
+            if ($refereeExtensionData['badge_number']) $extensionStats['with_badge']++;
+            if ($refereeExtensionData['bio']) $extensionStats['with_bio']++;
+
+            // Traccia dati mancanti
+            if (!$oldReferee) {
+                $extensionStats['missing_data'][] = $user->name;
+            }
+
+            DB::table('referees')->updateOrInsert(
+                ['user_id' => $user->id],
+                $refereeExtensionData
+            );
+
+            $this->command->info("   ✅ Extended data per referee: {$user->name}");
+        }
+
+        $this->showRefereeExtensionReport($extensionStats);
+    }
+
+    // ========================================
+    // STATISTICHE E REPORT
+    // ========================================
+
+    /**
+     * ✅ NUOVO: Report dettagliato migrazione users
+     */
+    private function showUserMigrationReport(array $stats)
+    {
+        $this->command->info("📊 REPORT MIGRAZIONE USERS:");
+        $this->command->info("   Total users: {$stats['total_users']}");
+        $this->command->info("   Referees: {$stats['referees']}");
+        $this->command->info("   Admins: {$stats['admins']}");
+
+        if (!empty($stats['zone_mappings'])) {
+            $this->command->info("   Zone mappings:");
+            foreach ($stats['zone_mappings'] as $mapping => $count) {
+                $this->command->info("     {$mapping}: {$count} users");
+            }
+        }
+
+        if (!empty($stats['level_mappings'])) {
+            $this->command->info("   Level mappings:");
+            foreach ($stats['level_mappings'] as $mapping => $count) {
+                $this->command->info("     {$mapping}: {$count} mappings");
+            }
+        }
+
+        if (!empty($stats['errors'])) {
+            $this->command->error("   Errori: " . count($stats['errors']));
+            foreach ($stats['errors'] as $error) {
+                $this->command->error("     User {$error['user_id']} ({$error['user_name']}): {$error['error']}");
+            }
+        }
+    }
+
+    /**
+     * ✅ NUOVO: Report creazione referees extension
+     */
+    private function showRefereeExtensionReport(array $stats)
+    {
+        $this->command->info("📊 REPORT REFEREES EXTENSION:");
+        $this->command->info("   Total referees: {$stats['total_referees']}");
+        $this->command->info("   With address: {$stats['with_address']}");
+        $this->command->info("   With badge number: {$stats['with_badge']}");
+        $this->command->info("   With bio: {$stats['with_bio']}");
+
+        if (!empty($stats['missing_data'])) {
+            $this->command->warn("   Missing original referee data: " . count($stats['missing_data']));
+            foreach ($stats['missing_data'] as $name) {
+                $this->command->warn("     {$name}");
+            }
+        }
+    }
+
+    /**
+     * ✅ NUOVO: Traccia mapping zone per statistiche
+     */
+    private function trackZoneMapping(array &$stats, $referee, ?int $targetZoneId)
+    {
+        $sourceZone = $referee ? ($referee->zone_id ?? 'NULL') : 'NULL';
+        $targetZone = $targetZoneId ?? 'NULL';
+        $mapping = "Source {$sourceZone} → Target {$targetZone}";
+
+        if (!isset($stats['zone_mappings'][$mapping])) {
+            $stats['zone_mappings'][$mapping] = 0;
+        }
+        $stats['zone_mappings'][$mapping]++;
+    }
+
+    /**
+     * ✅ NUOVO: Traccia mapping livelli per statistiche
+     */
+    private function trackLevelMapping(array &$stats, ?string $sourceLevel, string $targetLevel)
+    {
+        $mapping = "'{$sourceLevel}' → '{$targetLevel}'";
+
+        if (!isset($stats['level_mappings'][$mapping])) {
+            $stats['level_mappings'][$mapping] = 0;
+        }
+        $stats['level_mappings'][$mapping]++;
+    }
+
+    /**
+     * ✅ NUOVO: Statistiche finali migrazione
+     */
+    private function showMigrationStats()
+    {
+        $this->command->info('📊 STATISTICHE FINALI MIGRAZIONE:');
+
+        $stats = [
+            'zones' => DB::table('zones')->count(),
+            'users_total' => DB::table('users')->count(),
+            'users_referees' => DB::table('users')->where('user_type', 'referee')->count(),
+            'users_admins' => DB::table('users')->whereIn('user_type', ['admin', 'national_admin', 'super_admin'])->count(),
+            'referees_extension' => DB::table('referees')->count(),
+            'clubs' => DB::table('clubs')->count(),
+            'tournaments' => DB::table('tournaments')->count(),
+            'availabilities' => DB::table('availabilities')->count(),
+            'assignments' => DB::table('assignments')->count(),
+        ];
+
+        foreach ($stats as $table => $count) {
+            $this->command->info("   {$table}: {$count}");
+        }
+
+        // Verifica coerenza USER CENTRIC
+        if ($stats['users_referees'] === $stats['referees_extension']) {
+            $this->command->info('✅ USER CENTRIC: Coerenza referees verificata');
+        } else {
+            $this->command->error('❌ USER CENTRIC: Incoerenza referees! Users: ' . $stats['users_referees'] . ', Extensions: ' . $stats['referees_extension']);
+        }
+    }
+
+    // ========================================
+    // METODI DEBUG E VERIFICA
+    // ========================================
+
+    /**
+     * ✅ NUOVO: Verifica zone esistenti
+     */
+    private function verifyZones()
+    {
+        $zoneCount = DB::table('zones')->count();
+        $this->command->info("🔍 Zone disponibili nel target DB: {$zoneCount}");
+
+        if ($zoneCount === 0) {
+            $this->command->error("❌ ERRORE: Nessuna zona presente! Esegui prima migrateZones()");
+            throw new \Exception("Nessuna zona presente nel database target");
+        }
+
+        // Mostra zone disponibili
+        $zones = DB::table('zones')->select('id', 'name', 'is_national')->get();
+        foreach ($zones as $zone) {
+            $marker = $zone->is_national ? '🏛️' : '📍';
+            $this->command->info("   {$marker} Zone {$zone->id}: {$zone->name}");
+        }
+    }
+
+    /**
      * 🔍 DEBUG: Migrazione user specifica
      */
     private function debugUserMigration($user, $oldReferees, $oldRoleUsers)
@@ -327,14 +581,16 @@ class DataMigrationSeeder extends Seeder
         $this->command->info("🔍 DEBUG User {$user->id}:");
         $this->command->info("   Name: {$user->name}");
         $this->command->info("   Email: {$user->email}");
-        $this->command->info("   Zone ID: " . ($user->zone_id ?? 'NULL'));
 
         // Check referee
         $referee = $oldReferees->get($user->id);
         if ($referee) {
             $this->command->info("   Referee qualification: " . ($referee->qualification ?? 'NULL'));
-            $normalized = $this->mapQualificationWithHelper($referee->qualification ?? 'aspirante');
+            $this->command->info("   Referee zone_id: " . ($referee->zone_id ?? 'NULL'));
+            $normalized = $this->mapQualificationWithHelper($referee->qualification ?? 'Aspirante');
             $this->command->info("   Normalized level: {$normalized}");
+        } else {
+            $this->command->info("   No referee record found");
         }
 
         // Check roles
@@ -342,6 +598,8 @@ class DataMigrationSeeder extends Seeder
             $roles = $oldRoleUsers[$user->id];
             $roleIds = $roles->pluck('role_id')->toArray();
             $this->command->info("   Role IDs: " . implode(', ', $roleIds));
+        } else {
+            $this->command->info("   No roles found");
         }
     }
 
@@ -407,7 +665,7 @@ class DataMigrationSeeder extends Seeder
     }
 
     // ========================================
-    // SETUP E METODI HELPER
+    // SETUP E METODI HELPER ORIGINALI
     // ========================================
 
     /**
@@ -502,7 +760,7 @@ class DataMigrationSeeder extends Seeder
     }
 
     // ========================================
-    // METODI DI MIGRAZIONE
+    // METODI DI MIGRAZIONE ORIGINALI
     // ========================================
 
     /**
@@ -588,45 +846,6 @@ class DataMigrationSeeder extends Seeder
         } catch (\Exception $e) {
             $this->command->warn("⚠️ Tabella tournament_types non trovata o errore: " . $e->getMessage());
         }
-    }
-
-    /**
-     * ✅ Crea referees (solo dati estesi) per utenti con user_type='referee'
-     */
-    private function createReferees()
-    {
-        $this->command->info('🏌️ Creazione referees (solo dati estesi)...');
-
-        $refereeUsers = DB::table('users')->where('user_type', 'referee')->get();
-        $oldReferees = DB::connection('old')->table('referees')->get()->keyBy('user_id');
-
-        foreach ($refereeUsers as $user) {
-            $oldReferee = $oldReferees->get($user->id);
-
-            DB::table('referees')->updateOrInsert(
-                ['user_id' => $user->id],
-                [
-                    // ✅ RIMOSSE zone_id, referee_code, level, category, certified_date
-                    // Questi campi sono già nella tabella users unificata
-                    'address' => $oldReferee->address ?? null,
-                    'postal_code' => $oldReferee->postal_code ?? null,
-                    'tax_code' => $oldReferee->tax_code ?? null,
-                    'profile_completed_at' => $oldReferee->profile_completed_at ?? now(),
-                    // Campi estesi con defaults
-                    'badge_number' => $oldReferee->badge_number ?? null,
-                    'first_certification_date' => $oldReferee->first_certification_date ?? $user->certified_date,
-                    'last_renewal_date' => $oldReferee->last_renewal_date ?? null,
-                    'expiry_date' => $oldReferee->expiry_date ?? null,
-                    'qualifications' => $oldReferee->qualifications ?? json_encode([]),
-                    'languages' => $oldReferee->languages ?? json_encode(['italiano']),
-                    'notes' => $oldReferee->notes ?? null,
-                    'created_at' => $oldReferee->created_at ?? now(),
-                    'updated_at' => $oldReferee->updated_at ?? now(),
-                ]
-            );
-        }
-
-        $this->command->info("✅ Creati " . $refereeUsers->count() . " referees estesi");
     }
 
     /**
@@ -722,8 +941,8 @@ class DataMigrationSeeder extends Seeder
                         'tournament_id' => $availability->tournament_id
                     ],
                     [
-                        'availability_type' => $availability->availability_type ?? 'available',
                         'notes' => $availability->notes ?? null,
+                        'submitted_at' => $availability->submitted_at ?? now(),
                         'created_at' => $availability->created_at ?? now(),
                         'updated_at' => $availability->updated_at ?? now(),
                     ]
@@ -759,9 +978,10 @@ class DataMigrationSeeder extends Seeder
                         'tournament_id' => $assignment->tournament_id
                     ],
                     [
-                        'role' => $assignment->role ?? 'referee',
-                        'status' => $assignment->status ?? 'assigned',
+                        'assigned_by_id' => $assignment->assigned_by ?? 1,
+                        'role' => $assignment->role ?? 'Arbitro',
                         'notes' => $assignment->notes ?? null,
+                        'is_confirmed' => $assignment->is_confirmed ?? false,
                         'assigned_at' => $assignment->assigned_at ?? now(),
                         'created_at' => $assignment->created_at ?? now(),
                         'updated_at' => $assignment->updated_at ?? now(),
