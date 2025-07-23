@@ -23,7 +23,7 @@ return new class extends Migration
             $table->string('name');
             $table->date('start_date');
             $table->date('end_date');
-            $table->date('availability_deadline');
+            $table->date('availability_deadline')->nullable();
             $table->foreignId('club_id')->constrained('clubs');
 
             // ✅ FIXED: tournament_type_id instead of tournament_category_id

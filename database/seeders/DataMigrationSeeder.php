@@ -777,6 +777,7 @@ class DataMigrationSeeder extends Seeder
                 ['id' => $zone->id],
                 [
                     'name' => $zone->name,
+                    'code' => $zone->name,
                     'description' => $zone->description ?? null,
                     'is_national' => $zone->is_national ?? false,
                     'header_document_path' => $zone->header_document_path ?? null,
@@ -826,7 +827,7 @@ class DataMigrationSeeder extends Seeder
                     ['id' => $type->id],
                     [
                         'name' => $type->name,
-                        'code' => $type->code ?? $type->short_name ?? 'TT' . $type->id,
+                        'short_name' => $type->code ,
                         'description' => $type->description ?? null,
                         'is_national' => $type->is_national ?? false,
                         'level' => $type->is_national ? 'nazionale' : 'zonale',
@@ -863,7 +864,7 @@ class DataMigrationSeeder extends Seeder
                     ['id' => $club->id],
                     [
                         'name' => $club->name,
-                        'code' => $club->code ?? null,
+                        'code' => $club->short_name ?? null,
                         'email' => $club->email ?? null,
                         'phone' => $club->phone ?? null,
                         'address' => $club->address ?? null,
@@ -898,12 +899,12 @@ class DataMigrationSeeder extends Seeder
                     ['id' => $tournament->id],
                     [
                         'name' => $tournament->name,
-                        'tournament_type_id' => $tournament->tournament_type_id ?? 1,
+                        'tournament_type_id' => $tournament->type_id ?? 1,
                         'club_id' => $tournament->club_id ?? null,
                         'zone_id' => $tournament->zone_id ?? 1,
                         'start_date' => $tournament->start_date,
                         'end_date' => $tournament->end_date,
-                        'status' => $tournament->status ?? 'draft',
+                        'status' => (!in_array($tournament->status, ['draft', 'open', 'closed', 'assigned', 'completed'])) ? 'draft' : $tournament->status,
                         'description' => $tournament->description ?? null,
                         'notes' => $tournament->notes ?? null,
                         'created_at' => $tournament->created_at ?? now(),
@@ -937,7 +938,7 @@ class DataMigrationSeeder extends Seeder
 
                 DB::table('availabilities')->updateOrInsert(
                     [
-                        'user_id' => $availability->user_id,
+                        'user_id' => $availability->referee_id,
                         'tournament_id' => $availability->tournament_id
                     ],
                     [
@@ -974,7 +975,7 @@ class DataMigrationSeeder extends Seeder
 
                 DB::table('assignments')->updateOrInsert(
                     [
-                        'user_id' => $assignment->user_id,
+                        'user_id' => $assignment->referee_id,
                         'tournament_id' => $assignment->tournament_id
                     ],
                     [
