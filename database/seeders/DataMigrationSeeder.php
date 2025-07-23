@@ -780,6 +780,7 @@ class DataMigrationSeeder extends Seeder
                     'code' => $zone->name,
                     'description' => $zone->description ?? null,
                     'is_national' => $zone->is_national ?? false,
+                    'is_active' => $zone->is_active ?? true,
                     'header_document_path' => $zone->header_document_path ?? null,
                     'header_updated_at' => $zone->header_updated_at ?? null,
                     'header_updated_by' => $zone->header_updated_by ?? null,
@@ -799,48 +800,56 @@ class DataMigrationSeeder extends Seeder
     {
         $this->command->info('🏆 Migrazione tournament_types...');
 
+        // ✅ VERIFICA STRUTTURA TABELLA TARGET
+        try {
+            $columns = DB::select("DESCRIBE tournament_types");
+            $this->command->info('🔍 Struttura tabella tournament_types target:');
+            foreach ($columns as $col) {
+                $this->command->info("   - {$col->Field} ({$col->Type})");
+            }
+        } catch (\Exception $e) {
+            $this->command->error("❌ Errore lettura struttura tournament_types: " . $e->getMessage());
+            return;
+        }
+
         try {
             $oldTypes = DB::connection('old')->table('tournament_types')->get();
 
-            foreach ($oldTypes as $type) {
-                $levelMapping = [
-                    '1_livello' => '1_livello',
-                    'regionale' => 'Regionale',
-                    'nazionale' => 'Nazionale',
-                    'internazionale' => 'Internazionale',
-                ];
+            $this->command->info("🔍 Trovati " . $oldTypes->count() . " tournament_types nel DB originale");
 
-                $requiredLevel = $levelMapping[$type->required_level] ?? '1_livello';
-                $minReferees = $type->min_referees ?? 1;
-                $maxReferees = $type->max_referees ?? $type->referees_needed ?? $minReferees;
+            foreach ($oldTypes as $type) {
+                // ✅ FIX: Usa solo campi che esistono realmente nel DB originale
+                // Campi reali: id, code, name, description, active, is_national, created_at, updated_at
 
                 $settings = [
-                    'required_referee_level' => $requiredLevel,
-                    'min_referees' => $minReferees,
-                    'max_referees' => $maxReferees,
-                    'visibility_zones' => $type->is_national ? 'all' : 'own',
-                    'special_requirements' => $type->special_requirements ?? null,
-                    'notification_templates' => $type->notification_templates ?? [],
+                    'required_referee_level' => 'primo_livello', // ✅ ENUM corretto
+                    'min_referees' => 1, // Default
+                    'max_referees' => 3, // Default
+                    'visibility_zones' => ($type->is_national ?? false) ? 'all' : 'own',
+                    'special_requirements' => null,
+                    'notification_templates' => [],
                 ];
 
                 DB::table('tournament_types')->updateOrInsert(
                     ['id' => $type->id],
                     [
                         'name' => $type->name,
-                        'short_name' => $type->code ,
+                        'short_name' => $type->code ?? $type->name ?? 'TT' . $type->id, // ✅ CORRETTO: short_name
                         'description' => $type->description ?? null,
                         'is_national' => $type->is_national ?? false,
-                        'level' => $type->is_national ? 'nazionale' : 'zonale',
-                        'required_level' => $requiredLevel,
-                        'sort_order' => $type->sort_order ?? ($type->id * 10),
-                        'is_active' => $type->is_active ?? true,
-                        'min_referees' => $minReferees,
-                        'max_referees' => $maxReferees,
+                        'level' => ($type->is_national ?? false) ? 'nazionale' : 'zonale',
+                        'required_level' => 'primo_livello', // ✅ ENUM corretto del target DB
+                        'sort_order' => $type->id * 10, // Usa ID per ordinamento
+                        'is_active' => $type->active ?? true, // ✅ Campo reale: 'active'
+                        'min_referees' => 1, // Default
+                        'max_referees' => 3, // Default
                         'settings' => json_encode($settings),
                         'created_at' => $type->created_at ?? now(),
                         'updated_at' => $type->updated_at ?? now(),
                     ]
                 );
+
+                $this->command->info("   ✅ Migrato tournament_type ID: {$type->id} - {$type->name}");
             }
 
             $this->command->info("✅ Migrati " . $oldTypes->count() . " tournament_types");
@@ -895,15 +904,25 @@ class DataMigrationSeeder extends Seeder
             $oldTournaments = DB::connection('old')->table('tournaments')->get();
 
             foreach ($oldTournaments as $tournament) {
+                // ✅ Verifica che tournament_type_id esista
+                $typeExists = DB::table('tournament_types')->where('id', $tournament->type_id)->exists();
+                if (!$typeExists) {
+                    $this->command->warn("   ⚠️ Tournament type ID {$tournament->type_id} non esiste per tournament: {$tournament->name} - uso fallback ID 1");
+                    $tournamentTypeId = 1; // Fallback al primo type
+                } else {
+                    $tournamentTypeId = $tournament->type_id;
+                }
+
                 DB::table('tournaments')->updateOrInsert(
                     ['id' => $tournament->id],
                     [
                         'name' => $tournament->name,
-                        'tournament_type_id' => $tournament->type_id ?? 1,
+                        'tournament_type_id' => $tournamentTypeId,
                         'club_id' => $tournament->club_id ?? null,
                         'zone_id' => $tournament->zone_id ?? 1,
                         'start_date' => $tournament->start_date,
                         'end_date' => $tournament->end_date,
+                        'availability_deadline' => $tournament->availability_deadline ?? $tournament->start_date,
                         'status' => (!in_array($tournament->status, ['draft', 'open', 'closed', 'assigned', 'completed'])) ? 'draft' : $tournament->status,
                         'description' => $tournament->description ?? null,
                         'notes' => $tournament->notes ?? null,
@@ -930,9 +949,17 @@ class DataMigrationSeeder extends Seeder
             $oldAvailabilities = DB::connection('old')->table('availabilities')->get();
 
             foreach ($oldAvailabilities as $availability) {
-                // Verifica che user_id esista nella tabella users
-                $userExists = DB::table('users')->where('id', $availability->user_id)->exists();
+                // ✅ Verifica che referee_id esista nella tabella users
+                $userExists = DB::table('users')->where('id', $availability->referee_id)->exists();
                 if (!$userExists) {
+                    $this->command->warn("   ⚠️ User ID {$availability->referee_id} non esiste per availability tournament {$availability->tournament_id}");
+                    continue;
+                }
+
+                // ✅ Verifica che tournament_id esista nella tabella tournaments
+                $tournamentExists = DB::table('tournaments')->where('id', $availability->tournament_id)->exists();
+                if (!$tournamentExists) {
+                    $this->command->warn("   ⚠️ Tournament ID {$availability->tournament_id} non esiste per availability user {$availability->referee_id}");
                     continue;
                 }
 
@@ -967,9 +994,17 @@ class DataMigrationSeeder extends Seeder
             $oldAssignments = DB::connection('old')->table('assignments')->get();
 
             foreach ($oldAssignments as $assignment) {
-                // Verifica che user_id esista
-                $userExists = DB::table('users')->where('id', $assignment->user_id)->exists();
+                // ✅ Verifica che referee_id esista
+                $userExists = DB::table('users')->where('id', $assignment->referee_id)->exists();
                 if (!$userExists) {
+                    $this->command->warn("   ⚠️ User ID {$assignment->referee_id} non esiste per assignment tournament {$assignment->tournament_id}");
+                    continue;
+                }
+
+                // ✅ Verifica che tournament_id esista nella tabella tournaments
+                $tournamentExists = DB::table('tournaments')->where('id', $assignment->tournament_id)->exists();
+                if (!$tournamentExists) {
+                    $this->command->warn("   ⚠️ Tournament ID {$assignment->tournament_id} non esiste per assignment user {$assignment->referee_id}");
                     continue;
                 }
 
