@@ -66,21 +66,21 @@ class SeederHelper
             [
                 'name' => 'Toscana-Umbria',
                 'code' => 'SZR5',
-                'description' => 'Zona Centro: Toscana e Umbria',
+                'description' => 'Zona Centro: Toscana e Umbria e Sardegna',
                 'is_active' => true,
                 'is_national' => false
             ],
             [
-                'name' => 'Lazio-Abruzzo-Molise',
+                'name' => 'Lazio-Abruzzo-Molise-Sardegna',
                 'code' => 'SZR6',
                 'description' => 'Zona Centro-Sud: Lazio, Abruzzo e Molise',
                 'is_active' => true,
                 'is_national' => false
             ],
             [
-                'name' => 'Sud Italia-Sicilia-Sardegna',
+                'name' => 'Sud Italia-Sicilia',
                 'code' => 'SZR7',
-                'description' => 'Zona Sud: Meridione, Sicilia e Sardegna',
+                'description' => 'Zona Sud: Meridione e Sicilia',
                 'is_active' => true,
                 'is_national' => false
             ]

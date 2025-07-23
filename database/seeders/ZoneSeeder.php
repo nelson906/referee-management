@@ -31,9 +31,9 @@ class ZoneSeeder extends Seeder
                 $code = $zoneData['code'] ?? 'SZR' . ($index + 1);
 
                 $zone = Zone::create([
-                    'name' => $zoneData['name'],
+                    'name' => $code,
                     'code' => $code,
-                    'description' => $zoneData['description'],
+                    'description' => $zoneData['name'],
                     'is_national' => $zoneData['is_national'] ?? false,
                     'is_active' => $zoneData['is_active'] ?? true,
                     'created_at' => now(),

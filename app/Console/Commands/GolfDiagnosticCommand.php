@@ -236,14 +236,18 @@ class GolfDiagnosticCommand extends Command
         return 0; // placeholder
     }
 
-    private function findDuplicateAvailabilities(): int
-    {
-        return DB::table('availabilities')
-            ->select('tournament_id', 'referee_id')
-            ->groupBy('tournament_id', 'referee_id')
-            ->havingRaw('COUNT(*) > 1')
-            ->count();
-    }
+/**
+ * Trova disponibilità duplicate
+ */
+private function findDuplicateAvailabilities(): int
+{
+    // ✅ FIXED: Usa 'user_id' invece di 'referee_id'
+    return DB::table('availabilities')
+        ->select('tournament_id', 'user_id')  // ← Cambiato da 'referee_id' a 'user_id'
+        ->groupBy('tournament_id', 'user_id')  // ← Cambiato da 'referee_id' a 'user_id'
+        ->havingRaw('COUNT(*) > 1')
+        ->count();
+}
 
     private function findEmailDuplicates(): int
     {
@@ -264,320 +268,66 @@ class GolfDiagnosticCommand extends Command
             ->count();
     }
 
-    private function formatDiagnosticsForTable(array $diagnostics): array
-    {
-        $table = [];
-        foreach ($diagnostics as $category => $data) {
-            if (is_array($data)) {
-                foreach ($data as $key => $value) {
-                    $table[] = [ucfirst($category) . ' - ' . ucfirst($key), is_numeric($value) ? $value : (is_bool($value) ? ($value ? 'Sì' : 'No') : $value)];
-                }
+private function formatDiagnosticsForTable(array $diagnostics): array
+{
+    $table = [];
+    foreach ($diagnostics as $category => $data) {
+        if (is_array($data)) {
+            foreach ($data as $key => $value) {
+                // ✅ FIXED: Gestisce tutti i tipi di valore inclusi array annidati
+                $formattedValue = $this->formatValue($value);
+                $table[] = [ucfirst($category) . ' - ' . ucfirst($key), $formattedValue];
             }
         }
-        return $table;
     }
+    return $table;
 }
 
 /**
- * Comando per export dati Golf
+ * ✅ NEW: Helper method per formattare i valori correttamente
  */
-class GolfExportCommand extends Command
+private function formatValue($value): string
 {
-    protected $signature = 'golf:export
-                            {type : Tipo di export (zones, users, tournaments, all)}
-                            {--zone= : Esporta solo una zona specifica}
-                            {--format=json : Formato export (json, csv, excel)}
-                            {--output= : File di output personalizzato}';
-
-    protected $description = 'Esporta dati del sistema Golf in vari formati';
-
-    public function handle(): int
-    {
-        $type = $this->argument('type');
-        $zone = $this->option('zone');
-        $format = $this->option('format');
-        $output = $this->option('output');
-
-        $this->info("📤 Export {$type} in formato {$format}...");
-
-        try {
-            $data = $this->collectData($type, $zone);
-            $filename = $this->exportData($data, $type, $format, $output);
-
-            $this->info("✅ Export completato: {$filename}");
-            $this->info("📊 Record esportati: " . count($data));
-
-            return 0;
-        } catch (\Exception $e) {
-            $this->error("❌ Errore durante export: " . $e->getMessage());
-            return 1;
+    if (is_array($value)) {
+        // Se è un array, converti in stringa leggibile
+        if (empty($value)) {
+            return '0';
         }
-    }
 
-    private function collectData(string $type, ?string $zone): array
-    {
-        $zoneId = $zone ? Zone::where('code', $zone)->value('id') : null;
-
-        return match($type) {
-            'zones' => Zone::all()->toArray(),
-            'users' => $this->getUsersData($zoneId),
-            'tournaments' => $this->getTournamentsData($zoneId),
-            'all' => $this->getAllData($zoneId),
-            default => throw new \InvalidArgumentException("Tipo export non supportato: {$type}")
-        };
-    }
-
-    private function getUsersData(?int $zoneId): array
-    {
-        $query = User::with('zone');
-        if ($zoneId) {
-            $query->where('zone_id', $zoneId);
+        // Se l'array ha chiavi numeriche consecutive, è una lista
+        if (array_keys($value) === range(0, count($value) - 1)) {
+            return implode(', ', array_map([$this, 'formatValue'], $value));
         }
-        return $query->get()->toArray();
-    }
 
-    private function getTournamentsData(?int $zoneId): array
-    {
-        $query = Tournament::with(['zone', 'club', 'tournamentType']);
-        if ($zoneId) {
-            $query->where('zone_id', $zoneId);
-        }
-        return $query->get()->toArray();
-    }
-
-    private function getAllData(?int $zoneId): array
-    {
-        return [
-            'zones' => Zone::all()->toArray(),
-            'users' => $this->getUsersData($zoneId),
-            'tournaments' => $this->getTournamentsData($zoneId),
-            'availabilities' => Availability::with('tournament', 'referee')->get()->toArray(),
-            'assignments' => Assignment::with('tournament', 'referee')->get()->toArray(),
-        ];
-    }
-
-    private function exportData(array $data, string $type, string $format, ?string $output): string
-    {
-        $timestamp = Carbon::now()->format('Y-m-d_H-i-s');
-        $filename = $output ?: "golf_export_{$type}_{$timestamp}.{$format}";
-
-        switch ($format) {
-            case 'json':
-                Storage::put($filename, json_encode($data, JSON_PRETTY_PRINT));
+        // Se è un array associativo, mostra il conteggio o i primi valori
+        $items = [];
+        $count = 0;
+        foreach ($value as $k => $v) {
+            if ($count >= 3) { // Limita a 3 elementi per non sovraccaricare
+                $items[] = '...';
                 break;
-            case 'csv':
-                $this->exportToCsv($data, $filename);
-                break;
-            case 'excel':
-                $this->exportToExcel($data, $filename);
-                break;
-            default:
-                throw new \InvalidArgumentException("Formato non supportato: {$format}");
-        }
-
-        return $filename;
-    }
-
-    private function exportToCsv(array $data, string $filename): void
-    {
-        // CSV export implementation
-        $csv = fopen('php://temp', 'w+');
-
-        if (!empty($data)) {
-            $headers = array_keys($data[0]);
-            fputcsv($csv, $headers);
-
-            foreach ($data as $row) {
-                fputcsv($csv, $row);
             }
+            $items[] = $k . ': ' . $this->formatValue($v);
+            $count++;
         }
-
-        rewind($csv);
-        $content = stream_get_contents($csv);
-        fclose($csv);
-
-        Storage::put($filename, $content);
+        return implode(', ', $items);
     }
 
-    private function exportToExcel(array $data, string $filename): void
-    {
-        // Excel export would require additional packages like PhpSpreadsheet
-        throw new \Exception("Excel export non ancora implementato");
+    if (is_bool($value)) {
+        return $value ? 'Sì' : 'No';
     }
+
+    if (is_numeric($value)) {
+        return (string) $value;
+    }
+
+    if (is_object($value)) {
+        return method_exists($value, '__toString') ? (string) $value : get_class($value);
+    }
+
+    return (string) $value;
 }
 
-/**
- * Comando per manutenzione sistema Golf
- */
-class GolfMaintenanceCommand extends Command
-{
-    protected $signature = 'golf:maintenance
-                            {action : Azione (cleanup, optimize, repair, status)}
-                            {--dry-run : Simula senza eseguire}
-                            {--force : Forza esecuzione senza conferma}';
-
-    protected $description = 'Strumenti di manutenzione per il sistema Golf';
-
-    public function handle(): int
-    {
-        $action = $this->argument('action');
-        $dryRun = $this->option('dry-run');
-        $force = $this->option('force');
-
-        $this->info("🔧 MANUTENZIONE SISTEMA GOLF - {$action}");
-        $this->info('=======================================');
-
-        if ($dryRun) {
-            $this->warn('🚨 MODALITÀ DRY-RUN - Nessuna modifica verrà effettuata');
-        }
-
-        try {
-            return match($action) {
-                'cleanup' => $this->performCleanup($dryRun, $force),
-                'optimize' => $this->performOptimization($dryRun, $force),
-                'repair' => $this->performRepair($dryRun, $force),
-                'status' => $this->showMaintenanceStatus(),
-                default => $this->showMaintenanceHelp()
-            };
-        } catch (\Exception $e) {
-            $this->error("❌ Errore durante manutenzione: " . $e->getMessage());
-            return 1;
-        }
-    }
-
-    private function performCleanup(bool $dryRun, bool $force): int
-    {
-        $this->info('🧹 Pulizia dati obsoleti...');
-
-        $actions = [
-            'Notifiche scadute' => function() use ($dryRun) {
-                $count = 0;
-                if (class_exists('\App\Models\Notification')) {
-                    $query = \App\Models\Notification::where('read_at', '<', now()->subDays(30));
-                    $count = $query->count();
-                    if (!$dryRun) $query->delete();
-                }
-                return $count;
-            },
-            'Sessioni scadute' => function() use ($dryRun) {
-                $count = DB::table('sessions')->where('last_activity', '<', now()->subDays(7))->count();
-                if (!$dryRun) DB::table('sessions')->where('last_activity', '<', now()->subDays(7))->delete();
-                return $count;
-            },
-            'Log obsoleti' => function() use ($dryRun) {
-                $count = 0;
-                if (Schema::hasTable('activity_log')) {
-                    $count = DB::table('activity_log')->where('created_at', '<', now()->subDays(90))->count();
-                    if (!$dryRun) DB::table('activity_log')->where('created_at', '<', now()->subDays(90))->delete();
-                }
-                return $count;
-            }
-        ];
-
-        foreach ($actions as $description => $action) {
-            $count = $action();
-            $status = $dryRun ? "🔍 Trovati" : "✅ Rimossi";
-            $this->info("{$status} {$count} record: {$description}");
-        }
-
-        return 0;
-    }
-
-    private function performOptimization(bool $dryRun, bool $force): int
-    {
-        $this->info('⚡ Ottimizzazione database...');
-
-        if (!$dryRun) {
-            // Ottimizza tabelle
-            $tables = ['zones', 'users', 'tournaments', 'assignments', 'availabilities'];
-            foreach ($tables as $table) {
-                DB::statement("OPTIMIZE TABLE {$table}");
-                $this->info("✅ Ottimizzata tabella: {$table}");
-            }
-
-            // Aggiorna statistiche
-            DB::statement('ANALYZE TABLE zones, users, tournaments, assignments, availabilities');
-            $this->info('✅ Statistiche database aggiornate');
-        } else {
-            $this->info('🔍 Verifica tabelle da ottimizzare...');
-        }
-
-        return 0;
-    }
-
-    private function performRepair(bool $dryRun, bool $force): int
-    {
-        $this->info('🔨 Riparazione inconsistenze...');
-
-        $repairs = [
-            'Codici arbitro mancanti' => function() use ($dryRun) {
-                $referees = User::where('user_type', 'referee')
-                    ->whereNull('referee_code')
-                    ->get();
-
-                foreach ($referees as $referee) {
-                    if (!$dryRun && $referee->zone) {
-                        $referee->referee_code = $referee->zone->code . '-REF-' . str_pad($referee->id, 3, '0', STR_PAD_LEFT);
-                        $referee->save();
-                    }
-                }
-
-                return $referees->count();
-            },
-            'Disponibilità orfane' => function() use ($dryRun) {
-                $orphaned = Availability::whereDoesntHave('tournament')->count();
-                if (!$dryRun) {
-                    Availability::whereDoesntHave('tournament')->delete();
-                }
-                return $orphaned;
-            }
-        ];
-
-        foreach ($repairs as $description => $repair) {
-            $count = $repair();
-            $status = $dryRun ? "🔍 Trovati" : "🔨 Riparati";
-            $this->info("{$status} {$count} problemi: {$description}");
-        }
-
-        return 0;
-    }
-
-    private function showMaintenanceStatus(): int
-    {
-        $this->info('📊 Status Manutenzione Sistema');
-
-        $stats = [
-            ['Tabelle DB', DB::select("SELECT COUNT(*) as count FROM information_schema.tables WHERE table_schema = ?", [config('database.connections.mysql.database')])[0]->count],
-            ['Dimensione DB (MB)', $this->getDatabaseSize()],
-            ['Utenti totali', User::count()],
-            ['Tornei attivi', Tournament::whereIn('status', ['open', 'closed', 'assigned'])->count()],
-            ['Disponibilità pending', Availability::whereHas('tournament', function($q) { $q->where('status', 'open'); })->count()],
-            ['Assegnazioni non confermate', Assignment::where('is_confirmed', false)->count()],
-        ];
-
-        $this->table(['Metrica', 'Valore'], $stats);
-        return 0;
-    }
-
-    private function showMaintenanceHelp(): int
-    {
-        $this->info('🔧 COMANDI MANUTENZIONE DISPONIBILI:');
-        $this->info('');
-        $this->info('cleanup  - Rimuove dati obsoleti (notifiche, sessioni, log)');
-        $this->info('optimize - Ottimizza tabelle database e aggiorna statistiche');
-        $this->info('repair   - Ripara inconsistenze dati (codici mancanti, relazioni rotte)');
-        $this->info('status   - Mostra stato attuale del sistema');
-        $this->info('');
-        $this->info('Opzioni:');
-        $this->info('--dry-run  Simula senza effettuare modifiche');
-        $this->info('--force    Salta conferme interattive');
-
-        return 0;
-    }
-
-    private function getDatabaseSize(): float
-    {
-        $size = DB::select("SELECT ROUND(SUM(data_length + index_length) / 1024 / 1024, 2) AS 'size' FROM information_schema.tables WHERE table_schema = ?", [config('database.connections.mysql.database')]);
-        return $size[0]->size ?? 0;
-    }
 }
+
+
