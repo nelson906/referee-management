@@ -34,6 +34,7 @@ return new class extends Migration
             $table->string('name');
             $table->enum('type', ['assignment', 'convocation', 'club', 'institutional'])->default('assignment');
             $table->string('subject');
+            $table->text('description')->nullable();
             $table->text('body');
             $table->foreignId('zone_id')->nullable()->constrained('zones');
             $table->foreignId('tournament_type_id')->nullable()->constrained('tournament_types');

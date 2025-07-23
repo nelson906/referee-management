@@ -44,8 +44,8 @@ class LetterTemplateSeeder extends Seeder
         return [
             [
                 'name' => 'Lettera di Assegnazione Arbitro',
-                'code' => 'ASSIGNMENT_LETTER',
-                'description' => 'Lettera ufficiale di assegnazione arbitro per torneo',
+                // 'code' => 'ASSIGNMENT_LETTER',
+                'description' => 'federazione',
                 'subject' => 'Assegnazione Arbitrale - {{tournament_name}}',
                 'body' => $this->getAssignmentLetterBody(),
                 'type' => 'assignment',
@@ -64,11 +64,11 @@ class LetterTemplateSeeder extends Seeder
             ],
             [
                 'name' => 'Conferma Disponibilità',
-                'code' => 'AVAILABILITY_CONFIRMATION',
-                'description' => 'Conferma ricezione dichiarazione disponibilità',
+                // 'code' => 'AVAILABILITY_CONFIRMATION',
+                'description' => 'altro',
                 'subject' => 'Conferma Disponibilità - {{tournament_name}}',
                 'body' => $this->getAvailabilityConfirmationBody(),
-                'type' => 'confirmation',
+                'type' => 'club',
                 'is_active' => true,
                 'variables' => json_encode([
                     'referee_name',
@@ -81,8 +81,8 @@ class LetterTemplateSeeder extends Seeder
             ],
             [
                 'name' => 'Lettera di Convocazione',
-                'code' => 'CONVOCATION_LETTER',
-                'description' => 'Lettera ufficiale di convocazione per torneo importante',
+                // 'code' => 'CONVOCATION_LETTER',
+                'description' => 'altro',
                 'subject' => 'Convocazione Ufficiale - {{tournament_name}}',
                 'body' => $this->getConvocationLetterBody(),
                 'type' => 'convocation',
@@ -101,11 +101,11 @@ class LetterTemplateSeeder extends Seeder
             ],
             [
                 'name' => 'Reminder Scadenza',
-                'code' => 'DEADLINE_REMINDER',
-                'description' => 'Promemoria per scadenza dichiarazione disponibilità',
+                // 'code' => 'DEADLINE_REMINDER',
+                'description' => 'altro',
                 'subject' => 'Reminder: Scadenza Disponibilità - {{tournament_name}}',
                 'body' => $this->getDeadlineReminderBody(),
-                'type' => 'reminder',
+                'type' => 'institutional',
                 'is_active' => true,
                 'variables' => json_encode([
                     'referee_name',
@@ -118,11 +118,11 @@ class LetterTemplateSeeder extends Seeder
             ],
             [
                 'name' => 'Certificato di Partecipazione',
-                'code' => 'PARTICIPATION_CERTIFICATE',
+                // 'code' => 'PARTICIPATION_CERTIFICATE',
                 'description' => 'Certificato di partecipazione come arbitro',
-                'subject' => 'Certificato di Partecipazione - {{tournament_name}}',
+                'subject' => 'institutional',
                 'body' => $this->getParticipationCertificateBody(),
-                'type' => 'certificate',
+                'type' => 'institutional',
                 'is_active' => true,
                 'variables' => json_encode([
                     'referee_name',
@@ -136,11 +136,11 @@ class LetterTemplateSeeder extends Seeder
             ],
             [
                 'name' => 'Report Post-Torneo',
-                'code' => 'POST_TOURNAMENT_REPORT',
+                // 'code' => 'POST_TOURNAMENT_REPORT',
                 'description' => 'Template per report arbitrale post-torneo',
-                'subject' => 'Report Arbitrale - {{tournament_name}}',
+                'subject' => 'altro',
                 'body' => $this->getPostTournamentReportBody(),
-                'type' => 'report',
+                'type' => 'institutional',
                 'is_active' => true,
                 'variables' => json_encode([
                     'referee_name',
@@ -154,11 +154,11 @@ class LetterTemplateSeeder extends Seeder
             ],
             [
                 'name' => 'Lettera di Annullamento',
-                'code' => 'CANCELLATION_LETTER',
-                'description' => 'Comunicazione annullamento torneo o assegnazione',
-                'subject' => 'Annullamento - {{tournament_name}}',
+                // 'code' => 'CANCELLATION_LETTER',
+                'description' => 'Comunicazione annullamento',
+                'subject' => 'altro',
                 'body' => $this->getCancellationLetterBody(),
-                'type' => 'cancellation',
+                'type' => 'institutional',
                 'is_active' => true,
                 'variables' => json_encode([
                     'referee_name',

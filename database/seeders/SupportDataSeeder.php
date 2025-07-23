@@ -20,7 +20,7 @@ class SupportDataSeeder extends Seeder
 
         $this->createInstitutionalEmails();
         $this->createLetterTemplates();
-        $this->createLetterheads();
+        // $this->createLetterheads();
 
         $this->command->info('✅ Dati di supporto creati con successo');
     }
@@ -38,7 +38,7 @@ class SupportDataSeeder extends Seeder
         ], [
             'name' => 'Segreteria Federale',
             'email' => 'segreteria@figc.it',
-            'description' => 'Segreteria generale della federazione',
+            'description' => 'federazione',
             'is_active' => true,
             'zone_id' => null, // Nazionale
             'category' => 'federazione',
@@ -51,10 +51,10 @@ class SupportDataSeeder extends Seeder
         ], [
             'name' => 'Commissione Regole e Competizioni',
             'email' => 'crc@figc.it',
-            'description' => 'Commissione tecnica nazionale',
+            'description' => 'comitati',
             'is_active' => true,
             'zone_id' => null,
-            'category' => 'committee',
+            'category' => 'comitati',
             'receive_all_notifications' => true,
             'notification_types' => json_encode([]),
         ]);
@@ -66,10 +66,10 @@ class SupportDataSeeder extends Seeder
             ], [
                 'name' => 'Segreteria ' . $zone->name,
                 'email' => strtolower($zone->code) . '@figc.it',
-                'description' => 'Segreteria territoriale ' . $zone->name,
+                'description' => 'zone ' . $zone->name,
                 'is_active' => true,
                 'zone_id' => $zone->id,
-                'category' => 'zona',
+                'category' => 'zone',
                 'receive_all_notifications' => false,
                 'notification_types' => json_encode(['assignment', 'availability', 'tournament_created']),
             ]);
@@ -99,11 +99,7 @@ class SupportDataSeeder extends Seeder
                 'referee_name', 'tournament_name', 'tournament_dates',
                 'club_name', 'role', 'zone_name'
             ]),
-            'description' => 'Template standard per convocazione arbitri',
-            'settings' => json_encode([
-                'auto_send' => false,
-                'require_confirmation' => true,
-            ]),
+            'description' => 'federazione',
         ]);
 
         // Template per comunicazione al circolo
@@ -121,11 +117,7 @@ class SupportDataSeeder extends Seeder
                 'tournament_name', 'tournament_dates', 'club_name',
                 'referee_list', 'total_referees', 'contact_person'
             ]),
-            'description' => 'Template per comunicare al circolo gli arbitri assegnati',
-            'settings' => json_encode([
-                'auto_send' => true,
-                'include_referee_contacts' => true,
-            ]),
+            'description' => 'altro',
         ]);
 
         // Template per notifica assegnazione
@@ -143,11 +135,7 @@ class SupportDataSeeder extends Seeder
                 'referee_name', 'tournament_name', 'tournament_dates',
                 'club_name', 'role', 'assigned_by', 'assignment_notes'
             ]),
-            'description' => 'Template per notificare nuove assegnazioni',
-            'settings' => json_encode([
-                'auto_send' => true,
-                'priority' => 'high',
-            ]),
+            'description' => 'altro',
         ]);
 
         // Template zonali personalizzati
@@ -166,11 +154,7 @@ class SupportDataSeeder extends Seeder
                     'referee_name', 'tournament_name', 'tournament_dates',
                     'club_name', 'role', 'zone_name', 'zone_contact'
                 ]),
-                'description' => 'Template personalizzato per la zona ' . $zone->name,
-                'settings' => json_encode([
-                    'auto_send' => false,
-                    'zone_branding' => true,
-                ]),
+                'description' => 'altro ' . $zone->name,
             ]);
         }
     }
@@ -201,10 +185,6 @@ class SupportDataSeeder extends Seeder
             ]),
             'is_active' => true,
             'is_default' => true,
-            'settings' => json_encode([
-                'margins' => ['top' => 25, 'bottom' => 20, 'left' => 25, 'right' => 25],
-                'font' => ['family' => 'Arial', 'size' => 11, 'color' => '#000000'],
-            ]),
         ]);
 
         // Letterheads zonali
@@ -228,10 +208,6 @@ class SupportDataSeeder extends Seeder
                 ]),
                 'is_active' => true,
                 'is_default' => $index === 0, // Prima zona come default zonale
-                'settings' => json_encode([
-                    'margins' => ['top' => 25, 'bottom' => 20, 'left' => 25, 'right' => 25],
-                    'font' => ['family' => 'Arial', 'size' => 11, 'color' => '#000000'],
-                ]),
             ]);
         }
     }

@@ -211,6 +211,8 @@ private function getAvailableSeeders(): array
         // ✅ SUPPORT SYSTEMS
         'support-data' => \Database\Seeders\SupportDataSeeder::class,
         'notifications' => \Database\Seeders\NotificationSeeder::class, // ✅ FIXED: namespace completo
+        'letter-templates' => \Database\Seeders\LetterTemplateSeeder::class,
+
     ];
 }
     /**
