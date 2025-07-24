@@ -39,10 +39,10 @@
                             <label for="referee_{{ $type }}_{{ $referee->id }}" class="block">
                                 <h4 class="font-medium text-gray-900 cursor-pointer">{{ $referee->name }}</h4>
                                 <div class="mt-1 space-y-1 text-sm text-gray-600">
-                                    <p><strong>Codice:</strong> {{ $referee->referee->referee_code ?? 'N/A' }}</p>
+                                    <p><strong>Codice:</strong> {{ $referee->referee_code ?? 'N/A' }}</p>
                                     <p><strong>Livello:</strong>
                                         <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium {{ $badgeClass }}">
-                                            {{ $referee->referee->level_label ?? 'N/A' }}
+                                            {{ $referee->level ?? 'N/A' }}
                                         </span>
                                     </p>
                                     <p><strong>Zona:</strong> {{ $referee->zone->name ?? 'N/A' }}</p>

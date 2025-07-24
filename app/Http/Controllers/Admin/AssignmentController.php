@@ -453,7 +453,6 @@ class AssignmentController extends Controller
                 if (!isset($refereeData['selected']) || !isset($refereeData['user_id'])) {
                     continue;
                 }
-
                 $referee = User::findOrFail($refereeData['user_id']);
 
                 // Check if already assigned
