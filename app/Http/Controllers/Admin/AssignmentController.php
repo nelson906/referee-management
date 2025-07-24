@@ -358,43 +358,81 @@ class AssignmentController extends Controller
     /**
      * Show assignment interface for a specific tournament.
      */
-    public function assignReferees(Tournament $tournament): View
-    {
-        $this->checkTournamentAccess($tournament);
+public function assignReferees(Tournament $tournament): View
+{
+    $this->checkTournamentAccess($tournament);
 
-        $user = auth()->user();
-        $isNationalAdmin = in_array($user->user_type, ['national_admin', 'super_admin']);
+    $user = auth()->user();
+    $isNationalAdmin = in_array($user->user_type, ['national_admin', 'super_admin']);
 
-        // Load tournament with relations
-        // CORRETTO ✅
-        $tournament->load(['club', 'zone', 'tournamentType']);
+    // Load tournament with relations
+    $tournament->load(['club', 'zone', 'tournamentType']);
 
-        // Get currently assigned referees - CORRETTO ✅
-        $assignedReferees = $tournament->assignments()->with('user')->get();
-        $assignedRefereeIds = $assignedReferees->pluck('user_id')->toArray();
+    // LOG 1: Verifica i dati del torneo
+    \Log::info('=== DEBUG AVAILABLE REFEREES ===');
+    \Log::info('Tournament ID: ' . $tournament->id);
+    \Log::info('Tournament Name: ' . $tournament->name);
 
-        // Get available referees - CORRETTO ✅
-        $availableReferees = User::with('zone')
-            ->whereHas('availabilities', function ($q) use ($tournament) {
-                $q->where('tournament_id', $tournament->id);
-            })
-            ->where('user_type', 'referee')
-            ->where('is_active', true)
-            ->whereNotIn('id', $assignedRefereeIds)
-            ->orderBy('name')
-            ->get();
+    // Get currently assigned referees
+    $assignedReferees = $tournament->assignments()->with('user')->get();
+    $assignedRefereeIds = $assignedReferees->pluck('user_id')->toArray();
 
-        // Get possible referees (zone referees who haven't declared availability) - EXCLUDE already assigned
-        $possibleReferees = User::with(['referee', 'zone'])
-            ->where('user_type', 'referee')
-            ->where('is_active', true)
-            ->where('zone_id', $tournament->zone_id)
-            ->whereDoesntHave('availabilities', function ($q) use ($tournament) {
-                $q->where('tournament_id', $tournament->id);
-            })
-            ->whereNotIn('id', $assignedRefereeIds)
-            ->orderBy('name')
-            ->get();
+    // LOG 2: Verifica arbitri già assegnati
+    \Log::info('Already assigned referee IDs: ' . json_encode($assignedRefereeIds));
+
+    // LOG 3: Verifica quante availability esistono per questo torneo
+    $availabilityCount = \App\Models\Availability::where('tournament_id', $tournament->id)->count();
+    \Log::info('Total availabilities for this tournament: ' . $availabilityCount);
+
+    // LOG 4: Dettagli delle availability
+    $availabilities = \App\Models\Availability::where('tournament_id', $tournament->id)
+        ->with('user')
+        ->get();
+
+    foreach ($availabilities as $avail) {
+        \Log::info('Availability - User ID: ' . $avail->user_id .
+                   ', User Name: ' . $avail->user->name ?? 'NULL' .
+                   ', User Type: ' . $avail->user->user_type ?? 'NULL' .
+                   ', Is Active: ' . ($avail->user->is_active ? 'YES' : 'NO'));
+    }
+
+    // Get available referees - QUI È LA QUERY CRITICA
+    $availableReferees = User::with('zone')
+        ->whereHas('availabilities', function ($q) use ($tournament) {
+            $q->where('tournament_id', $tournament->id);
+        })
+        ->where('user_type', 'referee')
+        ->where('is_active', true)
+        ->whereNotIn('id', $assignedRefereeIds)
+        ->orderBy('name')
+        ->get();
+
+    // LOG 5: Risultato finale
+    \Log::info('Available referees found: ' . $availableReferees->count());
+
+    foreach ($availableReferees as $ref) {
+        \Log::info('Available referee: ' . $ref->name . ' (ID: ' . $ref->id . ')');
+    }
+
+    // LOG 6: Test query senza filtri per vedere tutti i referee attivi
+    $allActiveReferees = User::where('user_type', 'referee')
+        ->where('is_active', true)
+        ->count();
+    \Log::info('Total active referees in system: ' . $allActiveReferees);
+
+    // Resto del codice...
+    $possibleReferees = User::with(['referee', 'zone'])
+        ->where('user_type', 'referee')
+        ->where('is_active', true)
+        ->where('zone_id', $tournament->zone_id)
+        ->whereDoesntHave('availabilities', function ($q) use ($tournament) {
+            $q->where('tournament_id', $tournament->id);
+        })
+        ->whereNotIn('id', $assignedRefereeIds)
+        ->orderBy('name')
+        ->get();
+
+    // ... resto del metodo
 
         // Get national referees (for national tournaments) - EXCLUDE already assigned
         $nationalReferees = collect();
@@ -432,11 +470,11 @@ class AssignmentController extends Controller
     public function bulkAssign(Request $request): RedirectResponse
     {
         $request->validate([
-            'tournament_id' => 'required|exists:tournaments,id',
-            'referees' => 'required|array|min:1',
-            'referees.*.user_id' => 'required|exists:users,id',
-            'referees.*.role' => 'required|in:Arbitro,Direttore di Torneo,Osservatore',
-            'referees.*.notes' => 'nullable|string|max:500',
+'referees' => 'required|array|min:1',
+'referees.*' => 'array',
+'referees.*.selected' => 'nullable|in:1',
+'referees.*.user_id' => 'required_with:referees.*.selected|exists:users,id',
+'referees.*.role' => 'required_with:referees.*.selected|in:Arbitro,Direttore di Torneo,Osservatore',
         ]);
 
         $tournament = Tournament::findOrFail($request->tournament_id);
@@ -449,10 +487,15 @@ class AssignmentController extends Controller
         try {
             // Process the referees array
             foreach ($request->referees as $key => $refereeData) {
-                // Skip if not selected or missing data
-                if (!isset($refereeData['selected']) || !isset($refereeData['user_id'])) {
-                    continue;
-                }
+    // Controlla se il referee è stato selezionato
+    if (!isset($refereeData['selected']) || $refereeData['selected'] !== '1') {
+        continue;
+    }
+
+    // Verifica che abbia i dati necessari
+    if (!isset($refereeData['user_id']) || !isset($refereeData['role'])) {
+        continue;
+    }
                 $referee = User::findOrFail($refereeData['user_id']);
 
                 // Check if already assigned
@@ -468,7 +511,7 @@ class AssignmentController extends Controller
                     'role' => $refereeData['role'],
                     'notes' => $refereeData['notes'] ?? null,
                     'assigned_at' => now(),
-                    'assigned_by' => auth()->id(),
+                    'assigned_by_id' => auth()->id(),
                     'is_confirmed' => true, // Always confirmed
                 ]);
 
