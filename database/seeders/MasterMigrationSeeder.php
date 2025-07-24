@@ -492,8 +492,8 @@ class MasterMigrationSeeder extends Seeder
                 'phone' => $circolo->Telefono ?? null,
                 'email' => $circolo->Email ?? null,
                 'website' => $circolo->Web ?? null,
-                'zone_id' => $circolo->Zona,
-                'holes_count' => $circolo->Numero_Buche ?? 18,
+                'zone_id' => $this->mapZoneFromCircolo($circolo),
+                // 'holes_count' => $circolo->Numero_Buche ?? 18,
                 'is_active' => $this->mapBooleanValue($circolo->SedeGara ?? 'Vero'),
                 'settings' => json_encode([]),
                 'created_at' => now(),
@@ -941,8 +941,8 @@ class MasterMigrationSeeder extends Seeder
             return $circolo->zona_id;
         }
 
-        if (isset($circolo->zona)) {
-            $zone = DB::table('zones')->where('code', strtoupper($circolo->zona))->first();
+        if (isset($circolo->Zona)) {
+            $zone = DB::table('zones')->where('code', strtoupper($circolo->Zona))->first();
             if ($zone) {
                 return $zone->id;
             }
@@ -977,7 +977,6 @@ class MasterMigrationSeeder extends Seeder
                     'address' => 'To Be Announced',
                     'city' => 'TBA',
                     'is_active' => true,
-                    'is_virtual' => true,
                     'settings' => json_encode(['virtual_tba' => true]),
                     'created_at' => now(),
                     'updated_at' => now(),

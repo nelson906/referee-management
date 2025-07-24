@@ -366,37 +366,14 @@ public function assignReferees(Tournament $tournament): View
     $isNationalAdmin = in_array($user->user_type, ['national_admin', 'super_admin']);
 
     // Load tournament with relations
+        // CORRETTO ✅
     $tournament->load(['club', 'zone', 'tournamentType']);
 
-    // LOG 1: Verifica i dati del torneo
-    \Log::info('=== DEBUG AVAILABLE REFEREES ===');
-    \Log::info('Tournament ID: ' . $tournament->id);
-    \Log::info('Tournament Name: ' . $tournament->name);
-
-    // Get currently assigned referees
+        // Get currently assigned referees - CORRETTO ✅
     $assignedReferees = $tournament->assignments()->with('user')->get();
     $assignedRefereeIds = $assignedReferees->pluck('user_id')->toArray();
 
-    // LOG 2: Verifica arbitri già assegnati
-    \Log::info('Already assigned referee IDs: ' . json_encode($assignedRefereeIds));
-
-    // LOG 3: Verifica quante availability esistono per questo torneo
-    $availabilityCount = \App\Models\Availability::where('tournament_id', $tournament->id)->count();
-    \Log::info('Total availabilities for this tournament: ' . $availabilityCount);
-
-    // LOG 4: Dettagli delle availability
-    $availabilities = \App\Models\Availability::where('tournament_id', $tournament->id)
-        ->with('user')
-        ->get();
-
-    foreach ($availabilities as $avail) {
-        \Log::info('Availability - User ID: ' . $avail->user_id .
-                   ', User Name: ' . $avail->user->name ?? 'NULL' .
-                   ', User Type: ' . $avail->user->user_type ?? 'NULL' .
-                   ', Is Active: ' . ($avail->user->is_active ? 'YES' : 'NO'));
-    }
-
-    // Get available referees - QUI È LA QUERY CRITICA
+        // Get available referees - CORRETTO ✅
     $availableReferees = User::with('zone')
         ->whereHas('availabilities', function ($q) use ($tournament) {
             $q->where('tournament_id', $tournament->id);
@@ -407,20 +384,7 @@ public function assignReferees(Tournament $tournament): View
         ->orderBy('name')
         ->get();
 
-    // LOG 5: Risultato finale
-    \Log::info('Available referees found: ' . $availableReferees->count());
-
-    foreach ($availableReferees as $ref) {
-        \Log::info('Available referee: ' . $ref->name . ' (ID: ' . $ref->id . ')');
-    }
-
-    // LOG 6: Test query senza filtri per vedere tutti i referee attivi
-    $allActiveReferees = User::where('user_type', 'referee')
-        ->where('is_active', true)
-        ->count();
-    \Log::info('Total active referees in system: ' . $allActiveReferees);
-
-    // Resto del codice...
+        // Get possible referees (zone referees who haven't declared availability) - EXCLUDE already assigned
     $possibleReferees = User::with(['referee', 'zone'])
         ->where('user_type', 'referee')
         ->where('is_active', true)
@@ -432,7 +396,6 @@ public function assignReferees(Tournament $tournament): View
         ->orderBy('name')
         ->get();
 
-    // ... resto del metodo
 
         // Get national referees (for national tournaments) - EXCLUDE already assigned
         $nationalReferees = collect();

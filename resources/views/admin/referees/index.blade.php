@@ -518,7 +518,7 @@
                     ])->filter()->count();
                 @endphp
 
-                @if($activeFilters > 0)
+                @if(isset($activeFilters) && $activeFilters > 0)
                     <div class="flex items-center text-amber-600 text-sm">
                         <span class="mr-1">🔍</span>
                         <span>{{ $activeFilters }} filtro{{ $activeFilters > 1 ? 'i' : '' }} attivo{{ $activeFilters > 1 ? 'i' : '' }}</span>
@@ -544,7 +544,7 @@
                 @endif
 
                 {{-- ✅ Mostra "Pulisci filtri" solo se ci sono filtri oltre al default --}}
-                @if($activeFilters > 0 || (request('status') && request('status') !== 'active'))
+                @if(isset($activeFilters) && $activeFilters > 0 || (request('status') && request('status') !== 'active'))
                     <a href="{{ route('admin.referees.index', ['status' => 'active'] + (request('sort') ? ['sort' => request('sort'), 'direction' => request('direction')] : [])) }}"
                        class="text-xs text-gray-600 hover:text-gray-800 px-2 py-1 rounded border border-gray-200 hover:bg-gray-100">
                         ✖️ Pulisci filtri
@@ -580,7 +580,7 @@
                         <strong>Nessun arbitro attivo</strong> trovato.
                     @endif
 
-                    @if($activeFilters > 0)
+                    @if(isset($activeFilters) && $activeFilters > 0)
                         Prova a <a href="{{ route('admin.referees.index', ['status' => request('status', 'active')]) }}" class="underline hover:no-underline">rimuovere i filtri</a>.
                     @endif
                 </p>

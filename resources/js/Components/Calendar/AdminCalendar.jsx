@@ -147,7 +147,7 @@ const AdminCalendar = ({ calendarData }) => {
                 <h3 className="text-sm font-medium text-gray-700 mb-3">Legenda Gestionale</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
                     <div>
-                        <h4 className="font-medium text-gray-600 mb-2">Colori (Categoria Torneo):</h4>
+                        <h4 className="font-medium text-gray-600 mb-2">Colori (Tipo Torneo):</h4>
                         <div className="space-y-1">
                             <div className="flex items-center">
                                 <div className="w-4 h-4 rounded mr-2" style={{backgroundColor: '#FF6B6B'}}></div>
