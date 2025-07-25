@@ -125,49 +125,35 @@ class NotificationService
     /**
      * Send notification to institutional email.
      */
-    public function sendInstitutionalNotification(InstitutionalEmail $institutional, Tournament $tournament, array $options = [])
-    {
-        // Prepare variables
-        $variables = [
-            'institution_name' => $institutional->name,
-            'tournament_name' => $tournament->name,
-            'tournament_dates' => $tournament->date_range,
-            'club_name' => $tournament->club->name,
-            'zone_name' => $tournament->zone->name,
-            'assigned_date' => now()->format('d/m/Y'),
-            'tournament_category' => $tournament->tournamentType->name,
-            'referees_count' => $tournament->assignments->count(),
-        ];
 
-        $subject = $options['custom_subject'] ?? $this->getTemplateSubject('institutional', $tournament->zone_id, $variables);
-        $body = $options['custom_message'] ?? $this->getTemplateBody('institutional', $tournament->zone_id, $variables);
+    private function sendToInstitutional(Tournament $tournament, array $data, array &$results)
+{
+    // Solo se l'utente ha selezionato institutional come destinatario
+    // E ha fornito email specifiche in $data['institutional_emails']
 
-        // Create notification
-        $notification = Notification::create([
-            'assignment_id' => null,
-            'recipient_type' => 'institutional',
-            'recipient_email' => $institutional->email,
-            'subject' => $subject,
-            'body' => $body,
-            'template_used' => $options['template_id'] ?? 'default',
-            'status' => 'pending',
-        ]);
+    if (empty($data['institutional_emails'])) {
+        $results['errors'][] = "Nessun indirizzo istituzionale selezionato";
+        return;
+    }
 
-        // Send email
+    $emails = explode(',', $data['institutional_emails']);
+
+    foreach ($emails as $email) {
+        $email = trim($email);
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) continue;
+
         try {
-            Mail::raw($body, function ($message) use ($institutional, $subject) {
-                $message->to($institutional->email, $institutional->name)
-                    ->subject($subject)
-                    ->from(config('mail.from.address'), config('mail.from.name'));
-            });
-
-            $notification->markAsSent();
-            return $notification;
+            $this->notificationService->sendCustomNotification($email, $tournament, [
+                'custom_subject' => $data['subject'],
+                'custom_message' => $data['message'],
+            ]);
+            $results['sent']++;
         } catch (\Exception $e) {
-            $notification->markAsFailed($e->getMessage());
-            throw $e;
+            $results['failed']++;
+            $results['errors'][] = "Errore invio a {$email}: " . $e->getMessage();
         }
     }
+}
 
     /**
      * Send notification to custom email.
