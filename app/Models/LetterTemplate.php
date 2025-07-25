@@ -239,4 +239,6 @@ class LetterTemplate extends Model
             ->orderBy('id')
             ->first();
     }
+
+
 }

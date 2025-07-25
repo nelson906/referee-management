@@ -158,6 +158,10 @@ Route::middleware(['auth'])->group(function () {
         // ❌ RIMOSSA SOLO QUESTA RIGA PROBLEMATICA:
         // Route::get('calendar', [Admin\CalendarController::class, 'index'])->name('calendar.index');
 
+        // Notifications
+Route::post('notifications/send-assignment', [Admin\NotificationController::class, 'sendAssignment'])
+    ->name('notifications.send-assignment');
+
         // Referee Management
         Route::resource('referees', Admin\RefereeController::class);
         Route::post('referees/{referee}/toggle-active', [Admin\RefereeController::class, 'toggleActive'])
@@ -212,6 +216,12 @@ Route::middleware(['auth'])->group(function () {
             Route::get('/{document}/download', [DocumentController::class, 'download'])->name('download');
             Route::delete('/{document}', [DocumentController::class, 'destroy'])->name('destroy');
         });
+Route::prefix('notifications')->name('notifications.')->group(function () {
+    Route::get('/', [Admin\NotificationController::class, 'index'])->name('index');
+    Route::get('/send-assignment', [Admin\NotificationController::class, 'sendAssignmentForm'])->name('send-assignment');
+    Route::post('/send-assignment', [Admin\NotificationController::class, 'sendAssignment'])->name('send-assignment.store');
+    Route::post('/{notification}/retry', [Admin\NotificationController::class, 'retry'])->name('retry');
+});
 
         Route::get('/settings', [Admin\SettingsController::class, 'index'])->name('settings');
         Route::post('/settings', [Admin\SettingsController::class, 'update'])->name('settings.update');

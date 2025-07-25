@@ -46,7 +46,6 @@ class NotificationService
             'body' => $body,
             'template_used' => $options['template_id'] ?? 'default',
             'status' => 'pending',
-            'priority' => 'normal',
             'attachments' => $options['include_attachments'] ? $this->getAttachments($tournament) : null,
         ]);
 
@@ -88,17 +87,21 @@ class NotificationService
 
         $subject = $options['custom_subject'] ?? $this->getTemplateSubject('club', $tournament->zone_id, $variables);
         $body = $options['custom_message'] ?? $this->getTemplateBody('club', $tournament->zone_id, $variables);
+$firstAssignment = $tournament->assignments->first();
+if (!$firstAssignment) {
+    throw new \Exception('Nessuna assegnazione trovata per questo torneo');
+}
+
 
         // Create notification
         $notification = Notification::create([
-            'assignment_id' => null,
+'assignment_id' => $firstAssignment->id,
             'recipient_type' => 'club',
             'recipient_email' => $tournament->club->email,
             'subject' => $subject,
             'body' => $body,
             'template_used' => $options['template_id'] ?? 'default',
             'status' => 'pending',
-            'priority' => 'normal',
         ]);
 
         // Send email
@@ -147,7 +150,6 @@ class NotificationService
             'body' => $body,
             'template_used' => $options['template_id'] ?? 'default',
             'status' => 'pending',
-            'priority' => 'normal',
         ]);
 
         // Send email
@@ -195,7 +197,6 @@ class NotificationService
             'body' => $body,
             'template_used' => $options['template_id'] ?? 'default',
             'status' => 'pending',
-            'priority' => 'normal',
         ]);
 
         // Send email
@@ -314,4 +315,6 @@ class NotificationService
 
         return $attachments;
     }
+
+
 }

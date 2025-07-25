@@ -19,7 +19,6 @@ class Notification extends Model
         'status',
         'priority',
         'sent_at',
-        'failed_at',
         'error_message',
         'attachments',
         'retry_count',
@@ -28,7 +27,6 @@ class Notification extends Model
 
     protected $casts = [
         'sent_at' => 'datetime',
-        'failed_at' => 'datetime',
         'attachments' => 'array',
         'metadata' => 'array',
         'retry_count' => 'integer',
@@ -113,7 +111,6 @@ class Notification extends Model
         $this->update([
             'status' => self::STATUS_SENT,
             'sent_at' => now(),
-            'failed_at' => null,
             'error_message' => null,
         ]);
     }
@@ -125,7 +122,6 @@ class Notification extends Model
     {
         $this->update([
             'status' => self::STATUS_FAILED,
-            'failed_at' => now(),
             'error_message' => $errorMessage,
             'retry_count' => $this->retry_count + 1,
         ]);
@@ -138,7 +134,6 @@ class Notification extends Model
     {
         $this->update([
             'status' => self::STATUS_PENDING,
-            'failed_at' => null,
             'error_message' => null,
         ]);
     }
@@ -227,13 +222,6 @@ class Notification extends Model
         return $this->sent_at ? $this->sent_at->format('d/m/Y H:i') : '-';
     }
 
-    /**
-     * Get formatted failed date
-     */
-    public function getFormattedFailedDateAttribute()
-    {
-        return $this->failed_at ? $this->failed_at->format('d/m/Y H:i') : '-';
-    }
 
     /**
      * Get tournament information through assignment
