@@ -45,8 +45,8 @@ class MasterMigrationSeeder extends Seeder
         // 4. Esegui migrazione nell'ordine corretto (USER CENTRIC approach)
         $this->command->info('✅ Database verificato, procedo con migrazione USER CENTRIC...');
 
-        $this->createZones();           // Manuale: SZR1-SZR7, CRC
-        $this->createTournamentTypes(); // Manuale: defaults con short_name
+        // $this->createZones();           // Manuale: SZR1-SZR7, CRC
+        // $this->createTournamentTypes(); // Manuale: defaults con short_name
         $this->migrateArbitri();        // arbitri → users + referees
         $this->migrateCircoli();        // circoli → clubs
         $this->migrateGare();           // gare_2025 → tournaments
@@ -412,7 +412,7 @@ class MasterMigrationSeeder extends Seeder
             $userData = [
                 'name' => trim($arbitro->Nome . ' ' . $arbitro->Cognome),
                 'email' => $email,
-                'password' => bcrypt('password123'),
+                'password' => bcrypt($arbitro->Password),
                 'user_type' => 'referee',
                 'zone_id' => $this->mapZoneFromArbitro($arbitro),
                 'referee_code' => $arbitro->codice ?? $this->generateRefereeCode(),
@@ -1122,31 +1122,37 @@ class MasterMigrationSeeder extends Seeder
     }
 
     /**
-     * Parsing CSV assegnazioni (con contatore)
+     * Parsing CSV assegnazioni (con inversione intelligente nomi "Cognome Nome" → "Nome Cognome")
      */
     private function parseAssegnazioniCSV($gara): int
     {
         $count = 0;
 
+        // TD (Direttore di Torneo)
         if (!empty($gara->TD)) {
-            if ($this->createAssignmentFromName($gara->id, $gara->TD, 'Direttore di Torneo')) {
+            $correctedName = $this->smartNameInversion($gara->TD);
+            if ($this->createAssignmentFromName($gara->id, $correctedName, 'Direttore di Torneo')) {
                 $count++;
             }
         }
 
+        // Arbitri (lista CSV)
         if (!empty($gara->Arbitri)) {
             $arbitri = explode(',', $gara->Arbitri);
             foreach ($arbitri as $arbitro) {
-                if ($this->createAssignmentFromName($gara->id, trim($arbitro), 'Arbitro')) {
+                $correctedName = $this->smartNameInversion(trim($arbitro));
+                if ($this->createAssignmentFromName($gara->id, $correctedName, 'Arbitro')) {
                     $count++;
                 }
             }
         }
 
+        // Osservatori (lista CSV)
         if (!empty($gara->Osservatori)) {
             $osservatori = explode(',', $gara->Osservatori);
             foreach ($osservatori as $osservatore) {
-                if ($this->createAssignmentFromName($gara->id, trim($osservatore), 'Osservatore')) {
+                $correctedName = $this->smartNameInversion(trim($osservatore));
+                if ($this->createAssignmentFromName($gara->id, $correctedName, 'Osservatore')) {
                     $count++;
                 }
             }
@@ -1155,6 +1161,133 @@ class MasterMigrationSeeder extends Seeder
         return $count;
     }
 
+    /**
+     * Inversione intelligente nome con verifica su tabella users
+     * Gestisce nomi/cognomi multipli e verifica contro database
+     */
+    private function smartNameInversion(string $fullName): string
+    {
+        $cleanName = trim($fullName);
+
+        if (empty($cleanName)) {
+            return $cleanName;
+        }
+
+        // In dry-run, simula il processo ma non accede al database
+        if ($this->dryRun) {
+            $this->command->info("🧪 DRY-RUN: Inversione nome '{$cleanName}'");
+            return $cleanName;
+        }
+
+        // STEP 1: Prova il nome così com'è (potrebbe essere già corretto)
+        $directMatch = DB::table('users')
+            ->where('name', $cleanName)
+            ->where('user_type', 'referee')
+            ->first();
+
+        if ($directMatch) {
+            $this->command->info("✅ Match diretto: '{$cleanName}' (ID: {$directMatch->id})");
+            return $cleanName;
+        }
+
+        // STEP 2: Prova inversione intelligente
+        $invertedName = $this->performNameInversion($cleanName);
+
+        if ($invertedName !== $cleanName) {
+            // Verifica che la versione invertita esista nel database
+            $invertedMatch = DB::table('users')
+                ->where('name', $invertedName)
+                ->where('user_type', 'referee')
+                ->first();
+
+            if ($invertedMatch) {
+                $this->command->info("🔄 Inversione riuscita: '{$cleanName}' → '{$invertedName}' (ID: {$invertedMatch->id})");
+                return $invertedName;
+            }
+        }
+
+        // STEP 3: Prova match parziale (fallback)
+        $partialMatch = DB::table('users')
+            ->where('name', 'LIKE', "%{$cleanName}%")
+            ->where('user_type', 'referee')
+            ->first();
+
+        if ($partialMatch) {
+            $this->command->info("🔍 Match parziale: '{$cleanName}' → '{$partialMatch->name}' (ID: {$partialMatch->id})");
+            return $partialMatch->name;
+        }
+
+        // STEP 4: Nessun match trovato
+        $this->command->warn("⚠️ Nessun match per: '{$cleanName}' (né diretto, né invertito, né parziale)");
+        return $cleanName; // Restituisce originale
+    }
+
+    /**
+     * Esegue inversione intelligente gestendo nomi/cognomi multipli
+     */
+    private function performNameInversion(string $fullName): string
+    {
+        $parts = preg_split('/\s+/', trim($fullName));
+        $numParts = count($parts);
+
+        // Se meno di 2 parti, non può essere invertito
+        if ($numParts < 2) {
+            return $fullName;
+        }
+
+        // CASO 1: Esattamente 2 parti - semplice inversione
+        if ($numParts == 2) {
+            return $parts[1] . ' ' . $parts[0];
+        }
+
+        // CASO 2: 3+ parti - logica intelligente per nomi/cognomi multipli
+        return $this->handleMultipleNameParts($parts, $fullName);
+    }
+
+    /**
+     * Gestisce nomi con parti multiple (es: "De Sanctis Marco Antonio")
+     */
+    private function handleMultipleNameParts(array $parts, string $originalName): string
+    {
+        $numParts = count($parts);
+
+        // STRATEGIA 1: Ultimo elemento come nome, resto come cognome
+        // "De Sanctis Marco" → "Marco De Sanctis"
+        $strategy1 = $parts[$numParts - 1] . ' ' . implode(' ', array_slice($parts, 0, $numParts - 1));
+
+        // STRATEGIA 2: Prime 2 parti come cognome, resto come nome (per cognomi doppi)
+        // "Van Der Berg Marco" → "Marco Van Der Berg"
+        if ($numParts >= 3) {
+            $strategy2 = implode(' ', array_slice($parts, 2)) . ' ' . implode(' ', array_slice($parts, 0, 2));
+        } else {
+            $strategy2 = $strategy1;
+        }
+
+        // STRATEGIA 3: Prima parte come cognome, resto come nome (per nomi doppi)
+        // "Rossi Marco Antonio" → "Marco Antonio Rossi"
+        $strategy3 = implode(' ', array_slice($parts, 1)) . ' ' . $parts[0];
+
+        // Testa le strategie in ordine di probabilità
+        $strategies = [$strategy1, $strategy2, $strategy3];
+
+        if (!$this->dryRun) {
+            foreach ($strategies as $index => $candidate) {
+                $match = DB::table('users')
+                    ->where('name', $candidate)
+                    ->where('user_type', 'referee')
+                    ->first();
+
+                if ($match) {
+                    $this->command->info("🎯 Strategia " . ($index + 1) . " riuscita: '{$originalName}' → '{$candidate}'");
+                    return $candidate;
+                }
+            }
+        }
+
+        // Se nessuna strategia funziona, usa la prima (più probabile)
+        $this->command->info("🔄 Inversione multipla (strategia 1): '{$originalName}' → '{$strategy1}'");
+        return $strategy1;
+    }
     // ========================================
     // WRAPPER DRY-RUN E HELPER
     // ========================================
