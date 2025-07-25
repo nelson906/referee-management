@@ -474,60 +474,379 @@ class MasterMigrationSeeder extends Seeder
     /**
      * Migra circoli (circoli → clubs)
      */
-    private function migrateCircoli()
-    {
-        $this->command->info('⛳ Migrazione circoli...');
+/**
+ * 🔧 FIX: Gestione constraint UNIQUE per clubs (name, code)
+ */
 
-        // SEMPRE leggi dal database reale (anche in dry-run per statistiche corrette)
-        try {
-            $circoli = DB::connection('real')->table('circoli')->get();
-            $this->command->info("🔍 Trovati {$circoli->count()} circoli nel database reale Sql1466239_4");
-        } catch (\Exception $e) {
-            $this->command->error("❌ Errore lettura circoli: {$e->getMessage()}");
-            return;
-        }
+/**
+ * Migra circoli con gestione conflict UNIQUE
+ */
+/**
+ * 🔧 FIX: Migra circoli SENZA usare $circolo->id (che non esiste)
+ */
+private function migrateCircoli()
+{
+    $this->command->info('⛳ Migrazione circoli...');
 
-        $processedCount = 0;
-
-        foreach ($circoli as $circolo) {
-            $originalName = $circolo->Circolo_Nome ?? "Circolo #{$circolo->id}";
-            $name = $this->resolveClubNameConflict($originalName);
-
-            $clubData = [
-                'name' => $name,
-                'code' => $circolo->Circolo_Id ?? strtoupper(substr($name, 0, 250)),
-                'address' => $circolo->Indirizzo ?? null,
-                'city' => $circolo->Città ?? null,
-                'postal_code' => $circolo->CAP ?? null,
-                'province' => $circolo->Provincia ?? null,
-                'region' => $circolo->Regione ?? null,
-                'phone' => $circolo->Telefono ?? null,
-                'email' => $circolo->Email ?? null,
-                'website' => $circolo->Web ?? null,
-                'zone_id' => $this->mapZoneFromCircolo($circolo),
-                // 'holes_count' => $circolo->Numero_Buche ?? 18,
-                'is_active' => $this->mapBooleanValue($circolo->SedeGara ?? 'Vero'),
-                'settings' => json_encode([]),
-                'created_at' => now(),
-                'updated_at' => now(),
-            ];
-            $this->dryRunUpdateOrInsert(
-                'clubs',
-                ['code' => $clubData['code']],
-                $clubData,
-                "Creazione club: {$clubData['name']}"
-            );
-
-            $processedCount++;
-        }
-
-        // Crea circolo virtuale TBA per ogni zona
-        $this->createVirtualTBAClubs();
-
-        $this->stats['circoli'] = $processedCount;
-        $this->command->info("✅ Migrati {$processedCount} circoli + circoli TBA virtuali");
+    try {
+        $circoli = DB::connection('real')->table('circoli')->get();
+        $this->command->info("🔍 Trovati {$circoli->count()} circoli nel database reale Sql1466239_4");
+    } catch (\Exception $e) {
+        $this->command->error("❌ Errore lettura circoli: {$e->getMessage()}");
+        return;
     }
 
+    $processedCount = 0;
+    $skippedCount = 0;
+
+    foreach ($circoli as $circolo) {
+        // NON usare $circolo->id - potrebbe non esistere
+        $originalName = $circolo->Circolo_Nome ?? "Circolo Sconosciuto";
+        $originalCode = $circolo->Circolo_Id ?? $this->generateUniqueClubCode($originalName);
+
+        // Risolvi conflitti UNIQUE
+        $name = $this->resolveUniqueClubName($originalName);
+        $code = $this->resolveUniqueClubCode($originalCode);
+
+        // Controlla se esiste già un club con lo stesso nome O codice
+        if (!$this->dryRun) {
+            $existingClub = DB::table('clubs')
+                ->where('name', $name)
+                ->orWhere('code', $code)
+                ->first();
+
+            if ($existingClub) {
+                $this->command->info("⏭️ Club già esistente: {$name} (Codice: {$code})");
+                $skippedCount++;
+                continue;
+            }
+        }
+
+        $clubData = [
+            // NON includere 'id' - lascia che Laravel auto-generi
+            'name' => $name,
+            'code' => $code,
+            'address' => $circolo->Indirizzo ?? null,
+            'city' => $circolo->Città ?? null,
+            'postal_code' => $circolo->CAP ?? null,
+            'province' => $circolo->Provincia ?? null,
+            'region' => $circolo->Regione ?? null,
+            'phone' => $circolo->Telefono ?? null,
+            'email' => $circolo->Email ?? null,
+            'website' => $circolo->Web ?? null,
+            'zone_id' => $this->mapZoneFromCircolo($circolo),
+            'is_active' => $this->mapBooleanValue($circolo->SedeGara ?? 'Vero'),
+            'settings' => json_encode([]),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ];
+
+        $success = $this->dryRunInsert(
+            'clubs',
+            $clubData,
+            "Creazione club: {$clubData['name']}"
+        );
+
+        if ($success) {
+            $processedCount++;
+        } else {
+            $skippedCount++;
+        }
+    }
+
+    // Crea circoli TBA DOPO i circoli normali
+    $this->createVirtualTBAClubs();
+
+    $this->stats['circoli'] = $processedCount;
+    $this->command->info("✅ Migrati {$processedCount} circoli (saltati: {$skippedCount}) + circoli TBA virtuali");
+}
+
+/**
+ * Genera codice club univoco basato sul nome
+ */
+private function generateUniqueClubCode(string $name): string
+{
+    // Crea codice base dal nome (prime lettere)
+    $words = explode(' ', strtoupper(trim($name)));
+    $baseCode = '';
+
+    foreach ($words as $word) {
+        if (strlen($word) > 0) {
+            $baseCode .= substr($word, 0, 1);
+        }
+    }
+
+    // Se troppo corto, usa le prime lettere del nome
+    if (strlen($baseCode) < 3) {
+        $baseCode = strtoupper(substr(preg_replace('/[^a-zA-Z]/', '', $name), 0, 3));
+    }
+
+    // Se ancora troppo corto, aggiungi padding
+    if (strlen($baseCode) < 3) {
+        $baseCode = str_pad($baseCode, 3, 'X');
+    }
+
+    return substr($baseCode, 0, 10); // Massimo 10 caratteri
+}
+
+/**
+ * Risolve conflitti UNIQUE per club name (versione migliorata)
+ */
+private function resolveUniqueClubName(string $originalName): string
+{
+    if ($this->dryRun) {
+        return $originalName;
+    }
+
+    $name = trim($originalName);
+    $baseName = $name;
+    $counter = 1;
+
+    // Prova nomi progressivi fino a trovarne uno libero
+    while (DB::table('clubs')->where('name', $name)->exists()) {
+        $name = $baseName . " ({$counter})";
+        $counter++;
+
+        // Sicurezza: evita loop infiniti
+        if ($counter > 100) {
+            $name = $baseName . "_" . substr(uniqid(), -6);
+            break;
+        }
+    }
+
+    if ($name !== $originalName) {
+        $this->command->info("🔄 Nome club modificato: '{$originalName}' → '{$name}'");
+    }
+
+    return $name;
+}
+
+/**
+ * Risolve conflitti UNIQUE per club code (versione migliorata)
+ */
+private function resolveUniqueClubCode(string $originalCode): string
+{
+    if ($this->dryRun) {
+        return $originalCode;
+    }
+
+    $code = strtoupper(trim($originalCode));
+    $baseCode = $code;
+    $counter = 1;
+
+    // Prova codici progressivi fino a trovarne uno libero
+    while (DB::table('clubs')->where('code', $code)->exists()) {
+        // Per codici brevi, aggiungi numero
+        if (strlen($baseCode) <= 6) {
+            $code = $baseCode . $counter;
+        } else {
+            // Per codici lunghi, sostituisci la fine
+            $code = substr($baseCode, 0, 6) . $counter;
+        }
+
+        $counter++;
+
+        // Sicurezza: evita loop infiniti
+        if ($counter > 100) {
+            $code = substr($baseCode, 0, 6) . substr(uniqid(), -4);
+            break;
+        }
+    }
+
+    if ($code !== strtoupper($originalCode)) {
+        $this->command->info("🔄 Codice club modificato: '{$originalCode}' → '{$code}'");
+    }
+
+    return $code;
+}
+
+/**
+ * DEBUG: Mostra struttura record circolo per debug
+ */
+private function debugCircoloStructure($circolo)
+{
+    $this->command->info("🔍 DEBUG - Struttura record circolo:");
+    foreach ($circolo as $key => $value) {
+        $this->command->line("  {$key}: " . ($value ?? 'NULL'));
+    }
+}
+
+/**
+ * Risolve club per torneo (versione senza dipendenza da ID specifici)
+ */
+private function resolveClubForTournament($gara): int
+{
+    if ($this->dryRun) {
+        return 1; // Fallback per dry-run
+    }
+
+    // STEP 1: Prova match per nome/codice circolo dal campo Circolo
+    if (isset($gara->Circolo) && $gara->Circolo) {
+        $club = DB::table('clubs')
+            ->where('code', 'LIKE', "%{$gara->Circolo}%")
+            ->orWhere('name', 'LIKE', "%{$gara->Circolo}%")
+            ->first();
+        if ($club) {
+            return $club->id;
+        }
+    }
+
+    // STEP 2: Prova altri campi che potrebbero contenere info sul circolo
+    $possibleClubFields = ['club_name', 'circolo_nome', 'sede', 'location'];
+
+    foreach ($possibleClubFields as $field) {
+        if (isset($gara->$field) && $gara->$field) {
+            $club = DB::table('clubs')
+                ->where('name', 'LIKE', "%{$gara->$field}%")
+                ->first();
+            if ($club) {
+                $this->command->info("🎯 Club trovato via {$field}: {$club->name}");
+                return $club->id;
+            }
+        }
+    }
+
+    // STEP 3: Fallback a TBA della zona specifica
+    $zoneId = $this->resolveZoneForTournament($gara, null);
+    $zone = DB::table('zones')->find($zoneId);
+
+    if ($zone) {
+        $tbaClub = DB::table('clubs')
+            ->where('code', "TBA_{$zone->code}")
+            ->first();
+
+        if ($tbaClub) {
+            $this->command->info("🎯 Usato TBA per zona {$zone->code}: {$tbaClub->name}");
+            return $tbaClub->id;
+        }
+    }
+
+    // STEP 4: Fallback finale - primo club disponibile
+    $fallbackClub = DB::table('clubs')->first();
+
+    if ($fallbackClub) {
+        $this->command->warn("⚠️ Fallback al primo club disponibile: {$fallbackClub->name}");
+        return $fallbackClub->id;
+    }
+
+    return 1; // Fallback assoluto
+}
+
+
+/**
+ * Crea circoli TBA virtuali con gestione UNIQUE
+ */
+private function createVirtualTBAClubs()
+{
+    try {
+        $zones = DB::table('zones')->get();
+        $this->command->info("🏗️ Creazione circoli TBA per {$zones->count()} zone");
+    } catch (\Exception $e) {
+        $this->command->error("❌ Errore lettura zone per TBA: {$e->getMessage()}");
+        return;
+    }
+
+    $createdCount = 0;
+
+    foreach ($zones as $zone) {
+        $tbaName = "TBA - {$zone->name}";
+        $tbaCode = "TBA_{$zone->code}";
+
+        // Controlla se esiste già
+        if (!$this->dryRun) {
+            $existingTBA = DB::table('clubs')
+                ->where('code', $tbaCode)
+                ->orWhere('name', $tbaName)
+                ->first();
+
+            if ($existingTBA) {
+                $this->command->info("⏭️ TBA già esistente per zona {$zone->code}: {$existingTBA->name}");
+                continue;
+            }
+        }
+
+        $success = $this->dryRunInsert(
+            'clubs',
+            [
+                'name' => $tbaName,
+                'code' => $tbaCode,
+                'address' => 'To Be Announced',
+                'city' => 'TBA',
+                'zone_id' => $zone->id,
+                'is_active' => true,
+                'settings' => json_encode(['virtual_tba' => true]),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ],
+            "Creazione club TBA per zona {$zone->code}"
+        );
+
+        if ($success) {
+            $createdCount++;
+        }
+    }
+
+    $this->command->info("  → Creati {$createdCount} circoli TBA virtuali");
+}
+
+
+/**
+ * OPTIONAL: Cleanup clubs duplicati prima della migrazione
+ */
+private function cleanupDuplicateClubs()
+{
+    if ($this->dryRun) {
+        $this->command->info("🧪 DRY-RUN: Cleanup clubs duplicati");
+        return;
+    }
+
+    $this->command->info("🧹 Cleanup clubs duplicati...");
+
+    // Trova duplicati per nome
+    $duplicateNames = DB::table('clubs')
+        ->select('name')
+        ->groupBy('name')
+        ->havingRaw('COUNT(*) > 1')
+        ->pluck('name');
+
+    foreach ($duplicateNames as $name) {
+        $duplicates = DB::table('clubs')
+            ->where('name', $name)
+            ->orderBy('id')
+            ->get();
+
+        // Mantieni il primo, elimina gli altri
+        $toKeep = $duplicates->first();
+        $toDelete = $duplicates->skip(1);
+
+        foreach ($toDelete as $duplicate) {
+            $this->command->info("🗑️ Eliminato club duplicato: {$duplicate->name} (ID: {$duplicate->id})");
+            DB::table('clubs')->where('id', $duplicate->id)->delete();
+        }
+    }
+
+    // Trova duplicati per codice
+    $duplicateCodes = DB::table('clubs')
+        ->select('code')
+        ->groupBy('code')
+        ->havingRaw('COUNT(*) > 1')
+        ->pluck('code');
+
+    foreach ($duplicateCodes as $code) {
+        $duplicates = DB::table('clubs')
+            ->where('code', $code)
+            ->orderBy('id')
+            ->get();
+
+        $toKeep = $duplicates->first();
+        $toDelete = $duplicates->skip(1);
+
+        foreach ($toDelete as $duplicate) {
+            $this->command->info("🗑️ Eliminato club codice duplicato: {$duplicate->code} (ID: {$duplicate->id})");
+            DB::table('clubs')->where('id', $duplicate->id)->delete();
+        }
+    }
+}
     /**
      * Migra tornei (gare_2025 → tournaments)
      */
@@ -556,6 +875,7 @@ class MasterMigrationSeeder extends Seeder
                 'description' => $gara->descrizione ?? null,
                 'start_date' => $this->parseDate($gara->StartTime),
                 'end_date' => $this->parseDate($gara->EndTime),
+                'availability_deadline' => $this->calculateAvailabilityDeadline($gara->StartTime), // ✅ FIX
                 'club_id' => $clubId,
                 'zone_id' => $zoneId,
                 'tournament_type_id' => $tournamentTypeId,
@@ -958,76 +1278,40 @@ class MasterMigrationSeeder extends Seeder
     }
 
     /**
-     * Crea circoli TBA virtuali per ogni zona
+     * Risolve zona per torneo (migliorata per gestire più campi)
      */
-    private function createVirtualTBAClubs()
+    private function resolveZoneForTournament($gara, ?int $clubId): int
     {
-        // SEMPRE leggi le zone reali (anche in dry-run)
-        try {
-            $zones = DB::table('zones')->get();
-            $this->command->info("🏗️ Creazione circoli TBA per {$zones->count()} zone");
-        } catch (\Exception $e) {
-            $this->command->error("❌ Errore lettura zone per TBA: {$e->getMessage()}");
-            return;
+        if ($this->dryRun) {
+            return 1; // Fallback per dry-run
         }
 
-        foreach ($zones as $zone) {
-            $this->dryRunUpdateOrInsert(
-                'clubs',
-                [
-                    'code' => "TBA_{$zone->code}",
-                    'zone_id' => $zone->id,
-                ],
-                [
-                    'name' => "TBA - {$zone->name}",
-                    'address' => 'To Be Announced',
-                    'city' => 'TBA',
-                    'is_active' => true,
-                    'settings' => json_encode(['virtual_tba' => true]),
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ],
-                "Creazione club TBA per zona {$zone->code}"
-            );
+        // STEP 1: zona_id diretta
+        if (isset($gara->zona_id) && $gara->zona_id) {
+            return $gara->zona_id;
         }
 
-        $this->command->info("  → Creati circoli TBA virtuali per tutte le zone");
-    }
-
-    /**
-     * Risolve club per torneo (con fallback a TBA)
-     */
-    private function resolveClubForTournament($gara): int
-    {
-
-        //    if ($this->dryRun) {
-        //         return 1;
-        //     }
-
-        if (isset($gara->club_id) && $gara->club_id) {
-            $club = DB::table('clubs')->find($gara->club_id);
-            if ($club) {
-                return $club->id;
-            }
-        }
-        if (isset($gara->Circolo) && $gara->Circolo) {
-            $club = DB::table('clubs')
-                ->where('code', 'LIKE', "%{$gara->Circolo}%")
+        // STEP 2: Campo Zona nel record
+        if (isset($gara->Zona) && $gara->Zona) {
+            $zone = DB::table('zones')
+                ->where('code', strtoupper($gara->Zona))
                 ->first();
-            if ($club) {
-                return $club->id;
+            if ($zone) {
+                return $zone->id;
             }
         }
-        $zone = $gara->Zona;
-        //         dd(vars: $zoneId);
-        // $zone = DB::table('zones')->find($zoneId);
-        // dd(vars: $zone);
 
-        $tbaClub = DB::table('clubs')
-            ->where('code', "TBA")
-            ->first();
+        // STEP 3: Zona dal club (se disponibile)
+        if ($clubId) {
+            $club = DB::table('clubs')->find($clubId);
+            if ($club && $club->zone_id) {
+                return $club->zone_id;
+            }
+        }
 
-        return $tbaClub ? $tbaClub->id : 1;
+        // STEP 4: Fallback - prima zona disponibile
+        $defaultZone = DB::table('zones')->where('code', 'SZR1')->first();
+        return $defaultZone ? $defaultZone->id : 1;
     }
 
     /**
@@ -1053,28 +1337,6 @@ class MasterMigrationSeeder extends Seeder
             ->value('id') ?? 1;
     }
 
-    /**
-     * Risolve zona per torneo
-     */
-    private function resolveZoneForTournament($gara, ?int $clubId): int
-    {
-        if ($this->dryRun) {
-            return 1;
-        }
-
-        if (isset($gara->zona_id) && $gara->zona_id) {
-            return $gara->zona_id;
-        }
-
-        if ($clubId) {
-            $club = DB::table('clubs')->find($clubId);
-            if ($club && $club->zone_id) {
-                return $club->zone_id;
-            }
-        }
-
-        return DB::table('zones')->where('code', 'SZR1')->value('id') ?? 1;
-    }
 
     /**
      * Mappa status torneo
@@ -1427,5 +1689,19 @@ class MasterMigrationSeeder extends Seeder
         } catch (\Exception $e) {
             $this->command->warn('⚠️ Errore chiusura connessione: ' . $e->getMessage());
         }
+    }
+    /**
+     * Calcola availability_deadline 10 giorni prima della StartTime
+     */
+    private function calculateAvailabilityDeadline($startTime): ?Carbon
+    {
+        $startDate = $this->parseDate($startTime);
+
+        if (!$startDate) {
+            return null;
+        }
+
+        // 10 giorni prima della data di inizio
+        return $startDate->copy()->subDays(10);
     }
 }
