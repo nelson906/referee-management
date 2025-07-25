@@ -235,6 +235,14 @@
                     Invia Notifiche
                 </button>
             </div>
+
+            <!-- Campo per institutional emails -->
+<div class="mt-4" id="institutional_emails_field" style="display: none;">
+    <label>Indirizzi Istituzionali (separati da virgola):</label>
+    <textarea name="institutional_emails" class="form-control"
+              placeholder="email1@example.com, email2@example.com"></textarea>
+</div>
+
         </form>
     </div>
 </div>
@@ -302,4 +310,14 @@ document.addEventListener('DOMContentLoaded', function() {
     toggleCustomEmails();
 });
 </script>
+<script>
+// Mostra campo quando viene selezionato "institutional"
+document.addEventListener('change', function(e) {
+    if (e.target.name === 'recipients[]' && e.target.value === 'institutional') {
+        document.getElementById('institutional_emails_field').style.display =
+            e.target.checked ? 'block' : 'none';
+    }
+});
+</script>
+
 @endsection

@@ -22,15 +22,18 @@ class NotificationService
 
         // Prepare variables for template
         $variables = [
+            'referee_name' => $referee->name,
             'tournament_name' => $tournament->name,
-            'tournament_dates' => $tournament->date_range,
+            'tournament_date' => $tournament->start_date->format('d/m/Y'), // ← singolare!
+            'tournament_dates' => $tournament->date_range, // ← plurale per compatibilità
             'club_name' => $tournament->club->name,
             'club_address' => $tournament->club->full_address,
-            'referee_name' => $referee->name,
-            'assignment_role' => $assignment->role ?? 'Arbitro',
+            'role' => $assignment->role, // ← era assignment_role
             'zone_name' => $tournament->zone->name,
             'assigned_date' => now()->format('d/m/Y'),
             'tournament_category' => $tournament->tournamentType->name,
+            'contact_person' => $tournament->club->contact_person ?? 'N/A',
+            'fee_amount' => '0', // ← aggiungi se serve
         ];
 
         // Get or create subject and body
@@ -57,7 +60,6 @@ class NotificationService
 
             $notification->markAsSent();
             return $notification;
-
         } catch (\Exception $e) {
             $notification->markAsFailed($e->getMessage());
             throw $e;
@@ -87,15 +89,15 @@ class NotificationService
 
         $subject = $options['custom_subject'] ?? $this->getTemplateSubject('club', $tournament->zone_id, $variables);
         $body = $options['custom_message'] ?? $this->getTemplateBody('club', $tournament->zone_id, $variables);
-$firstAssignment = $tournament->assignments->first();
-if (!$firstAssignment) {
-    throw new \Exception('Nessuna assegnazione trovata per questo torneo');
-}
+        $firstAssignment = $tournament->assignments->first();
+        if (!$firstAssignment) {
+            throw new \Exception('Nessuna assegnazione trovata per questo torneo');
+        }
 
 
         // Create notification
         $notification = Notification::create([
-'assignment_id' => $firstAssignment->id,
+            'assignment_id' => $firstAssignment->id,
             'recipient_type' => 'club',
             'recipient_email' => $tournament->club->email,
             'subject' => $subject,
@@ -108,13 +110,12 @@ if (!$firstAssignment) {
         try {
             Mail::raw($body, function ($message) use ($tournament, $subject) {
                 $message->to($tournament->club->email, $tournament->club->name)
-                        ->subject($subject)
-                        ->from(config('mail.from.address'), config('mail.from.name'));
+                    ->subject($subject)
+                    ->from(config('mail.from.address'), config('mail.from.name'));
             });
 
             $notification->markAsSent();
             return $notification;
-
         } catch (\Exception $e) {
             $notification->markAsFailed($e->getMessage());
             throw $e;
@@ -156,13 +157,12 @@ if (!$firstAssignment) {
         try {
             Mail::raw($body, function ($message) use ($institutional, $subject) {
                 $message->to($institutional->email, $institutional->name)
-                        ->subject($subject)
-                        ->from(config('mail.from.address'), config('mail.from.name'));
+                    ->subject($subject)
+                    ->from(config('mail.from.address'), config('mail.from.name'));
             });
 
             $notification->markAsSent();
             return $notification;
-
         } catch (\Exception $e) {
             $notification->markAsFailed($e->getMessage());
             throw $e;
@@ -203,13 +203,12 @@ if (!$firstAssignment) {
         try {
             Mail::raw($body, function ($message) use ($email, $subject) {
                 $message->to($email)
-                        ->subject($subject)
-                        ->from(config('mail.from.address'), config('mail.from.name'));
+                    ->subject($subject)
+                    ->from(config('mail.from.address'), config('mail.from.name'));
             });
 
             $notification->markAsSent();
             return $notification;
-
         } catch (\Exception $e) {
             $notification->markAsFailed($e->getMessage());
             throw $e;
@@ -231,13 +230,12 @@ if (!$firstAssignment) {
         try {
             Mail::raw($notification->body, function ($message) use ($notification) {
                 $message->to($notification->recipient_email)
-                        ->subject($notification->subject)
-                        ->from(config('mail.from.address'), config('mail.from.name'));
+                    ->subject($notification->subject)
+                    ->from(config('mail.from.address'), config('mail.from.name'));
             });
 
             $notification->markAsSent();
             return $notification;
-
         } catch (\Exception $e) {
             $notification->markAsFailed($e->getMessage());
             throw $e;
@@ -315,6 +313,4 @@ if (!$firstAssignment) {
 
         return $attachments;
     }
-
-
 }

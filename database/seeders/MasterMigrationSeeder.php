@@ -902,6 +902,7 @@ class MasterMigrationSeeder extends Seeder
             [
                 'tournament_id' => $tournamentId,
                 'user_id' => $userId,
+                'assigned_by_id' => 1, // Default system user
                 'role' => $role,
                 'assigned_at' => now(),
                 'created_at' => now(),
