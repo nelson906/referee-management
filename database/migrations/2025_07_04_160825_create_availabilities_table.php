@@ -16,7 +16,7 @@ return new class extends Migration
             $table->foreignId('user_id')->constrained('users');
             $table->foreignId('tournament_id')->constrained('tournaments');
             $table->text('notes')->nullable();
-            $table->timestamp('submitted_at');
+            $table->timestamp('submitted_at')->nullable();
             $table->timestamps();
 
             $table->unique(['user_id', 'tournament_id']);

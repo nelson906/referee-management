@@ -22,7 +22,7 @@ class MasterMigrationSeeder extends Seeder
     {
         // Controlla se è abilitata la modalità dry-run
         $this->dryRun = env('MIGRATION_DRY_RUN', false) ||
-                       $this->command->confirm('Eseguire in modalità DRY-RUN (solo simulazione)?', false);
+            $this->command->confirm('Eseguire in modalità DRY-RUN (solo simulazione)?', false);
 
         if ($this->dryRun) {
             $this->command->info('🧪 MODALITÀ DRY-RUN ATTIVATA - Nessuna modifica al database');
@@ -105,7 +105,6 @@ class MasterMigrationSeeder extends Seeder
 
             $this->command->info('✅ Database Sql1466239_4 verificato');
             return true;
-
         } catch (\Exception $e) {
             $this->command->error('❌ Errore connessione Sql1466239_4: ' . $e->getMessage());
             return false;
@@ -536,8 +535,8 @@ class MasterMigrationSeeder extends Seeder
 
         foreach ($gare as $gara) {
             $clubId = $this->resolveClubForTournament($gara);
-            // $tournamentTypeId = $this->resolveTournamentType($gara);
-            // $zoneId = $this->resolveZoneForTournament($gara, $clubId);
+            $tournamentTypeId = $this->resolveTournamentType($gara);
+            $zoneId = $this->resolveZoneForTournament($gara, $clubId);
 
             $tournamentData = [
                 'name' => $gara->Nome_gara ?? "Torneo #{$gara->id}",
@@ -545,16 +544,10 @@ class MasterMigrationSeeder extends Seeder
                 'start_date' => $this->parseDate($gara->StartTime),
                 'end_date' => $this->parseDate($gara->EndTime),
                 'club_id' => $clubId,
-                'zone_id' => $gara->Zona,
-                'tournament_type_id' => $gara->Tipo,
+                'zone_id' => $zoneId,
+                'tournament_type_id' => $tournamentTypeId,
                 'status' => $this->mapTournamentStatus($gara->stato ?? 'draft'),
-                'max_participants' => $gara->max_partecipanti ?? null,
-                'registration_deadline' => $this->parseDate($gara->scadenza_iscrizioni ?? null),
                 'notes' => $gara->note ?? null,
-                'settings' => json_encode([
-                    'original_id' => $gara->id,
-                    'migrated_from' => 'gare_2025'
-                ]),
                 'created_at' => $this->parseDate($gara->created_at ?? null) ?? now(),
                 'updated_at' => now(),
             ];
@@ -619,10 +612,10 @@ class MasterMigrationSeeder extends Seeder
         try {
             $gare = DB::connection('real')
                 ->table('gare_2025')
-                ->where(function($query) {
+                ->where(function ($query) {
                     $query->whereNotNull('TD')
-                          ->orWhereNotNull('Arbitri')
-                          ->orWhereNotNull('Osservatori');
+                        ->orWhereNotNull('Arbitri')
+                        ->orWhereNotNull('Osservatori');
                 })
                 ->get();
             $this->command->info("🔍 Trovati {$gare->count()} tornei con assegnazioni CSV nel database reale");
@@ -897,7 +890,6 @@ class MasterMigrationSeeder extends Seeder
                 'tournament_id' => $tournamentId,
                 'user_id' => $userId,
                 'role' => $role,
-                'status' => 'confirmed',
                 'assigned_at' => now(),
                 'created_at' => now(),
                 'updated_at' => now(),
@@ -917,7 +909,7 @@ class MasterMigrationSeeder extends Seeder
      */
     private function resolveClubNameConflict(string $originalName): string
     {
-       if ($this->dryRun) {
+        if ($this->dryRun) {
             return $originalName;
         }
 
@@ -995,8 +987,8 @@ class MasterMigrationSeeder extends Seeder
     {
 
         //    if ($this->dryRun) {
-    //         return 1;
-    //     }
+        //         return 1;
+        //     }
 
         if (isset($gara->club_id) && $gara->club_id) {
             $club = DB::table('clubs')->find($gara->club_id);
@@ -1015,7 +1007,7 @@ class MasterMigrationSeeder extends Seeder
         $zone = $gara->Zona;
         //         dd(vars: $zoneId);
         // $zone = DB::table('zones')->find($zoneId);
-                // dd(vars: $zone);
+        // dd(vars: $zone);
 
         $tbaClub = DB::table('clubs')
             ->where('code', "TBA")
@@ -1035,7 +1027,7 @@ class MasterMigrationSeeder extends Seeder
 
         if (isset($gara->tipo) && $gara->tipo) {
             $type = DB::table('tournament_types')
-                ->where('name', 'LIKE', "%{$gara->tipo}%")
+                ->where('name', 'LIKE', "%{$gara->Tipo}%")
                 ->first();
             if ($type) {
                 return $type->id;
@@ -1113,7 +1105,6 @@ class MasterMigrationSeeder extends Seeder
                         'tournament_id' => $tournamentId,
                     ],
                     [
-                        'status' => 'available',
                         'notes' => 'Migrato da CSV Disponibilità',
                         'created_at' => now(),
                         'updated_at' => now(),

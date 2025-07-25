@@ -232,7 +232,6 @@ return [
             5 => [10000, 25000],
             6 => [25000, 50000]
         ],
-        'max_participants_range' => [50, 200],
         'featured_percentage' => 20
     ],
 
