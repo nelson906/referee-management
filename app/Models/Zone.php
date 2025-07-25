@@ -18,6 +18,7 @@ class Zone extends Model
      */
     protected $fillable = [
         'name',
+        'code',
         'description',
         'is_national',
         'header_document_path',

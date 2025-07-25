@@ -6,6 +6,11 @@ use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use App\Helpers\RefereeLevelsHelper;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Storage;
+use App\Models\Zone;
+use Illuminate\Console\Command;
+use App\Models\TournamentType;
 
 /**
  * MasterMigrationSeeder - Migrazione Unificata
@@ -45,8 +50,8 @@ class MasterMigrationSeeder extends Seeder
         // 4. Esegui migrazione nell'ordine corretto (USER CENTRIC approach)
         $this->command->info('✅ Database verificato, procedo con migrazione USER CENTRIC...');
 
-        // $this->createZones();           // Manuale: SZR1-SZR7, CRC
-        // $this->createTournamentTypes(); // Manuale: defaults con short_name
+        $this->createZones();           // Manuale: SZR1-SZR7, CRC
+        $this->createTournamentTypes(); // Manuale: defaults con short_name
         $this->migrateArbitri();        // arbitri → users + referees
         $this->migrateCircoli();        // circoli → clubs
         $this->migrateGare();           // gare_2025 → tournaments
@@ -116,17 +121,21 @@ class MasterMigrationSeeder extends Seeder
      */
     private function createZones()
     {
+        if (Zone::count() > 0) {
+            $this->command->info('✅ Zone already exist (' . Zone::count() . ' found)');
+            return;
+        }
         $this->command->info('📍 Creazione zones...');
 
         $zones = [
-            ['code' => 'SZR1', 'name' => 'Piemonte-Valle d\'Aosta-Liguria', 'is_national' => false],
-            ['code' => 'SZR2', 'name' => 'Lombardia', 'is_national' => false],
-            ['code' => 'SZR3', 'name' => 'Veneto-Trentino-Friuli', 'is_national' => false],
-            ['code' => 'SZR4', 'name' => 'Emilia-Romagna', 'is_national' => false],
-            ['code' => 'SZR5', 'name' => 'Toscana-Umbria', 'is_national' => false],
-            ['code' => 'SZR6', 'name' => 'Lazio-Abruzzo-Molise', 'is_national' => false],
-            ['code' => 'SZR7', 'name' => 'Sud Italia-Sicilia-Sardegna', 'is_national' => false],
-            ['code' => 'CRC', 'name' => 'Comitato Regole e Competizioni', 'is_national' => true],
+            ['code' => 'SZR1', 'name' => 'Sezione Zonale Regole 1', 'description' => 'Piemonte-Valle d\'Aosta-Liguria', 'is_national' => false],
+            ['code' => 'SZR2', 'name' => 'Sezione Zonale Regole 2', 'description' => 'Lombardia', 'is_national' => false],
+            ['code' => 'SZR3', 'name' => 'Sezione Zonale Regole 3', 'description' => 'Veneto-Trentino-Friuli', 'is_national' => false],
+            ['code' => 'SZR4', 'name' => 'Sezione Zonale Regole 4', 'description' => 'Emilia-Romagna', 'is_national' => false],
+            ['code' => 'SZR5', 'name' => 'Sezione Zonale Regole 5', 'description' => 'Toscana-Umbria', 'is_national' => false],
+            ['code' => 'SZR6', 'name' => 'Sezione Zonale Regole 6', 'description' => 'Lazio-Abruzzo-Molise', 'is_national' => false],
+            ['code' => 'SZR7', 'name' => 'Sezione Zonale Regole 7', 'description' => 'Sud Italia-Sicilia-Sardegna', 'is_national' => false],
+            ['code' => 'CRC', 'name' => 'Comitato Regole Campionati', 'description' => 'Comitato Regole e Campionati', 'is_national' => true],
         ];
 
         foreach ($zones as $zone) {
@@ -155,6 +164,10 @@ class MasterMigrationSeeder extends Seeder
      */
     private function createTournamentTypes()
     {
+        if (TournamentType::count() > 0) {
+            $this->command->info('✅ TournamentType already exist (' . TournamentType::count() . ' found)');
+            return;
+        }
         $this->command->info('🏆 Creazione tournament types da dati reali (gare_2025.tipo)...');
 
         // SEMPRE leggi i tipi reali dal database Sql1466239_4

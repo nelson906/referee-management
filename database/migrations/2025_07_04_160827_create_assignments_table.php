@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('tournament_id')->constrained('tournaments');
             $table->foreignId('user_id')->constrained('users');
-            $table->foreignId('assigned_by_id')->constrained('users');
+            $table->foreignId('assigned_by_id')->constrained('users')->default(1);
             $table->enum('role', ['Arbitro', 'Direttore di Torneo', 'Osservatore'])->default('Arbitro');
             $table->text('notes')->nullable();
             $table->boolean('is_confirmed')->default(false);

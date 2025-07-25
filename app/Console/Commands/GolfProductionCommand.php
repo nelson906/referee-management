@@ -135,20 +135,22 @@ class GolfProductionCommand extends Command
         }
 
         $zones = [
-            ['name' => 'SZR1', 'code' => 'SZR1', 'description' => 'Piemonte e Valle d\'Aosta'],
-            ['name' => 'SZR2', 'code' => 'SZR2', 'description' => 'Lombardia'],
-            ['name' => 'SZR3', 'code' => 'SZR3', 'description' => 'Veneto, Trentino Alto Adige'],
-            ['name' => 'SZR4', 'code' => 'SZR4', 'description' => 'Liguria emilia Romagna'],
-            ['name' => 'SZR5', 'code' => 'SZR5', 'description' => 'Toscana e Umbria'],
-            ['name' => 'SZR6', 'code' => 'SZR6', 'description' => 'Lazio, Abruzzo, Molise e Sardegna'],
-            ['name' => 'SZR7', 'code' => 'SZR7', 'description' => 'Sud Italia e Sicilia'],
-            ['name' => 'CRC', 'code' => 'CRC', 'description' => 'Comitato Regole e Campionati'],
+            ['name' => 'Sezione Zonale Regole 1', 'code' => 'SZR1', 'description' => 'Piemonte e Valle d\'Aosta', 'is_national' => 0],
+            ['name' => 'Sezione Zonale Regole 2', 'code' => 'SZR2', 'description' => 'Lombardia', 'is_national' => 0],
+            ['name' => 'Sezione Zonale Regole 3', 'code' => 'SZR3', 'description' => 'Veneto, Trentino Alto Adige', 'is_national' => 0],
+            ['name' => 'Sezione Zonale Regole 4', 'code' => 'SZR4', 'description' => 'Liguria emilia Romagna', 'is_national' => 0],
+            ['name' => 'Sezione Zonale Regole 5', 'code' => 'SZR5', 'description' => 'Toscana e Umbria', 'is_national' => 0],
+            ['name' => 'Sezione Zonale Regole 6', 'code' => 'SZR6', 'description' => 'Lazio, Abruzzo, Molise e Sardegna', 'is_national' => 0],
+            ['name' => 'Sezione Zonale Regole 7', 'code' => 'SZR7', 'description' => 'Sud Italia e Sicilia', 'is_national' => 0],
+            ['name' => 'Comitato Regole Campionati', 'code' => 'CRC', 'description' => 'Comitato Regole e Campionati', 'is_national' => 1],
         ];
 
         foreach ($zones as $zoneData) {
             Zone::create([
                 'code' => $zoneData['code'],
                 'name' => $zoneData['name'],
+                'description' => $zoneData['description'],
+                'is_national' => $zoneData['is_national'],
                 'is_active' => true,
                 'created_at' => now(),
                 'updated_at' => now(),
