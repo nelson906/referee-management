@@ -10,9 +10,17 @@ use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
 use Carbon\Carbon;
-
+use App\Services\DocumentGenerationService;
 class AssignmentController extends Controller
 {
+
+    protected $documentService;
+
+public function __construct(DocumentGenerationService $documentService)
+{
+    $this->documentService = $documentService;
+}
+
     /**
      * Display a listing of assignments.
      */

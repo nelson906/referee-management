@@ -18,23 +18,22 @@ class TournamentTypeSeeder extends Seeder
         $this->command->info('🏆 Creando Tipologie Tornei Golf...');
 
         // Elimina tipologie esistenti per evitare duplicati
-Schema::disableForeignKeyConstraints();
-try {
-    TournamentType::truncate();
+        Schema::disableForeignKeyConstraints();
+        try {
+            TournamentType::truncate();
 
-        // Crea categorie zonali
-        $this->createZonalCategories();
+            // Crea categorie zonali
+            $this->createZonalCategories();
 
-        // Crea categorie nazionali
-        $this->createNationalCategories();
+            // Crea categorie nazionali
+            $this->createNationalCategories();
 
-        // Valida e mostra riassunto
-        $this->validateTournamentTypes();
-        $this->showTournamentTypeSummary();
-} finally {
-    Schema::enableForeignKeyConstraints();
-}
-
+            // Valida e mostra riassunto
+            $this->validateTournamentTypes();
+            $this->showTournamentTypeSummary();
+        } finally {
+            Schema::enableForeignKeyConstraints();
+        }
     }
 
     /**
@@ -44,38 +43,269 @@ try {
     {
         $zonalTypes = [
             [
-                'name' => 'Gara Sociale',
-                'short_name' => 'SOCIALE',
-                'description' => 'Gare sociali del circolo - livello base',
+                'name' => 'Gara Giovanile Under 12',
+                'short_name' => 'G12',
+                'description' => '',
                 'is_national' => false,
-                'min_referees' => 1,
-                'max_referees' => 2,
-                'requires_approval' => false,
                 'priority_level' => 1,
-                'active' => true
-            ],
-            [
-                'name' => 'Trofeo di Zona',
-                'short_name' => 'TROFEO_ZONA',
-                'description' => 'Trofei a carattere zonale - media importanza',
-                'is_national' => false,
+                'active' => true,
+                'level' => 'zonale',
                 'min_referees' => 1,
-                'max_referees' => 3,
-                'requires_approval' => true,
-                'priority_level' => 2,
-                'active' => true
+                'max_referees' => 5
             ],
             [
-                'name' => 'Campionato Zonale',
-                'short_name' => 'CAMP_ZONALE',
-                'description' => 'Campionati zonali ufficiali - alta importanza regionale',
+                'name' => 'Gara Giovanile Under 14',
+                'short_name' => 'G14',
+                'description' => '',
                 'is_national' => false,
+                'priority_level' => 1,
+                'active' => true,
+                'level' => 'zonale',
+                'min_referees' => 1,
+                'max_referees' => 5
+            ],
+            [
+                'name' => 'Gara Giovanile Under 16',
+                'short_name' => 'G16',
+                'description' => '',
+                'is_national' => false,
+                'priority_level' => 1,
+                'active' => true,
+                'level' => 'zonale',
+                'min_referees' => 1,
+                'max_referees' => 5
+            ],
+
+            [
+                'name' => 'Gara Giovanile Under 18',
+                'short_name' => 'G18',
+                'description' => '',
+                'is_national' => false,
+                'priority_level' => 1,
+                'active' => true,
+                'level' => 'zonale',
+                'min_referees' => 1,
+                'max_referees' => 5
+            ],
+
+            [
+                'name' => 'Circuito Teodoro Soldati Under 18',
+                'short_name' => 'T18',
+                'description' => '',
+                'is_national' => false,
+                'priority_level' => 1,
+                'active' => true,
+                'level' => 'zonale',
+                'min_referees' => 1,
+                'max_referees' => 5
+            ],
+
+            [
+                'name' => 'Circuito Saranno Famosi Under 14',
+                'short_name' => 'S14',
+                'description' => '',
+                'is_national' => false,
+                'priority_level' => 1,
+                'active' => true,
+                'level' => 'zonale',
+                'min_referees' => 1,
+                'max_referees' => 5
+            ],
+
+            [
+                'name' => 'Trofeo Giovanile',
+                'short_name' => 'TG',
+                'description' => '',
+                'is_national' => false,
+                'priority_level' => 1,
+                'active' => true,
+                'level' => 'zonale',
+                'min_referees' => 1,
+                'max_referees' => 5
+            ],
+
+            [
+                'name' => 'Trofeo Giovanile Federale',
+                'short_name' => 'TGF',
+                'description' => '',
+                'is_national' => false,
+                'priority_level' => 1,
+                'active' => true,
+                'level' => 'zonale',
+                'min_referees' => 1,
+                'max_referees' => 5
+            ],
+
+            [
+                'name' => 'Gara 36 buche',
+                'short_name' => 'GN36',
+                'description' => '',
+                'is_national' => false,
+                'priority_level' => 1,
+                'active' => true,
+                'level' => 'zonale',
                 'min_referees' => 2,
-                'max_referees' => 4,
-                'requires_approval' => true,
-                'priority_level' => 3,
-                'active' => true
-            ]
+                'max_referees' => 5
+            ],
+
+            [
+                'name' => 'Gara 54 buche',
+                'short_name' => 'GN54',
+                'description' => '',
+                'is_national' => false,
+                'priority_level' => 1,
+                'active' => true,
+                'level' => 'zonale',
+                'min_referees' => 2,
+                'max_referees' => 5
+            ],
+
+            [
+                'name' => 'Gara 72 buche',
+                'short_name' => 'GN72',
+                'description' => '',
+                'is_national' => false,
+                'priority_level' => 1,
+                'active' => true,
+                'level' => 'zonale',
+                'min_referees' => 2,
+                'max_referees' => 5
+            ],
+
+            [
+                'name' => 'Campionato Regionale',
+                'short_name' => 'CR',
+                'description' => '',
+                'is_national' => false,
+                'priority_level' => 1,
+                'active' => true,
+                'level' => 'zonale',
+                'min_referees' => 2,
+                'max_referees' => 5
+            ],
+
+            [
+                'name' => 'Trofeo Regionale',
+                'short_name' => 'TR',
+                'level' => 'zonale',
+                'description' => '',
+                'is_national' => false,
+                'priority_level' => 1,
+                'active' => true,
+                'zonale',
+                'min_referees' => 2,
+                'max_referees' => 5
+            ],
+
+            [
+                'name' => 'Campionato Nazionale',
+                'short_name' => 'CNZ',
+                'description' => '',
+                'is_national' => false,
+                'priority_level' => 1,
+                'active' => true,
+                'level' => 'nazionale',
+                'min_referees' => 3,
+                'max_referees' => 5
+            ],
+
+            [
+                'name' => 'Trofeo Nazionale',
+                'short_name' => 'TNZ',
+                'description' => '',
+                'is_national' => false,
+                'priority_level' => 1,
+                'active' => true,
+                ' level' => 'nazionale',
+                'min_referees' => 3,
+                'ma_(referees' => 5
+            ],
+
+            [
+                'name' => 'Campionato Internazionale',
+                'short_name' => 'CI',
+                'description' => '',
+                'is_national' => false,
+                'priority_level' => 1,
+                'active' => true,
+                'level' => 'nazionale',
+                'min_referees' => 3,
+                'max_referees' => 5
+            ],
+
+            [
+                'name' => 'Gara Professionistica',
+                'short_name' => 'PRO',
+                'description' => '',
+                'is_national' => false,
+                'priority_level' => 1,
+                'active' => true,
+                'level' => 'nazionale',
+                'min_referees' => 3,
+                'max_referees' => 5
+            ],
+
+            [
+                'name' => 'Gara patrocinata FIG',
+                'short_name' => 'PATR',
+                'description' => '',
+                'is_national' => false,
+                'priority_level' => 1,
+                'active' => true,
+                'level' => 'zonale',
+                'min_referees' => 1,
+                'max_referees' => 5
+            ],
+
+            [
+                'name' => 'Gara Regolamento Speciale',
+                'short_name' => 'GRS',
+                'description' => '',
+                'is_national' => false,
+                'priority_level' => 1,
+                'active' => true,
+                'level' => 'zonale',
+                'min_referees' => 1,
+                'max_referees' => 5
+            ],
+
+            [
+                'name' => 'US Kids',
+                'short_name' => 'USK',
+                'description' => '',
+                'is_national' => false,
+                'priority_level' => 1,
+                'active' => true,
+                'level' => 'zonale',
+                'min_referees' => 1,
+                'max_referees' => 5
+            ],
+
+            [
+                'name' => 'Gara Match Play',
+                'short_name' => 'MP',
+                'description' => '',
+                'is_national' => false,
+                'priority_level' => 1,
+                'active' => true,
+                'level' => 'zonale',
+                'min_referees' => 1,
+                'max_referees' => 5
+            ],
+
+            [
+                'name' => 'Evento',
+                'short_name' => 'EVEN',
+                'description' => '',
+                'is_national' => false,
+                'priority_level' => 1,
+                'active' => true,
+                'level' => 'zonale',
+                'min_referees' => 1,
+                'max_referees' => 5
+            ],
+
+
         ];
 
         foreach ($zonalTypes as $typeData) {
@@ -201,8 +431,8 @@ try {
         // Categorie zonali
         $this->command->info('📍 CATEGORIE ZONALI:');
         $zonalTypes = TournamentType::where('is_national', false)
-                                   ->orderBy('priority_level')
-                                   ->get();
+            ->orderBy('priority_level')
+            ->get();
 
         foreach ($zonalTypes as $type) {
             $approval = $type->requires_approval ? '🔒 Approvazione' : '🔓 Libera';
@@ -222,8 +452,8 @@ try {
         $this->command->info('');
         $this->command->info('🌍 CATEGORIE NAZIONALI:');
         $nationalTypes = TournamentType::where('is_national', true)
-                                      ->orderBy('priority_level')
-                                      ->get();
+            ->orderBy('priority_level')
+            ->get();
 
         foreach ($nationalTypes as $type) {
             $approval = $type->requires_approval ? '🔒 Approvazione' : '🔓 Libera';

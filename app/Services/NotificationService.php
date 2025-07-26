@@ -12,6 +12,14 @@ use App\Mail\AssignmentNotification;
 
 class NotificationService
 {
+
+    protected $documentService;
+
+public function __construct(DocumentGenerationService $documentService)
+{
+    $this->documentService = $documentService;
+}
+
     /**
      * Send assignment notification to referee.
      */
@@ -285,18 +293,34 @@ class NotificationService
     /**
      * Get tournament attachments.
      */
-    private function getAttachments(Tournament $tournament): array
-    {
-        $attachments = [];
+// Nel getAttachments(), sostituisci con:
+private function getAttachments(Tournament $tournament): array
+{
+    $attachments = [];
 
-        if ($tournament->convocation_file_path && file_exists(storage_path('app/' . $tournament->convocation_file_path))) {
-            $attachments['convocation'] = $tournament->convocation_file_path;
+    try {
+        // Usa app() per risolvere il service
+        $documentService = app(DocumentGenerationService::class);
+
+        foreach ($tournament->assignments as $assignment) {
+            \Log::info('Generando convocazione per assignment', ['assignment_id' => $assignment->id]);
+            $convocationPath = $documentService->generateConvocationLetter($assignment);
+            if ($convocationPath) {
+                $attachments['convocation_' . $assignment->id] = $convocationPath;
+                \Log::info('Convocazione generata', ['path' => $convocationPath]);
+            }
         }
 
-        if ($tournament->club_letter_file_path && file_exists(storage_path('app/' . $tournament->club_letter_file_path))) {
-            $attachments['club_letter'] = $tournament->club_letter_file_path;
+        $clubLetterPath = $documentService->generateClubLetter($tournament);
+        if ($clubLetterPath) {
+            $attachments['club_letter'] = $clubLetterPath;
         }
 
-        return $attachments;
+    } catch (\Exception $e) {
+        \Log::error('Errore generazione allegati', [
+            'error' => $e->getMessage()
+        ]);
     }
-}
+
+    return $attachments;
+}}

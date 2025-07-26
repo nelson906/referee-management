@@ -36,53 +36,60 @@ class SeederHelper
     {
         return [
             [
-                'name' => 'Piemonte-Valle d\'Aosta',
+                'name' => 'SZR1',
                 'code' => 'SZR1',
-                'description' => 'Zona Nord-Ovest: Piemonte e Valle d\'Aosta',
+                'description' => 'Piemonte e Valle d\'Aosta',
                 'is_active' => true,
                 'is_national' => false
             ],
             [
-                'name' => 'Lombardia',
+                'name' => 'SZR2',
                 'code' => 'SZR2',
-                'description' => 'Zona Nord: Lombardia',
+                'description' => 'Lombardia',
                 'is_active' => true,
                 'is_national' => false
             ],
             [
-                'name' => 'Veneto-Trentino',
+                'name' => 'SZR3',
                 'code' => 'SZR3',
-                'description' => 'Zona Nord-Est: Veneto e Trentino Alto Adige',
+                'description' => 'Veneto e Trentino Alto Adige',
                 'is_active' => true,
                 'is_national' => false
             ],
             [
-                'name' => 'Emilia Romagna-Marche',
+                'name' => 'SZR4',
                 'code' => 'SZR4',
-                'description' => 'Zona Centro-Nord: Emilia Romagna e Marche',
+                'description' => 'Emilia Romagna e Marche',
                 'is_active' => true,
                 'is_national' => false
             ],
             [
-                'name' => 'Toscana-Umbria',
+                'name' => 'SZR5',
                 'code' => 'SZR5',
-                'description' => 'Zona Centro: Toscana e Umbria e Sardegna',
+                'description' => 'Toscana e Umbria e Sardegna',
                 'is_active' => true,
                 'is_national' => false
             ],
             [
-                'name' => 'Lazio-Abruzzo-Molise-Sardegna',
+                'name' => 'SZR6 ',
                 'code' => 'SZR6',
-                'description' => 'Zona Centro-Sud: Lazio, Abruzzo e Molise',
+                'description' => 'Lazio, Abruzzo, Molise e Sardegna',
                 'is_active' => true,
                 'is_national' => false
             ],
             [
-                'name' => 'Sud Italia-Sicilia',
+                'name' => 'SZR7',
                 'code' => 'SZR7',
-                'description' => 'Zona Sud: Meridione e Sicilia',
+                'description' => 'Meridione e Sicilia',
                 'is_active' => true,
                 'is_national' => false
+            ],
+            [
+                'name' => 'CRC',
+                'code' => 'CRC',
+                'description' => 'Comitato Regole e Campionati',
+                'is_active' => true,
+                'is_national' => true
             ]
         ];
     }

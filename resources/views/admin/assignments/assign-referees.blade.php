@@ -52,8 +52,8 @@
                 <div class="flex justify-between items-start">
                     <div>
                         <h4 class="font-medium text-gray-900">{{ $assignment->user->name }}</h4>
-                        <p class="text-sm text-gray-600">{{ $assignment->eferee->referee_code ?? 'N/A' }}</p>
-                        <p class="text-sm text-gray-600">{{ $assignment->eferee->level ?? 'N/A' }}</p>
+                        <p class="text-sm text-gray-600">{{ $assignment->referee->referee_code ?? 'N/A' }}</p>
+                        <p class="text-sm text-gray-600">{{ $assignment->referee->level ?? 'N/A' }}</p>
                         <p class="text-sm font-medium text-green-600">{{ $assignment->role }}</p>
                         @if($assignment->notes)
                             <p class="text-xs text-gray-500 mt-1">{{ $assignment->notes }}</p>

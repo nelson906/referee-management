@@ -148,7 +148,7 @@
                             {{ $tournament->name }}
                         </div>
                         <div class="text-sm text-gray-500">
-                            Scadenza: {{ $tournament->availability_deadline->format('d/m/Y') }}
+                            {{-- Scadenza: {{ $tournament->availability_deadline->format('d/m/Y') ??}} --}}
                             @if($tournament->days_until_deadline >= 0)
                                 <span class="text-xs {{ $tournament->days_until_deadline <= 3 ? 'text-red-600 font-semibold' : 'text-gray-500' }}">
                                     ({{ $tournament->days_until_deadline }} giorni)
