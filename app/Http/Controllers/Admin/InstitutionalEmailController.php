@@ -252,4 +252,123 @@ class InstitutionalEmailController extends Controller
 
         return response()->stream($callback, 200, $headers);
     }
+    /**
+     * Wizard configurazione rapida per zona
+     */
+    public function quickSetupZone($zoneId)
+    {
+        $zone = Zone::findOrFail($zoneId);
+
+        // Verifica indirizzi esistenti
+        $existing = InstitutionalEmail::where('zone_id', $zoneId)->get();
+
+        $recommendations = $this->getZoneRecommendations($zone, $existing);
+
+        return view('super-admin.institutional-addresses.quick-setup', compact(
+            'zone', 'existing', 'recommendations'
+        ));
+    }
+    /**
+     * Validazione configurazione completa
+     */
+    public function validateConfiguration()
+    {
+        $validation = [
+            'zones_without_primary' => [],
+            'missing_federal' => [],
+            'duplicate_emails' => [],
+            'invalid_configurations' => []
+        ];
+
+        // Verifica ogni zona ha email principale
+        $zones = Zone::where('is_active', true)->get();
+        foreach ($zones as $zone) {
+            $hasPrimary = InstitutionalEmail::where('zone_id', $zone->id)
+                ->where('category', 'zone')
+                ->where('is_active', true)
+                ->exists();
+
+            if (!$hasPrimary) {
+                $validation['zones_without_primary'][] = $zone->name;
+            }
+        }
+
+        // Verifica indirizzi federali essenziali
+        $requiredFederal = [
+            'info@federgolf.it' => 'Email principale FIG',
+            'campionati@federgolf.it' => 'Ufficio Campionati',
+            'arbitri@federgolf.it' => 'Coordinamento Arbitri'
+        ];
+
+        foreach ($requiredFederal as $email => $desc) {
+            $exists = InstitutionalEmail::where('email', $email)
+                ->where('is_active', true)
+                ->exists();
+
+            if (!$exists) {
+                $validation['missing_federal'][] = ['email' => $email, 'description' => $desc];
+            }
+        }
+
+        // Verifica email duplicate
+        $duplicates = InstitutionalEmail::select('email', DB::raw('count(*) as count'))
+            ->where('is_active', true)
+            ->groupBy('email')
+            ->having('count', '>', 1)
+            ->get();
+
+        $validation['duplicate_emails'] = $duplicates->pluck('email')->toArray();
+
+        // Verifica configurazioni invalide
+        $invalid = InstitutionalEmail::where('is_active', true)
+            ->where('receive_all_notifications', false)
+            ->where(function($q) {
+                $q->whereNull('notification_types')
+                  ->orWhere('notification_types', '[]');
+            })
+            ->get();
+
+        $validation['invalid_configurations'] = $invalid->pluck('email')->toArray();
+
+        $validation['is_valid'] = empty($validation['zones_without_primary']) &&
+                                 empty($validation['missing_federal']) &&
+                                 empty($validation['duplicate_emails']) &&
+                                 empty($validation['invalid_configurations']);
+
+        return response()->json($validation);
+    }
+
+    /**
+     * Export configurazione per backup
+     */
+    public function exportConfiguration()
+    {
+        $addresses = InstitutionalEmail::with('zone')->get();
+
+        $export = [
+            'export_date' => now()->toISOString(),
+            'total_addresses' => $addresses->count(),
+            'addresses' => $addresses->map(function($addr) {
+                return [
+                    'name' => $addr->name,
+                    'email' => $addr->email,
+                    'category' => $addr->category,
+                    'zone_code' => $addr->zone?->code,
+                    'notification_types' => $addr->notification_types,
+                    'receive_all_notifications' => $addr->receive_all_notifications,
+                    'is_active' => $addr->is_active,
+                ];
+            })
+        ];
+
+        $filename = 'institutional_addresses_backup_' . date('Y-m-d_H-i-s') . '.json';
+
+        return response()->json($export)
+            ->header('Content-Type', 'application/json')
+            ->header('Content-Disposition', 'attachment; filename="' . $filename . '"');
+    }
+
+
+
+
 }

@@ -5,14 +5,17 @@ use Illuminate\Http\Request; // ← AGGIUNGERE
 use Illuminate\Foundation\Auth\EmailVerificationRequest; // ← AGGIUNGERE
 use App\Http\Controllers\SuperAdmin;
 use App\Http\Controllers\Admin;
+use App\Http\Controllers\Admin\LetterTemplateController;
 use App\Http\Controllers\Referee;
 use App\Http\Controllers\Reports;
 use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\NotificationController; // ← AGGIUNGERE
+use App\Http\Controllers\Admin\StatisticsDashboardController; // ← AGGIUNGERE
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\TournamentController; // ← UNIFICATO
-
+use App\Http\Controllers\Admin\MonitoringController; // ← AGGIUNGERE
 /*
 |--------------------------------------------------------------------------
 | 🔧 CONSERVATIVE WEB ROUTES - Mantiene tutto il necessario
@@ -225,10 +228,6 @@ Route::prefix(prefix: 'notifications')->name('notifications.')->group(function (
             Route::delete('/{document}', [DocumentController::class, 'destroy'])->name('destroy');
         });
 
-        // Letter Templates Management
-                Route::post('letter_templates/{letter_template}/toggle-active', [Admin\LetterTemplateController::class, 'toggleActive'])
-            ->name('tournament-types.toggle-active');
-
 
         Route::get('/settings', [Admin\SettingsController::class, 'index'])->name('settings');
         Route::post('/settings', [Admin\SettingsController::class, 'update'])->name('settings.update');
@@ -428,6 +427,44 @@ Route::get('/health', function () {
 Route::fallback(function () {
     return response()->view('errors.404', [], 404);
 });
+Route::middleware(['auth', 'role:Admin|SuperAdmin|NationalAdmin'])->prefix('admin')->name('admin.')->group(function () {
+    Route::get('/statistics', [StatisticsDashboardController::class, 'index'])->name('statistics.dashboard');
+    Route::get('/api/statistics/{type}', [StatisticsDashboardController::class, 'apiStats'])->name('statistics.api');
+    Route::get('/statistics/export', [StatisticsDashboardController::class, 'exportCsv'])->name('statistics.export');
+});
+Route::middleware(['auth', 'role:Admin|SuperAdmin'])->prefix('admin')->name('admin.')->group(function () {
+    Route::get('/templates/management', [LetterTemplateController::class, 'index'])->name('templates.management');
+    Route::get('/templates/{template}/preview', [LetterTemplateController::class, 'preview'])->name('templates.preview');
+});
+// ROUTES PER MONITORING PRODUZIONE
+Route::get('/health', function () {
+    return response()->json([
+        'status' => 'healthy',
+        'timestamp' => now()->toISOString(),
+        'version' => config('app.version', '1.0.0'),
+        'database' => DB::table('users')->count() > 0,
+        'cache' => Cache::store()->getStore() instanceof \Illuminate\Cache\TaggedCache
+    ]);
+})->name('health.check');
+
+Route::get('/status', function () {
+    return response()->json([
+        'environment' => config('app.env'),
+        'debug' => config('app.debug'),
+        'timezone' => config('app.timezone'),
+        'php_version' => PHP_VERSION,
+        'laravel_version' => app()->version()
+    ]);
+})->middleware('auth:sanctum');
+Route::middleware(['auth', 'role:Admin|SuperAdmin'])->prefix('admin')->name('admin.')->group(function () {
+    Route::get('/monitoring', [MonitoringController::class, 'dashboard'])->name('monitoring.dashboard');
+    Route::get('/monitoring/health', [MonitoringController::class, 'healthCheck'])->name('monitoring.health');
+    Route::get('/monitoring/metrics', [MonitoringController::class, 'realtimeMetrics'])->name('monitoring.metrics');
+    Route::get('/monitoring/history', [MonitoringController::class, 'history'])->name('monitoring.history');
+});
+
+// Public health endpoint
+Route::get('/health', [MonitoringController::class, 'healthCheck'])->name('health.check');
 
 /*
 =================================================================

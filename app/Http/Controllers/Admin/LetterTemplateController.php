@@ -216,4 +216,56 @@ public function index()
         }
         return $text;
     }
+
+
+
+    /**
+     * Valida configurazione template sistema
+     */
+    public function validateTemplateSystem(): array
+    {
+        $issues = [];
+
+        // Verifica template default esistenti
+        $requiredTypes = ['assignment', 'convocation', 'club', 'institutional'];
+
+        foreach ($requiredTypes as $type) {
+            $hasDefault = LetterTemplate::where('type', $type)
+                ->where('is_default', true)
+                ->where('is_active', true)
+                ->exists();
+
+            if (!$hasDefault) {
+                $issues[] = "Manca template default per tipo: {$type}";
+            }
+        }
+
+        // Verifica letterhead default
+        $hasDefaultLetterhead = Letterhead::whereNull('zone_id')
+            ->where('is_default', true)
+            ->where('is_active', true)
+            ->exists();
+
+        if (!$hasDefaultLetterhead) {
+            $issues[] = "Manca letterhead default nazionale";
+        }
+
+        // Verifica template duplicati
+        $duplicates = LetterTemplate::select('type', 'zone_id', 'tournament_type_id')
+            ->selectRaw('COUNT(*) as count')
+            ->where('is_active', true)
+            ->groupBy('type', 'zone_id', 'tournament_type_id')
+            ->having('count', '>', 1)
+            ->get();
+
+        if ($duplicates->count() > 0) {
+            $issues[] = "Trovati {$duplicates->count()} template duplicati";
+        }
+
+        return [
+            'is_valid' => empty($issues),
+            'issues' => $issues,
+            'recommendations' => $this->getRecommendations($issues)
+        ];
+    }
 }
