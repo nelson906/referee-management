@@ -174,7 +174,7 @@
                                                             📋 Duplica
                                                         </button>
                                                     </form>
-                                                    <form method="POST" action="{{ route('letter-templates.toggle', $template) }}" class="block">
+                                                    <form method="POST" action="{{ route('letter-templates.toggle-active', $template) }}" class="block">
                                                         @csrf
                                                         <button type="submit" class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
                                                             {{ $template->is_active ? '⏸️ Disattiva' : '▶️ Attiva' }}
