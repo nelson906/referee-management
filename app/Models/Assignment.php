@@ -48,7 +48,7 @@ class Assignment extends Model
      */
     public function referee(): BelongsTo
     {
-        return $this->user();
+    return $this->belongsTo(User::class, foreignKey: 'user_id'); // Stesso user
     }
 
     /**
@@ -134,4 +134,5 @@ class Assignment extends Model
 
         return 'yellow';
     }
+
 }

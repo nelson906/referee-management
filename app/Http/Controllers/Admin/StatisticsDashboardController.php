@@ -4,20 +4,11 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\DB;
+use \App\Models\Zone;
 use Carbon\Carbon;
 
-/**
- * TASK 1: Dashboard Statistiche Mancanti
- *
- * OBIETTIVO: Implementare le 4 statistiche mancanti richieste
- * TEMPO STIMATO: 2-3 ore
- * COMPLESSITÀ: Bassa
- */
 class StatisticsDashboardController extends Controller
 {
-    /**
-     * Dashboard principale con tutte le statistiche
-     */
     public function index()
     {
         $stats = [
@@ -27,7 +18,9 @@ class StatisticsDashboardController extends Controller
             'durata_per_ruolo' => $this->getDurataPerRuoloStats(),
         ];
 
-        return view('admin.statistics.dashboard', compact('stats'));
+            $zones = Zone::orderBy('name')->get();
+
+            return view('admin.statistics.dashboard', compact('stats', 'zones'));
     }
 
     /**
@@ -43,9 +36,9 @@ class StatisticsDashboardController extends Controller
                 'z.name as zona',
                 'z.code as codice_zona',
                 DB::raw('COUNT(*) as totale_dichiarazioni'),
-                DB::raw('SUM(CASE WHEN a.available = 1 THEN 1 ELSE 0 END) as disponibili'),
-                DB::raw('SUM(CASE WHEN a.available = 0 THEN 1 ELSE 0 END) as non_disponibili'),
-                DB::raw('ROUND(AVG(CASE WHEN a.available = 1 THEN 1 ELSE 0 END) * 100, 1) as percentuale_disponibilita')
+                DB::raw('COUNT(*) as disponibili'),
+                DB::raw('0 as non_disponibili'),
+                DB::raw('100 as percentuale_disponibilita'),
             ])
             ->groupBy('z.id', 'z.name', 'z.code')
             ->orderBy('totale_dichiarazioni', 'desc')
@@ -65,10 +58,10 @@ class StatisticsDashboardController extends Controller
                 'z.name as zona',
                 'z.code as codice_zona',
                 DB::raw('COUNT(*) as totale_assegnazioni'),
-                DB::raw('COUNT(CASE WHEN ass.status = "confirmed" THEN 1 END) as confermate'),
-                DB::raw('COUNT(CASE WHEN ass.status = "pending" THEN 1 END) as in_attesa'),
-                DB::raw('COUNT(CASE WHEN ass.status = "rejected" THEN 1 END) as rifiutate'),
-                DB::raw('ROUND(AVG(CASE WHEN ass.status = "confirmed" THEN 1 ELSE 0 END) * 100, 1) as tasso_conferma')
+                DB::raw('COUNT(CASE WHEN ass.is_confirmed = 1 THEN 1 END) as confermate'),
+                DB::raw('COUNT(CASE WHEN ass.is_confirmed = 0 OR ass.is_confirmed IS NULL THEN 1 END) as in_attesa'),
+                DB::raw('0 as rifiutate'),
+                DB::raw('ROUND(AVG(CASE WHEN ass.is_confirmed = 1 THEN 1 ELSE 0 END) * 100, 1) as tasso_conferma')
             ])
             ->groupBy('z.id', 'z.name', 'z.code')
             ->orderBy('totale_assegnazioni', 'desc')
@@ -84,7 +77,7 @@ class StatisticsDashboardController extends Controller
             ->join('users as u', 'ass.user_id', '=', 'u.id')
             ->join('tournaments as t', 'ass.tournament_id', '=', 't.id')
             ->join('zones as z', 't.zone_id', '=', 'z.id')
-            ->where('ass.status', 'confirmed')
+            ->where('ass.is_confirmed', 1)
             ->where('t.status', 'completed')
             ->select([
                 'u.name as arbitro',
@@ -95,12 +88,12 @@ class StatisticsDashboardController extends Controller
                 DB::raw('COUNT(CASE WHEN ass.role = "Direttore di Gara" THEN 1 END) as come_direttore'),
                 DB::raw('COUNT(CASE WHEN ass.role = "Arbitro" THEN 1 END) as come_arbitro'),
                 DB::raw('COUNT(CASE WHEN ass.role = "Osservatore" THEN 1 END) as come_osservatore'),
-                DB::raw('ROUND(COUNT(*) / 12.0, 1) as media_mensile') // Assumendo 12 mesi
+                DB::raw('ROUND(COUNT(*) / 12.0, 1) as media_mensile')
             ])
             ->groupBy('u.id', 'u.name', 'u.email', 'z.name', 'u.level')
             ->having('presenze_totali', '>', 0)
             ->orderBy('presenze_totali', 'desc')
-            ->limit(50) // Top 50 arbitri più attivi
+            ->limit(50)
             ->get();
     }
 
@@ -112,7 +105,7 @@ class StatisticsDashboardController extends Controller
         return DB::table('assignments as ass')
             ->join('tournaments as t', 'ass.tournament_id', '=', 't.id')
             ->where('t.status', 'completed')
-            ->where('ass.status', 'confirmed')
+            ->where('ass.is_confirmed', 1)
             ->select([
                 'ass.role as ruolo',
                 DB::raw('COUNT(*) as numero_assegnazioni'),
