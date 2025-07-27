@@ -187,23 +187,6 @@ Route::middleware(['auth'])->group(function () {
             Route::delete('/{communication}', [Admin\CommunicationController::class, 'destroy'])->name('destroy');
         });
 
-        // ✅ LETTERHEAD MANAGEMENT - ROUTES AGGIUNTE
-        Route::prefix('letterheads')->name('letterheads.')->group(function () {
-            Route::get('/', [LetterheadController::class, 'index'])->name('index');
-            Route::get('/create', [LetterheadController::class, 'create'])->name('create');
-            Route::post('/', [LetterheadController::class, 'store'])->name('store');
-            Route::get('/{letterhead}', [LetterheadController::class, 'show'])->name('show');
-            Route::get('/{letterhead}/edit', [LetterheadController::class, 'edit'])->name('edit');
-            Route::put('/{letterhead}', [LetterheadController::class, 'update'])->name('update');
-            Route::delete('/{letterhead}', [LetterheadController::class, 'destroy'])->name('destroy');
-            Route::post('/{letterhead}/toggle-active', [LetterheadController::class, 'toggleActive'])->name('toggle-active');
-            Route::post('/{letterhead}/set-default', [LetterheadController::class, 'setDefault'])->name('set-default');
-            Route::post('/{letterhead}/duplicate', [LetterheadController::class, 'duplicate'])->name('duplicate');
-            Route::get('/{letterhead}/preview', [LetterheadController::class, 'preview'])->name('preview');
-            Route::post('/upload-logo', [LetterheadController::class, 'uploadLogo'])->name('upload-logo');
-            Route::delete('/{letterhead}/remove-logo', [LetterheadController::class, 'removeLogo'])->name('remove-logo');
-        });
-
         // Letter Templates Management
         Route::prefix('letter-templates')->name('letter-templates.')->group(function () {
             Route::get('/', [LetterTemplateController::class, 'index'])->name('index');
@@ -217,6 +200,21 @@ Route::middleware(['auth'])->group(function () {
             Route::get('/{template}/preview', [LetterTemplateController::class, 'preview'])->name('preview');
             Route::post('/{template}/toggle-active', [LetterTemplateController::class, 'toggleActive'])->name('toggle-active');
             Route::post('/{template}/set-default', [LetterTemplateController::class, 'setDefault'])->name('set-default');
+        });
+        // Letterheads Management (aggiungi dopo letter-templates)
+        Route::prefix('letterheads')->name('letterheads.')->group(function () {
+            Route::get('/', [Admin\LetterheadController::class, 'index'])->name('index');
+            Route::get('/create', [Admin\LetterheadController::class, 'create'])->name('create');
+            Route::post('/', [Admin\LetterheadController::class, 'store'])->name('store');
+            Route::get('/{letterhead}', [Admin\LetterheadController::class, 'show'])->name('show');
+            Route::get('/{letterhead}/edit', [Admin\LetterheadController::class, 'edit'])->name('edit');
+            Route::put('/{letterhead}', [Admin\LetterheadController::class, 'update'])->name('update');
+            Route::delete('/{letterhead}', [Admin\LetterheadController::class, 'destroy'])->name('destroy');
+            Route::post('/{letterhead}/duplicate', [Admin\LetterheadController::class, 'duplicate'])->name('duplicate');
+            Route::get('/{letterhead}/preview', [Admin\LetterheadController::class, 'preview'])->name('preview');
+            Route::post('/{letterhead}/toggle-active', [Admin\LetterheadController::class, 'toggleActive'])->name('toggle-active');
+            Route::post('/{letterhead}/set-default', [Admin\LetterheadController::class, 'setDefault'])->name('set-default');
+            Route::delete('/{letterhead}/remove-logo', [Admin\LetterheadController::class, 'removeLogo'])->name('remove-logo');
         });
 
         // Notifications Management
@@ -418,41 +416,6 @@ Route::middleware(['auth'])->group(function () {
             return \App\Models\Tournament::getCalendarEvents();
         })->name('tournaments.calendar');
     });
-});
-// ✅ LETTERHEADS
-Route::prefix('letterheads')->name('letterheads.')->group(function () {
-    Route::get('/', [LetterheadController::class, 'index'])->name('index');
-    Route::get('/create', [LetterheadController::class, 'create'])->name('create');
-    // ... altre route
-});
-// Routes protette da autenticazione + middleware admin
-Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(function () {
-
-    // Letterheads Routes
-    Route::resource('letterheads', LetterheadController::class);
-
-    // Extra letterhead routes
-    Route::patch('letterheads/{letterhead}/toggle-active', [LetterheadController::class, 'toggleActive'])
-        ->name('letterheads.toggle-active');
-
-    Route::patch('letterheads/{letterhead}/set-default', [LetterheadController::class, 'setDefault'])
-        ->name('letterheads.set-default');
-
-    Route::post('letterheads/{letterhead}/duplicate', [LetterheadController::class, 'duplicate'])
-        ->name('letterheads.duplicate');
-
-    Route::get('letterheads/{letterhead}/preview', [LetterheadController::class, 'preview'])
-        ->name('letterheads.preview');
-
-    Route::post('letterheads/upload-logo', [LetterheadController::class, 'uploadLogo'])
-        ->name('letterheads.upload-logo');
-
-    Route::delete('letterheads/{letterhead}/remove-logo', [LetterheadController::class, 'removeLogo'])
-        ->name('letterheads.remove-logo');
-
-    // AJAX routes
-    Route::get('api/letterheads', [LetterheadController::class, 'getLetterheads'])
-        ->name('letterheads.api.get');
 });
 
 // ✅ STATISTICS

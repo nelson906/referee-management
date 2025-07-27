@@ -3,454 +3,257 @@
 @section('title', 'Modifica Letterhead')
 
 @section('content')
-<div class="container-fluid">
-    <!-- Header -->
-    <div class="row">
-        <div class="col-12">
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <div>
-                    <h1 class="h3 mb-0">Modifica Letterhead</h1>
-                    <nav aria-label="breadcrumb">
-                        <ol class="breadcrumb">
-                            <li class="breadcrumb-item">
-                                <a href="{{ route('admin.letterheads.index') }}">Letterheads</a>
-                            </li>
-                            <li class="breadcrumb-item">
-                                <a href="{{ route('admin.letterheads.show', $letterhead) }}">{{ Str::limit($letterhead->title, 30) }}</a>
-                            </li>
-                            <li class="breadcrumb-item active">Modifica</li>
-                        </ol>
-                    </nav>
-                </div>
-                <div>
-                    <a href="{{ route('admin.letterheads.preview', $letterhead) }}"
-                       class="btn btn-outline-info"
-                       target="_blank">
-                        <i class="fas fa-eye"></i> Anteprima
-                    </a>
-                    <a href="{{ route('admin.letterheads.show', $letterhead) }}" class="btn btn-outline-secondary">
-                        <i class="fas fa-arrow-left"></i> Indietro
-                    </a>
-                </div>
-            </div>
+<div class="container mx-auto px-4 py-6">
+    {{-- Header --}}
+    <div class="mb-6">
+        <div class="flex items-center space-x-3">
+            <a href="{{ route('admin.letterheads.show', $letterhead) }}" class="text-gray-500 hover:text-gray-700">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+                </svg>
+            </a>
+            <h1 class="text-2xl font-bold text-gray-900">Modifica Letterhead</h1>
         </div>
+        <p class="text-gray-600">Modifica le informazioni della letterhead</p>
     </div>
 
-    <!-- Form -->
-    <form method="POST" action="{{ route('admin.letterheads.update', $letterhead) }}" enctype="multipart/form-data">
-        @csrf
-        @method('PUT')
+    {{-- Form --}}
+    <div class="bg-white rounded-lg shadow p-6">
+        <form method="POST" action="{{ route('admin.letterheads.update', $letterhead) }}" enctype="multipart/form-data" class="space-y-6">
+            @csrf
+            @method('PUT')
 
-        <div class="row">
-            <!-- Dati Principali -->
-            <div class="col-lg-8">
-                <div class="card">
-                    <div class="card-header">
-                        <h5 class="card-title mb-0">Informazioni Generali</h5>
-                    </div>
-                    <div class="card-body">
-                        <!-- Titolo -->
-                        <div class="mb-3">
-                            <label for="title" class="form-label">Titolo <span class="text-danger">*</span></label>
-                            <input type="text"
-                                   class="form-control @error('title') is-invalid @enderror"
-                                   id="title"
-                                   name="title"
-                                   value="{{ old('title', $letterhead->title) }}"
-                                   required>
-                            @error('title')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
-                        </div>
-
-                        <!-- Descrizione -->
-                        <div class="mb-3">
-                            <label for="description" class="form-label">Descrizione</label>
-                            <textarea class="form-control @error('description') is-invalid @enderror"
-                                      id="description"
-                                      name="description"
-                                      rows="3">{{ old('description', $letterhead->description) }}</textarea>
-                            @error('description')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
-                        </div>
-
-                        <!-- Zona -->
-                        <div class="mb-3">
-                            <label for="zone_id" class="form-label">Zona</label>
-                            <select class="form-select @error('zone_id') is-invalid @enderror"
-                                    id="zone_id"
-                                    name="zone_id">
-                                <option value="">Globale</option>
-                                @foreach($zones as $zone)
-                                    <option value="{{ $zone->id }}"
-                                            {{ old('zone_id', $letterhead->zone_id) == $zone->id ? 'selected' : '' }}>
-                                        {{ $zone->name }}
-                                    </option>
-                                @endforeach
-                            </select>
-                            @error('zone_id')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
-                            <div class="form-text">
-                                Lascia vuoto per una letterhead globale disponibile per tutte le zone
-                            </div>
-                        </div>
-
-                        <!-- Header Text -->
-                        <div class="mb-3">
-                            <label for="header_text" class="form-label">Testo Header</label>
-                            <textarea class="form-control @error('header_text') is-invalid @enderror"
-                                      id="header_text"
-                                      name="header_text"
-                                      rows="3">{{ old('header_text', $letterhead->header_text) }}</textarea>
-                            @error('header_text')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
-                        </div>
-
-                        <!-- Footer Text -->
-                        <div class="mb-3">
-                            <label for="footer_text" class="form-label">Testo Footer</label>
-                            <textarea class="form-control @error('footer_text') is-invalid @enderror"
-                                      id="footer_text"
-                                      name="footer_text"
-                                      rows="3">{{ old('footer_text', $letterhead->footer_text) }}</textarea>
-                            @error('footer_text')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
-                        </div>
-                    </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {{-- Titolo --}}
+                <div>
+                    <label for="title" class="block text-sm font-medium text-gray-700 mb-1">Titolo *</label>
+                    <input type="text" name="title" id="title" value="{{ old('title', $letterhead->title) }}"
+                           class="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500 @error('title') border-red-500 @enderror"
+                           required>
+                    @error('title')
+                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                    @enderror
                 </div>
 
-                <!-- Informazioni di Contatto -->
-                <div class="card mt-4">
-                    <div class="card-header">
-                        <h5 class="card-title mb-0">Informazioni di Contatto</h5>
+                {{-- Zona --}}
+                <div>
+                    <label for="zone_id" class="block text-sm font-medium text-gray-700 mb-1">Zona</label>
+                    <select name="zone_id" id="zone_id"
+                            class="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500 @error('zone_id') border-red-500 @enderror">
+                        <option value="">Globale</option>
+                        @foreach($zones as $zone)
+                            <option value="{{ $zone->id }}" {{ old('zone_id', $letterhead->zone_id) == $zone->id ? 'selected' : '' }}>
+                                {{ $zone->name }}
+                            </option>
+                        @endforeach
+                    </select>
+                    @error('zone_id')
+                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                    @enderror
+                </div>
+            </div>
+
+            {{-- Descrizione --}}
+            <div>
+                <label for="description" class="block text-sm font-medium text-gray-700 mb-1">Descrizione</label>
+                <textarea name="description" id="description" rows="3"
+                          class="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500 @error('description') border-red-500 @enderror">{{ old('description', $letterhead->description) }}</textarea>
+                @error('description')
+                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                @enderror
+            </div>
+
+            {{-- Logo --}}
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <label for="logo" class="block text-sm font-medium text-gray-700 mb-1">Logo</label>
+                    <input type="file" name="logo" id="logo" accept="image/*"
+                           class="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500 @error('logo') border-red-500 @enderror">
+                    <p class="mt-1 text-xs text-gray-500">JPG, PNG, SVG fino a 2MB</p>
+                    @error('logo')
+                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                    @enderror
+                </div>
+
+                {{-- Logo Preview --}}
+                @if($letterhead->logo_path)
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Logo attuale</label>
+                        <div class="border border-gray-300 rounded-md p-4 bg-gray-50">
+                            <img src="{{ Storage::url($letterhead->logo_path) }}" alt="Logo attuale"
+                                 class="max-h-20 max-w-full object-contain">
+                        </div>
                     </div>
-                    <div class="card-body">
-                        <div class="row">
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label for="contact_address" class="form-label">Indirizzo</label>
-                                    <input type="text"
-                                           class="form-control @error('contact_info.address') is-invalid @enderror"
-                                           id="contact_address"
-                                           name="contact_info[address]"
-                                           value="{{ old('contact_info.address', $letterhead->contact_info['address'] ?? '') }}">
-                                    @error('contact_info.address')
-                                        <div class="invalid-feedback">{{ $message }}</div>
-                                    @enderror
-                                </div>
+                @endif
+            </div>
+
+            {{-- Header e Footer --}}
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <label for="header_text" class="block text-sm font-medium text-gray-700 mb-1">Testo Header</label>
+                    <textarea name="header_text" id="header_text" rows="4"
+                              class="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500 @error('header_text') border-red-500 @enderror">{{ old('header_text', $letterhead->header_text) }}</textarea>
+                    @error('header_text')
+                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                    @enderror
+                </div>
+
+                <div>
+                    <label for="footer_text" class="block text-sm font-medium text-gray-700 mb-1">Testo Footer</label>
+                    <textarea name="footer_text" id="footer_text" rows="4"
+                              class="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500 @error('footer_text') border-red-500 @enderror">{{ old('footer_text', $letterhead->footer_text) }}</textarea>
+                    @error('footer_text')
+                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                    @enderror
+                </div>
+            </div>
+
+            {{-- Informazioni di Contatto --}}
+            <div class="border-t pt-6">
+                <h3 class="text-lg font-medium text-gray-900 mb-4">Informazioni di Contatto</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label for="contact_address" class="block text-sm font-medium text-gray-700 mb-1">Indirizzo</label>
+                        <input type="text" name="contact_info[address]" id="contact_address"
+                               value="{{ old('contact_info.address', $letterhead->contact_info['address'] ?? '') }}"
+                               class="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+
+                    <div>
+                        <label for="contact_phone" class="block text-sm font-medium text-gray-700 mb-1">Telefono</label>
+                        <input type="text" name="contact_info[phone]" id="contact_phone"
+                               value="{{ old('contact_info.phone', $letterhead->contact_info['phone'] ?? '') }}"
+                               class="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+
+                    <div>
+                        <label for="contact_email" class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                        <input type="email" name="contact_info[email]" id="contact_email"
+                               value="{{ old('contact_info.email', $letterhead->contact_info['email'] ?? '') }}"
+                               class="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+
+                    <div>
+                        <label for="contact_website" class="block text-sm font-medium text-gray-700 mb-1">Sito Web</label>
+                        <input type="url" name="contact_info[website]" id="contact_website"
+                               value="{{ old('contact_info.website', $letterhead->contact_info['website'] ?? '') }}"
+                               class="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                </div>
+            </div>
+
+            {{-- Impostazioni --}}
+            <div class="border-t pt-6">
+                <h3 class="text-lg font-medium text-gray-900 mb-4">Impostazioni</h3>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    {{-- Stato --}}
+                    <div class="space-y-4">
+                        <div class="flex items-center">
+                            <input type="hidden" name="is_active" value="0">
+                            <input type="checkbox" name="is_active" id="is_active" value="1"
+                                   {{ old('is_active', $letterhead->is_active) ? 'checked' : '' }}
+                                   class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded">
+                            <label for="is_active" class="ml-2 block text-sm text-gray-900">Attiva</label>
+                        </div>
+
+                        <div class="flex items-center">
+                            <input type="hidden" name="is_default" value="0">
+                            <input type="checkbox" name="is_default" id="is_default" value="1"
+                                   {{ old('is_default', $letterhead->is_default) ? 'checked' : '' }}
+                                   class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded">
+                            <label for="is_default" class="ml-2 block text-sm text-gray-900">Predefinita</label>
+                        </div>
+                    </div>
+
+                    {{-- Font --}}
+                    <div>
+                        <label for="font_family" class="block text-sm font-medium text-gray-700 mb-1">Font</label>
+                        <select name="settings[font][family]" id="font_family"
+                                class="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500">
+                            <option value="Arial" {{ old('settings.font.family', $letterhead->settings['font']['family'] ?? 'Arial') === 'Arial' ? 'selected' : '' }}>Arial</option>
+                            <option value="Times New Roman" {{ old('settings.font.family', $letterhead->settings['font']['family'] ?? '') === 'Times New Roman' ? 'selected' : '' }}>Times New Roman</option>
+                            <option value="Helvetica" {{ old('settings.font.family', $letterhead->settings['font']['family'] ?? '') === 'Helvetica' ? 'selected' : '' }}>Helvetica</option>
+                        </select>
+
+                        <div class="mt-2 grid grid-cols-2 gap-2">
+                            <div>
+                                <label for="font_size" class="block text-xs text-gray-500">Dimensione</label>
+                                <input type="number" name="settings[font][size]" id="font_size" min="8" max="24"
+                                       value="{{ old('settings.font.size', $letterhead->settings['font']['size'] ?? 11) }}"
+                                       class="w-full border border-gray-300 rounded-md px-2 py-1 text-sm">
                             </div>
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label for="contact_phone" class="form-label">Telefono</label>
-                                    <input type="text"
-                                           class="form-control @error('contact_info.phone') is-invalid @enderror"
-                                           id="contact_phone"
-                                           name="contact_info[phone]"
-                                           value="{{ old('contact_info.phone', $letterhead->contact_info['phone'] ?? '') }}">
-                                    @error('contact_info.phone')
-                                        <div class="invalid-feedback">{{ $message }}</div>
-                                    @enderror
-                                </div>
+                            <div>
+                                <label for="font_color" class="block text-xs text-gray-500">Colore</label>
+                                <input type="color" name="settings[font][color]" id="font_color"
+                                       value="{{ old('settings.font.color', $letterhead->settings['font']['color'] ?? '#000000') }}"
+                                       class="w-full border border-gray-300 rounded-md px-1 py-1">
                             </div>
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label for="contact_email" class="form-label">Email</label>
-                                    <input type="email"
-                                           class="form-control @error('contact_info.email') is-invalid @enderror"
-                                           id="contact_email"
-                                           name="contact_info[email]"
-                                           value="{{ old('contact_info.email', $letterhead->contact_info['email'] ?? '') }}">
-                                    @error('contact_info.email')
-                                        <div class="invalid-feedback">{{ $message }}</div>
-                                    @enderror
-                                </div>
+                        </div>
+                    </div>
+
+                    {{-- Margini --}}
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Margini (mm)</label>
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <label for="margin_top" class="block text-xs text-gray-500">Alto</label>
+                                <input type="number" name="settings[margins][top]" id="margin_top" min="0" max="100"
+                                       value="{{ old('settings.margins.top', $letterhead->settings['margins']['top'] ?? 20) }}"
+                                       class="w-full border border-gray-300 rounded-md px-2 py-1 text-sm">
                             </div>
-                            <div class="col-md-6">
-                                <div class="mb-3">
-                                    <label for="contact_website" class="form-label">Sito Web</label>
-                                    <input type="url"
-                                           class="form-control @error('contact_info.website') is-invalid @enderror"
-                                           id="contact_website"
-                                           name="contact_info[website]"
-                                           value="{{ old('contact_info.website', $letterhead->contact_info['website'] ?? '') }}">
-                                    @error('contact_info.website')
-                                        <div class="invalid-feedback">{{ $message }}</div>
-                                    @enderror
-                                </div>
+                            <div>
+                                <label for="margin_bottom" class="block text-xs text-gray-500">Basso</label>
+                                <input type="number" name="settings[margins][bottom]" id="margin_bottom" min="0" max="100"
+                                       value="{{ old('settings.margins.bottom', $letterhead->settings['margins']['bottom'] ?? 20) }}"
+                                       class="w-full border border-gray-300 rounded-md px-2 py-1 text-sm">
+                            </div>
+                            <div>
+                                <label for="margin_left" class="block text-xs text-gray-500">Sinistro</label>
+                                <input type="number" name="settings[margins][left]" id="margin_left" min="0" max="100"
+                                       value="{{ old('settings.margins.left', $letterhead->settings['margins']['left'] ?? 25) }}"
+                                       class="w-full border border-gray-300 rounded-md px-2 py-1 text-sm">
+                            </div>
+                            <div>
+                                <label for="margin_right" class="block text-xs text-gray-500">Destro</label>
+                                <input type="number" name="settings[margins][right]" id="margin_right" min="0" max="100"
+                                       value="{{ old('settings.margins.right', $letterhead->settings['margins']['right'] ?? 25) }}"
+                                       class="w-full border border-gray-300 rounded-md px-2 py-1 text-sm">
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Sidebar -->
-            <div class="col-lg-4">
-                <!-- Logo -->
-                <div class="card">
-                    <div class="card-header">
-                        <h5 class="card-title mb-0">Logo</h5>
-                    </div>
-                    <div class="card-body">
-                        <!-- Logo attuale -->
-                        @if($letterhead->logo_path)
-                            <div class="mb-3">
-                                <label class="form-label">Logo attuale:</label>
-                                <div class="text-center">
-                                    <img src="{{ $letterhead->logo_url }}"
-                                         alt="Logo attuale"
-                                         class="img-thumbnail"
-                                         style="max-width: 200px;">
-                                </div>
-                                <div class="text-center mt-2">
-                                    <small class="text-muted">{{ basename($letterhead->logo_path) }}</small>
-                                </div>
-                            </div>
-                        @endif
-
-                        <div class="mb-3">
-                            <label for="logo" class="form-label">
-                                {{ $letterhead->logo_path ? 'Sostituisci Logo' : 'Upload Logo' }}
-                            </label>
-                            <input type="file"
-                                   class="form-control @error('logo') is-invalid @enderror"
-                                   id="logo"
-                                   name="logo"
-                                   accept="image/*">
-                            @error('logo')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
-                            <div class="form-text">
-                                Formati supportati: JPG, PNG, GIF, SVG. Max 2MB.
-                                {{ $letterhead->logo_path ? 'Lascia vuoto per mantenere il logo attuale.' : '' }}
-                            </div>
-                        </div>
-
-                        <!-- Anteprima nuovo logo -->
-                        <div id="logo-preview" style="display: none;">
-                            <label class="form-label">Anteprima nuovo logo:</label>
-                            <div class="text-center">
-                                <img id="preview-image"
-                                     src=""
-                                     alt="Anteprima"
-                                     class="img-thumbnail"
-                                     style="max-width: 200px;">
-                            </div>
-                        </div>
-
-                        <!-- Rimuovi logo esistente -->
-                        @if($letterhead->logo_path)
-                            <div class="text-center mt-3">
-                                <button type="button"
-                                        class="btn btn-sm btn-outline-danger"
-                                        onclick="removeLogo()">
-                                    <i class="fas fa-trash"></i> Rimuovi Logo Attuale
-                                </button>
-                            </div>
-                        @endif
-                    </div>
+            {{-- Actions --}}
+            <div class="flex justify-between pt-6 border-t">
+                <div>
+                    @if(!$letterhead->is_default)
+                        <button type="button" onclick="if(confirm('Sei sicuro di voler eliminare questa letterhead?')) { document.getElementById('delete-form').submit(); }"
+                                class="px-4 py-2 border border-red-300 rounded-md text-sm font-medium text-red-700 bg-white hover:bg-red-50">
+                            🗑️ Elimina
+                        </button>
+                    @endif
                 </div>
-
-                <!-- Impostazioni -->
-                <div class="card mt-4">
-                    <div class="card-header">
-                        <h5 class="card-title mb-0">Stato</h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="form-check mb-3">
-                            <input class="form-check-input"
-                                   type="checkbox"
-                                   id="is_active"
-                                   name="is_active"
-                                   value="1"
-                                   {{ old('is_active', $letterhead->is_active) ? 'checked' : '' }}>
-                            <label class="form-check-label" for="is_active">
-                                Attiva
-                            </label>
-                        </div>
-
-                        <div class="form-check">
-                            <input class="form-check-input"
-                                   type="checkbox"
-                                   id="is_default"
-                                   name="is_default"
-                                   value="1"
-                                   {{ old('is_default', $letterhead->is_default) ? 'checked' : '' }}>
-                            <label class="form-check-label" for="is_default">
-                                Imposta come predefinita
-                            </label>
-                            <div class="form-text">
-                                Se selezionato, diventerà la letterhead predefinita per la zona selezionata
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Margini e Font -->
-                <div class="card mt-4">
-                    <div class="card-header">
-                        <h5 class="card-title mb-0">Impostazioni Layout</h5>
-                    </div>
-                    <div class="card-body">
-                        <!-- Margini -->
-                        <h6>Margini (mm)</h6>
-                        <div class="row">
-                            <div class="col-6">
-                                <div class="mb-2">
-                                    <label for="margin_top" class="form-label">Alto</label>
-                                    <input type="number"
-                                           class="form-control form-control-sm"
-                                           id="margin_top"
-                                           name="settings[margins][top]"
-                                           value="{{ old('settings.margins.top', $letterhead->settings['margins']['top'] ?? 20) }}"
-                                           min="0" max="100">
-                                </div>
-                            </div>
-                            <div class="col-6">
-                                <div class="mb-2">
-                                    <label for="margin_bottom" class="form-label">Basso</label>
-                                    <input type="number"
-                                           class="form-control form-control-sm"
-                                           id="margin_bottom"
-                                           name="settings[margins][bottom]"
-                                           value="{{ old('settings.margins.bottom', $letterhead->settings['margins']['bottom'] ?? 20) }}"
-                                           min="0" max="100">
-                                </div>
-                            </div>
-                            <div class="col-6">
-                                <div class="mb-3">
-                                    <label for="margin_left" class="form-label">Sinistra</label>
-                                    <input type="number"
-                                           class="form-control form-control-sm"
-                                           id="margin_left"
-                                           name="settings[margins][left]"
-                                           value="{{ old('settings.margins.left', $letterhead->settings['margins']['left'] ?? 25) }}"
-                                           min="0" max="100">
-                                </div>
-                            </div>
-                            <div class="col-6">
-                                <div class="mb-3">
-                                    <label for="margin_right" class="form-label">Destra</label>
-                                    <input type="number"
-                                           class="form-control form-control-sm"
-                                           id="margin_right"
-                                           name="settings[margins][right]"
-                                           value="{{ old('settings.margins.right', $letterhead->settings['margins']['right'] ?? 25) }}"
-                                           min="0" max="100">
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Font -->
-                        <h6>Font</h6>
-                        <div class="mb-2">
-                            <label for="font_family" class="form-label">Famiglia</label>
-                            <select class="form-select form-select-sm"
-                                    id="font_family"
-                                    name="settings[font][family]">
-                                <option value="Arial" {{ old('settings.font.family', $letterhead->settings['font']['family'] ?? 'Arial') === 'Arial' ? 'selected' : '' }}>Arial</option>
-                                <option value="Times New Roman" {{ old('settings.font.family', $letterhead->settings['font']['family'] ?? '') === 'Times New Roman' ? 'selected' : '' }}>Times New Roman</option>
-                                <option value="Helvetica" {{ old('settings.font.family', $letterhead->settings['font']['family'] ?? '') === 'Helvetica' ? 'selected' : '' }}>Helvetica</option>
-                                <option value="Courier" {{ old('settings.font.family', $letterhead->settings['font']['family'] ?? '') === 'Courier' ? 'selected' : '' }}>Courier</option>
-                            </select>
-                        </div>
-                        <div class="row">
-                            <div class="col-6">
-                                <div class="mb-2">
-                                    <label for="font_size" class="form-label">Dimensione</label>
-                                    <input type="number"
-                                           class="form-control form-control-sm"
-                                           id="font_size"
-                                           name="settings[font][size]"
-                                           value="{{ old('settings.font.size', $letterhead->settings['font']['size'] ?? 11) }}"
-                                           min="8" max="24">
-                                </div>
-                            </div>
-                            <div class="col-6">
-                                <div class="mb-2">
-                                    <label for="font_color" class="form-label">Colore</label>
-                                    <input type="color"
-                                           class="form-control form-control-color"
-                                           id="font_color"
-                                           name="settings[font][color]"
-                                           value="{{ old('settings.font.color', $letterhead->settings['font']['color'] ?? '#000000') }}">
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Azioni -->
-        <div class="row mt-4">
-            <div class="col-12">
-                <div class="d-flex justify-content-between">
-                    <a href="{{ route('admin.letterheads.show', $letterhead) }}" class="btn btn-secondary">
-                        <i class="fas fa-times"></i> Annulla
+                <div class="flex space-x-4">
+                    <a href="{{ route('admin.letterheads.show', $letterhead) }}"
+                       class="px-6 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
+                        Annulla
                     </a>
-                    <button type="submit" class="btn btn-primary">
-                        <i class="fas fa-save"></i> Aggiorna Letterhead
+                    <button type="submit"
+                            class="px-6 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700">
+                        💾 Salva Modifiche
                     </button>
                 </div>
             </div>
-        </div>
-    </form>
-</div>
-
-<!-- Modal per rimozione logo -->
-<div class="modal fade" id="removeLogoModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Rimuovi Logo</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <p>Sei sicuro di voler rimuovere il logo attuale?</p>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
-                <form method="POST" action="{{ route('admin.letterheads.remove-logo', $letterhead) }}" style="display: inline;">
-                    @csrf
-                    @method('DELETE')
-                    <button type="submit" class="btn btn-danger">Rimuovi</button>
-                </form>
-            </div>
-        </div>
+        </form>
     </div>
 </div>
+
+{{-- Delete Form (hidden) --}}
+@if(!$letterhead->is_default)
+    <form id="delete-form" action="{{ route('admin.letterheads.destroy', $letterhead) }}" method="POST" style="display: none;">
+        @csrf
+        @method('DELETE')
+    </form>
+@endif
 @endsection
-
-@push('scripts')
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Anteprima logo
-    const logoInput = document.getElementById('logo');
-    const logoPreview = document.getElementById('logo-preview');
-    const previewImage = document.getElementById('preview-image');
-
-    logoInput.addEventListener('change', function(e) {
-        const file = e.target.files[0];
-        if (file) {
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                previewImage.src = e.target.result;
-                logoPreview.style.display = 'block';
-            };
-            reader.readAsDataURL(file);
-        } else {
-            logoPreview.style.display = 'none';
-        }
-    });
-});
-
-// Funzione per mostrare modal rimozione logo
-function removeLogo() {
-    new bootstrap.Modal(document.getElementById('removeLogoModal')).show();
-}
-</script>
-@endpush

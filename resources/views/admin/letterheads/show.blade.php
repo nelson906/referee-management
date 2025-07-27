@@ -1,351 +1,327 @@
 @extends('layouts.admin')
 
-@section('title', $letterhead->title)
+@section('title', 'Dettagli Letterhead')
 
 @section('content')
-<div class="container-fluid">
-    <!-- Header -->
-    <div class="row">
-        <div class="col-12">
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <div>
-                    <h1 class="h3 mb-0">{{ $letterhead->title }}</h1>
-                    <nav aria-label="breadcrumb">
-                        <ol class="breadcrumb">
-                            <li class="breadcrumb-item">
-                                <a href="{{ route('admin.letterheads.index') }}">Letterheads</a>
-                            </li>
-                            <li class="breadcrumb-item active">{{ Str::limit($letterhead->title, 50) }}</li>
-                        </ol>
-                    </nav>
+<div class="container mx-auto px-4 py-6">
+    {{-- Header --}}
+    <div class="mb-6">
+        <div class="flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <a href="{{ route('letterheads.index') }}" class="text-gray-500 hover:text-gray-700">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+                    </svg>
+                </a>
+                <h1 class="text-2xl font-bold text-gray-900">{{ $letterhead->title }}</h1>
+
+                {{-- Status Badges --}}
+                <div class="flex space-x-2">
+                    @if($letterhead->is_active)
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                            Attiva
+                        </span>
+                    @else
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                            Inattiva
+                        </span>
+                    @endif
+
+                    @if($letterhead->is_default)
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                            ⭐ Predefinita
+                        </span>
+                    @endif
+
+                    @if($letterhead->zone)
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                            {{ $letterhead->zone->name }}
+                        </span>
+                    @else
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                            Globale
+                        </span>
+                    @endif
                 </div>
-                <div>
-                    @can('update', $letterhead)
-                        <a href="{{ route('admin.letterheads.edit', $letterhead) }}" class="btn btn-primary">
-                            <i class="fas fa-edit"></i> Modifica
-                        </a>
-                    @endcan
-                    <a href="{{ route('admin.letterheads.preview', $letterhead) }}"
-                       class="btn btn-outline-secondary"
-                       target="_blank">
-                        <i class="fas fa-eye"></i> Anteprima
-                    </a>
-                    <a href="{{ route('admin.letterheads.index') }}" class="btn btn-outline-secondary">
-                        <i class="fas fa-arrow-left"></i> Indietro
-                    </a>
-                </div>
+            </div>
+
+            {{-- Actions --}}
+            <div class="flex space-x-2">
+                <a href="{{ route('letterheads.preview', $letterhead) }}"
+                   class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                    </svg>
+                    Anteprima
+                </a>
+
+                <a href="{{ route('letterheads.edit', $letterhead) }}"
+                   class="inline-flex items-center px-3 py-2 border border-transparent shadow-sm text-sm leading-4 font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700">
+                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                    </svg>
+                    Modifica
+                </a>
             </div>
         </div>
     </div>
 
-    <div class="row">
-        <!-- Informazioni Principali -->
-        <div class="col-lg-8">
-            <!-- Dettagli Base -->
-            <div class="card">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <h5 class="card-title mb-0">Informazioni Generali</h5>
-                    <div>
-                        @if($letterhead->is_active)
-                            <span class="badge bg-success">Attiva</span>
-                        @else
-                            <span class="badge bg-danger">Inattiva</span>
-                        @endif
-
-                        @if($letterhead->is_default)
-                            <span class="badge bg-warning text-dark">
-                                <i class="fas fa-star"></i> Predefinita
-                            </span>
-                        @endif
-                    </div>
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {{-- Main Content --}}
+        <div class="lg:col-span-2 space-y-6">
+            {{-- Informazioni Generali --}}
+            <div class="bg-white rounded-lg shadow overflow-hidden">
+                <div class="px-6 py-4 border-b border-gray-200">
+                    <h3 class="text-lg font-medium text-gray-900">Informazioni Generali</h3>
                 </div>
-                <div class="card-body">
-                    <dl class="row">
-                        <dt class="col-sm-3">Titolo:</dt>
-                        <dd class="col-sm-9">{{ $letterhead->title }}</dd>
+                <div class="px-6 py-4">
+                    <dl class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <dt class="text-sm font-medium text-gray-500">Titolo</dt>
+                            <dd class="mt-1 text-sm text-gray-900">{{ $letterhead->title }}</dd>
+                        </div>
 
                         @if($letterhead->description)
-                            <dt class="col-sm-3">Descrizione:</dt>
-                            <dd class="col-sm-9">{{ $letterhead->description }}</dd>
+                            <div>
+                                <dt class="text-sm font-medium text-gray-500">Descrizione</dt>
+                                <dd class="mt-1 text-sm text-gray-900">{{ $letterhead->description }}</dd>
+                            </div>
                         @endif
 
-                        <dt class="col-sm-3">Zona:</dt>
-                        <dd class="col-sm-9">
-                            @if($letterhead->zone)
-                                <span class="badge bg-info">{{ $letterhead->zone->name }}</span>
-                            @else
-                                <span class="badge bg-secondary">Globale</span>
-                            @endif
-                        </dd>
-
-                        @if($letterhead->header_text)
-                            <dt class="col-sm-3">Testo Header:</dt>
-                            <dd class="col-sm-9">
-                                <div class="border rounded p-2 bg-light">
-                                    {!! nl2br(e($letterhead->header_text)) !!}
-                                </div>
+                        <div>
+                            <dt class="text-sm font-medium text-gray-500">Zona</dt>
+                            <dd class="mt-1 text-sm text-gray-900">
+                                {{ $letterhead->zone ? $letterhead->zone->name : 'Globale' }}
                             </dd>
-                        @endif
+                        </div>
 
-                        @if($letterhead->footer_text)
-                            <dt class="col-sm-3">Testo Footer:</dt>
-                            <dd class="col-sm-9">
-                                <div class="border rounded p-2 bg-light">
-                                    {!! nl2br(e($letterhead->footer_text)) !!}
-                                </div>
+                        <div>
+                            <dt class="text-sm font-medium text-gray-500">Stato</dt>
+                            <dd class="mt-1">
+                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ $letterhead->is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800' }}">
+                                    {{ $letterhead->is_active ? 'Attiva' : 'Inattiva' }}
+                                </span>
+                                @if($letterhead->is_default)
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 ml-2">
+                                        Predefinita
+                                    </span>
+                                @endif
                             </dd>
-                        @endif
+                        </div>
 
-                        <dt class="col-sm-3">Creata:</dt>
-                        <dd class="col-sm-9">{{ $letterhead->created_at->format('d/m/Y H:i') }}</dd>
+                        <div>
+                            <dt class="text-sm font-medium text-gray-500">Creata</dt>
+                            <dd class="mt-1 text-sm text-gray-900">{{ $letterhead->created_at->format('d/m/Y H:i') }}</dd>
+                        </div>
 
-                        <dt class="col-sm-3">Ultima modifica:</dt>
-                        <dd class="col-sm-9">
-                            {{ $letterhead->updated_at->format('d/m/Y H:i') }}
-                            @if($letterhead->updatedBy)
-                                da <strong>{{ $letterhead->updatedBy->name }}</strong>
-                            @endif
-                        </dd>
+                        <div>
+                            <dt class="text-sm font-medium text-gray-500">Ultima modifica</dt>
+                            <dd class="mt-1 text-sm text-gray-900">
+                                {{ $letterhead->updated_at->format('d/m/Y H:i') }}
+                                @if($letterhead->updatedBy)
+                                    <br><span class="text-xs text-gray-500">da {{ $letterhead->updatedBy->name }}</span>
+                                @endif
+                            </dd>
+                        </div>
                     </dl>
                 </div>
             </div>
 
-            <!-- Informazioni di Contatto -->
-            @if($letterhead->contact_info && array_filter($letterhead->contact_info))
-                <div class="card mt-4">
-                    <div class="card-header">
-                        <h5 class="card-title mb-0">Informazioni di Contatto</h5>
+            {{-- Testo Header e Footer --}}
+            @if($letterhead->header_text || $letterhead->footer_text)
+                <div class="bg-white rounded-lg shadow overflow-hidden">
+                    <div class="px-6 py-4 border-b border-gray-200">
+                        <h3 class="text-lg font-medium text-gray-900">Contenuto</h3>
                     </div>
-                    <div class="card-body">
-                        <dl class="row">
-                            @if(!empty($letterhead->contact_info['address']))
-                                <dt class="col-sm-3">Indirizzo:</dt>
-                                <dd class="col-sm-9">{{ $letterhead->contact_info['address'] }}</dd>
-                            @endif
+                    <div class="px-6 py-4 space-y-4">
+                        @if($letterhead->header_text)
+                            <div>
+                                <dt class="text-sm font-medium text-gray-500 mb-2">Testo Header</dt>
+                                <dd class="bg-gray-50 rounded-md p-3 text-sm text-gray-900 whitespace-pre-line">{{ $letterhead->header_text }}</dd>
+                            </div>
+                        @endif
 
-                            @if(!empty($letterhead->contact_info['phone']))
-                                <dt class="col-sm-3">Telefono:</dt>
-                                <dd class="col-sm-9">
-                                    <a href="tel:{{ $letterhead->contact_info['phone'] }}">
-                                        {{ $letterhead->contact_info['phone'] }}
-                                    </a>
-                                </dd>
-                            @endif
-
-                            @if(!empty($letterhead->contact_info['email']))
-                                <dt class="col-sm-3">Email:</dt>
-                                <dd class="col-sm-9">
-                                    <a href="mailto:{{ $letterhead->contact_info['email'] }}">
-                                        {{ $letterhead->contact_info['email'] }}
-                                    </a>
-                                </dd>
-                            @endif
-
-                            @if(!empty($letterhead->contact_info['website']))
-                                <dt class="col-sm-3">Sito Web:</dt>
-                                <dd class="col-sm-9">
-                                    <a href="{{ $letterhead->contact_info['website'] }}" target="_blank">
-                                        {{ $letterhead->contact_info['website'] }}
-                                        <i class="fas fa-external-link-alt fa-sm"></i>
-                                    </a>
-                                </dd>
-                            @endif
-                        </dl>
-
-                        <!-- Contact Info Formatted -->
-                        @if($letterhead->formatted_contact_info)
-                            <div class="mt-3">
-                                <small class="text-muted"><strong>Formato finale:</strong></small>
-                                <div class="border rounded p-2 bg-light mt-1">
-                                    <small>{{ $letterhead->formatted_contact_info }}</small>
-                                </div>
+                        @if($letterhead->footer_text)
+                            <div>
+                                <dt class="text-sm font-medium text-gray-500 mb-2">Testo Footer</dt>
+                                <dd class="bg-gray-50 rounded-md p-3 text-sm text-gray-900 whitespace-pre-line">{{ $letterhead->footer_text }}</dd>
                             </div>
                         @endif
                     </div>
                 </div>
             @endif
 
-            <!-- Impostazioni Layout -->
-            @if($letterhead->settings && array_filter($letterhead->settings))
-                <div class="card mt-4">
-                    <div class="card-header">
-                        <h5 class="card-title mb-0">Impostazioni Layout</h5>
+            {{-- Informazioni di Contatto --}}
+            @if($letterhead->contact_info && array_filter($letterhead->contact_info))
+                <div class="bg-white rounded-lg shadow overflow-hidden">
+                    <div class="px-6 py-4 border-b border-gray-200">
+                        <h3 class="text-lg font-medium text-gray-900">Informazioni di Contatto</h3>
                     </div>
-                    <div class="card-body">
-                        <div class="row">
-                            <!-- Margini -->
-                            @if(!empty($letterhead->settings['margins']))
-                                <div class="col-md-6">
-                                    <h6>Margini (mm)</h6>
-                                    <ul class="list-unstyled">
-                                        <li><strong>Alto:</strong> {{ $letterhead->settings['margins']['top'] ?? 20 }}mm</li>
-                                        <li><strong>Basso:</strong> {{ $letterhead->settings['margins']['bottom'] ?? 20 }}mm</li>
-                                        <li><strong>Sinistra:</strong> {{ $letterhead->settings['margins']['left'] ?? 25 }}mm</li>
-                                        <li><strong>Destra:</strong> {{ $letterhead->settings['margins']['right'] ?? 25 }}mm</li>
-                                    </ul>
+                    <div class="px-6 py-4">
+                        <dl class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            @if(!empty($letterhead->contact_info['address']))
+                                <div>
+                                    <dt class="text-sm font-medium text-gray-500">Indirizzo</dt>
+                                    <dd class="mt-1 text-sm text-gray-900">{{ $letterhead->contact_info['address'] }}</dd>
                                 </div>
                             @endif
 
-                            <!-- Font -->
-                            @if(!empty($letterhead->settings['font']))
-                                <div class="col-md-6">
-                                    <h6>Font</h6>
-                                    <ul class="list-unstyled">
-                                        <li><strong>Famiglia:</strong> {{ $letterhead->settings['font']['family'] ?? 'Arial' }}</li>
-                                        <li><strong>Dimensione:</strong> {{ $letterhead->settings['font']['size'] ?? 11 }}pt</li>
-                                        <li>
-                                            <strong>Colore:</strong>
-                                            <span class="d-inline-block rounded"
-                                                  style="width: 20px; height: 20px; background-color: {{ $letterhead->settings['font']['color'] ?? '#000000' }}; vertical-align: middle;"></span>
-                                            {{ $letterhead->settings['font']['color'] ?? '#000000' }}
-                                        </li>
-                                    </ul>
+                            @if(!empty($letterhead->contact_info['phone']))
+                                <div>
+                                    <dt class="text-sm font-medium text-gray-500">Telefono</dt>
+                                    <dd class="mt-1 text-sm text-gray-900">
+                                        <a href="tel:{{ $letterhead->contact_info['phone'] }}" class="text-indigo-600 hover:text-indigo-500">
+                                            {{ $letterhead->contact_info['phone'] }}
+                                        </a>
+                                    </dd>
                                 </div>
                             @endif
-                        </div>
+
+                            @if(!empty($letterhead->contact_info['email']))
+                                <div>
+                                    <dt class="text-sm font-medium text-gray-500">Email</dt>
+                                    <dd class="mt-1 text-sm text-gray-900">
+                                        <a href="mailto:{{ $letterhead->contact_info['email'] }}" class="text-indigo-600 hover:text-indigo-500">
+                                            {{ $letterhead->contact_info['email'] }}
+                                        </a>
+                                    </dd>
+                                </div>
+                            @endif
+
+                            @if(!empty($letterhead->contact_info['website']))
+                                <div>
+                                    <dt class="text-sm font-medium text-gray-500">Sito Web</dt>
+                                    <dd class="mt-1 text-sm text-gray-900">
+                                        <a href="{{ $letterhead->contact_info['website'] }}" target="_blank" class="text-indigo-600 hover:text-indigo-500">
+                                            {{ $letterhead->contact_info['website'] }}
+                                            <svg class="w-3 h-3 inline ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+                                            </svg>
+                                        </a>
+                                    </dd>
+                                </div>
+                            @endif
+                        </dl>
                     </div>
                 </div>
             @endif
         </div>
 
-        <!-- Sidebar -->
-        <div class="col-lg-4">
-            <!-- Logo -->
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="card-title mb-0">Logo</h5>
+        {{-- Sidebar --}}
+        <div class="space-y-6">
+            {{-- Logo --}}
+            <div class="bg-white rounded-lg shadow overflow-hidden">
+                <div class="px-6 py-4 border-b border-gray-200">
+                    <h3 class="text-lg font-medium text-gray-900">Logo</h3>
                 </div>
-                <div class="card-body text-center">
+                <div class="px-6 py-4">
                     @if($letterhead->logo_path)
-                        <div class="mb-3">
-                            <img src="{{ $letterhead->logo_url }}"
+                        <div class="text-center">
+                            <img src="{{ Storage::url($letterhead->logo_path) }}"
                                  alt="Logo {{ $letterhead->title }}"
-                                 class="img-fluid border rounded"
-                                 style="max-height: 200px;">
+                                 class="max-h-32 max-w-full mx-auto object-contain border rounded">
+                            <p class="mt-2 text-xs text-gray-500">{{ basename($letterhead->logo_path) }}</p>
                         </div>
-                        <div class="text-muted">
-                            <small>{{ basename($letterhead->logo_path) }}</small>
-                        </div>
-                        @can('update', $letterhead)
-                            <form method="POST"
-                                  action="{{ route('admin.letterheads.remove-logo', $letterhead) }}"
-                                  class="mt-2"
-                                  onsubmit="return confirm('Sei sicuro di voler rimuovere il logo?');">
-                                @csrf
-                                @method('DELETE')
-                                <button type="submit" class="btn btn-sm btn-outline-danger">
-                                    <i class="fas fa-trash"></i> Rimuovi Logo
-                                </button>
-                            </form>
-                        @endcan
                     @else
-                        <div class="text-center py-4">
-                            <i class="fas fa-image fa-3x text-muted mb-2"></i>
-                            <p class="text-muted">Nessun logo caricato</p>
+                        <div class="text-center py-8">
+                            <svg class="w-12 h-12 mx-auto text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                            </svg>
+                            <p class="mt-2 text-sm text-gray-500">Nessun logo caricato</p>
                         </div>
                     @endif
                 </div>
             </div>
 
-            <!-- Azioni Rapide -->
-            @can('update', $letterhead)
-                <div class="card mt-4">
-                    <div class="card-header">
-                        <h5 class="card-title mb-0">Azioni Rapide</h5>
+            {{-- Impostazioni --}}
+            @if($letterhead->settings && array_filter($letterhead->settings))
+                <div class="bg-white rounded-lg shadow overflow-hidden">
+                    <div class="px-6 py-4 border-b border-gray-200">
+                        <h3 class="text-lg font-medium text-gray-900">Impostazioni Layout</h3>
                     </div>
-                    <div class="card-body">
-                        <div class="d-grid gap-2">
-                            <!-- Toggle Status -->
-                            <form method="POST" action="{{ route('admin.letterheads.toggle-active', $letterhead) }}">
-                                @csrf
-                                @method('PATCH')
-                                <button type="submit" class="btn btn-outline-secondary w-100">
-                                    @if($letterhead->is_active)
-                                        <i class="fas fa-toggle-off"></i> Disattiva
-                                    @else
-                                        <i class="fas fa-toggle-on"></i> Attiva
-                                    @endif
-                                </button>
-                            </form>
+                    <div class="px-6 py-4 space-y-4">
+                        {{-- Font Settings --}}
+                        @if(!empty($letterhead->settings['font']))
+                            <div>
+                                <h4 class="text-sm font-medium text-gray-700 mb-2">Font</h4>
+                                <dl class="text-sm space-y-1">
+                                    <div class="flex justify-between">
+                                        <dt class="text-gray-500">Famiglia:</dt>
+                                        <dd class="text-gray-900">{{ $letterhead->settings['font']['family'] ?? 'Arial' }}</dd>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <dt class="text-gray-500">Dimensione:</dt>
+                                        <dd class="text-gray-900">{{ $letterhead->settings['font']['size'] ?? 11 }}pt</dd>
+                                    </div>
+                                    <div class="flex justify-between items-center">
+                                        <dt class="text-gray-500">Colore:</dt>
+                                        <dd class="flex items-center space-x-2">
+                                            <span class="w-4 h-4 rounded border" style="background-color: {{ $letterhead->settings['font']['color'] ?? '#000000' }}"></span>
+                                            <span class="text-gray-900">{{ $letterhead->settings['font']['color'] ?? '#000000' }}</span>
+                                        </dd>
+                                    </div>
+                                </dl>
+                            </div>
+                        @endif
 
-                            <!-- Set Default -->
-                            @if(!$letterhead->is_default && $letterhead->is_active)
-                                <form method="POST" action="{{ route('admin.letterheads.set-default', $letterhead) }}">
-                                    @csrf
-                                    @method('PATCH')
-                                    <button type="submit" class="btn btn-outline-warning w-100">
-                                        <i class="fas fa-star"></i> Imposta come Predefinita
-                                    </button>
-                                </form>
-                            @endif
-
-                            <!-- Duplicate -->
-                            @can('create', App\Models\Letterhead::class)
-                                <form method="POST" action="{{ route('admin.letterheads.duplicate', $letterhead) }}">
-                                    @csrf
-                                    <button type="submit" class="btn btn-outline-info w-100">
-                                        <i class="fas fa-copy"></i> Duplica
-                                    </button>
-                                </form>
-                            @endcan
-                        </div>
+                        {{-- Margin Settings --}}
+                        @if(!empty($letterhead->settings['margins']))
+                            <div>
+                                <h4 class="text-sm font-medium text-gray-700 mb-2">Margini (mm)</h4>
+                                <dl class="text-sm space-y-1">
+                                    <div class="flex justify-between">
+                                        <dt class="text-gray-500">Alto:</dt>
+                                        <dd class="text-gray-900">{{ $letterhead->settings['margins']['top'] ?? 20 }}mm</dd>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <dt class="text-gray-500">Basso:</dt>
+                                        <dd class="text-gray-900">{{ $letterhead->settings['margins']['bottom'] ?? 20 }}mm</dd>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <dt class="text-gray-500">Sinistro:</dt>
+                                        <dd class="text-gray-900">{{ $letterhead->settings['margins']['left'] ?? 25 }}mm</dd>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <dt class="text-gray-500">Destro:</dt>
+                                        <dd class="text-gray-900">{{ $letterhead->settings['margins']['right'] ?? 25 }}mm</dd>
+                                    </div>
+                                </dl>
+                            </div>
+                        @endif
                     </div>
                 </div>
-            @endcan
+            @endif
 
-            <!-- Statistiche d'Uso -->
-            <div class="card mt-4">
-                <div class="card-header">
-                    <h5 class="card-title mb-0">Statistiche</h5>
+            {{-- Quick Actions --}}
+            <div class="bg-white rounded-lg shadow overflow-hidden">
+                <div class="px-6 py-4 border-b border-gray-200">
+                    <h3 class="text-lg font-medium text-gray-900">Azioni Rapide</h3>
                 </div>
-                <div class="card-body">
-                    <div class="text-center">
-                        <div class="row">
-                            <div class="col-6">
-                                <div class="border-end">
-                                    <div class="h4 mb-0 text-primary">{{ $letterhead->is_default ? '1' : '0' }}</div>
-                                    <small class="text-muted">Predefinita</small>
-                                </div>
-                            </div>
-                            <div class="col-6">
-                                <div class="h4 mb-0 text-success">{{ $letterhead->is_active ? '1' : '0' }}</div>
-                                <small class="text-muted">Attiva</small>
-                            </div>
-                        </div>
-                    </div>
+                <div class="px-6 py-4 space-y-3">
+                    <a href="{{ route('letterheads.edit', $letterhead) }}"
+                       class="w-full inline-flex justify-center items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                        ✏️ Modifica
+                    </a>
+
+                    <a href="{{ route('letterheads.preview', $letterhead) }}"
+                       class="w-full inline-flex justify-center items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+                       target="_blank">
+                        🔍 Anteprima
+                    </a>
+
+                    @if(!$letterhead->is_default)
+                        <form method="POST" action="{{ route('letterheads.duplicate', $letterhead) }}">
+                            @csrf
+                            <button type="submit"
+                                    class="w-full inline-flex justify-center items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                                📋 Duplica
+                            </button>
+                        </form>
+                    @endif
                 </div>
             </div>
         </div>
     </div>
-
-    <!-- Delete Modal -->
-    @can('delete', $letterhead)
-        @if(!$letterhead->is_default)
-            <div class="row mt-4">
-                <div class="col-12">
-                    <div class="card border-danger">
-                        <div class="card-header bg-danger text-white">
-                            <h5 class="card-title mb-0">Zona Pericolosa</h5>
-                        </div>
-                        <div class="card-body">
-                            <p class="text-muted">
-                                Una volta eliminata, questa letterhead non potrà essere recuperata.
-                                Tutti i documenti che la utilizzano dovranno essere aggiornati manualmente.
-                            </p>
-                            <form method="POST"
-                                  action="{{ route('admin.letterheads.destroy', $letterhead) }}"
-                                  onsubmit="return confirm('ATTENZIONE: Questa azione è irreversibile. Sei sicuro di voler eliminare definitivamente questa letterhead?');">
-                                @csrf
-                                @method('DELETE')
-                                <button type="submit" class="btn btn-danger">
-                                    <i class="fas fa-trash"></i> Elimina Letterhead
-                                </button>
-                            </form>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        @endif
-    @endcan
 </div>
 @endsection

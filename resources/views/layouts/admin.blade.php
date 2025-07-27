@@ -18,19 +18,28 @@
     <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
 </head>
 <body class="font-sans antialiased bg-gray-100">
-    <div x-data="{ open: false }" class="min-h-screen">
+    <div x-data="{ open: false, sidebarOpen: false }" class="min-h-screen">
 
         {{-- ============================================
              🏗️ ADMIN NAVIGATION BAR
              ============================================ --}}
-        <nav class="bg-blue-900 border-b border-blue-800">
+        <nav class="bg-blue-900 border-b border-blue-800 relative z-30">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div class="flex justify-between h-16">
 
                     {{-- Logo & Brand --}}
                     <div class="flex items-center">
+                        {{-- 🍔 HAMBURGER BUTTON - VISIBILE E CONTRASTATO --}}
+                        <button @click="sidebarOpen = !sidebarOpen"
+                                class="md:hidden mr-3 inline-flex items-center justify-center p-2 rounded-md text-white bg-blue-800 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-blue-900 transition-colors duration-200">
+                            <svg class="h-6 w-6" stroke="currentColor" fill="none" viewBox="0 0 24 24">
+                                <path :class="{'hidden': sidebarOpen, 'inline-flex': !sidebarOpen }" class="inline-flex" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                                <path :class="{'hidden': !sidebarOpen, 'inline-flex': sidebarOpen }" class="hidden" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+
                         <div class="flex-shrink-0">
-                            <h1 class="text-white text-xl font-bold">
+                            <h1 class="text-white text-xl font-bold bg-blue-800 px-3 py-1 rounded-md shadow-sm">
                                 🏌️ Golf Admin
                             </h1>
                         </div>
@@ -217,124 +226,165 @@
                                 </div>
                             </div>
                         </div>
-
-                        {{-- Mobile menu button --}}
-                        <button @click="open = !open" class="md:hidden ml-4 inline-flex items-center justify-center p-2 rounded-md text-blue-100 hover:text-white hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-blue-900">
-                            <svg class="h-6 w-6" stroke="currentColor" fill="none" viewBox="0 0 24 24">
-                                <path :class="{'hidden': open, 'inline-flex': !open }" class="inline-flex" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
-                                <path :class="{'hidden': !open, 'inline-flex': open }" class="hidden" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                        </button>
                     </div>
                 </div>
             </div>
-
-            {{-- ============================================
-                 📱 MOBILE NAVIGATION MENU
-                 ============================================ --}}
-            <div x-show="open" class="md:hidden bg-blue-800">
-                <div class="px-2 pt-2 pb-3 space-y-1">
-
-                    {{-- Dashboard --}}
-                    <a href="{{ route('admin.dashboard') }}"
-                        class="block px-3 py-2 rounded-md text-base font-medium transition duration-150 ease-in-out
-                        {{ request()->routeIs('admin.dashboard') ? 'bg-blue-900 text-white' : 'text-blue-100 hover:bg-blue-900 hover:text-white' }}">
-                        🏠 Dashboard
-                    </a>
-
-                    {{-- Tournaments --}}
-                    <a href="{{ route('admin.tournaments.index') }}"
-                        class="block px-3 py-2 rounded-md text-base font-medium transition duration-150 ease-in-out
-                        {{ request()->routeIs('admin.tournaments.*') ? 'bg-blue-900 text-white' : 'text-blue-100 hover:bg-blue-900 hover:text-white' }}">
-                        📋 Tornei
-                    </a>
-
-                    {{-- Calendar --}}
-                    <a href="{{ route('tournaments.calendar') }}"
-                        class="block px-3 py-2 rounded-md text-base font-medium transition duration-150 ease-in-out
-                        {{ request()->routeIs('tournaments.calendar', 'admin.assignments.calendar') ? 'bg-blue-900 text-white' : 'text-blue-100 hover:bg-blue-900 hover:text-white' }}">
-                        📅 Calendario
-                    </a>
-
-                    {{-- Referees --}}
-                    <a href="{{ route('admin.referees.index') }}"
-                        class="block px-3 py-2 rounded-md text-base font-medium transition duration-150 ease-in-out
-                        {{ request()->routeIs('admin.referees.*') ? 'bg-blue-900 text-white' : 'text-blue-100 hover:bg-blue-900 hover:text-white' }}">
-                        👨‍💼 Arbitri
-                    </a>
-
-                    {{-- Assignments --}}
-                    <a href="{{ route('admin.assignments.index') }}"
-                        class="block px-3 py-2 rounded-md text-base font-medium transition duration-150 ease-in-out
-                        {{ request()->routeIs('admin.assignments.*') ? 'bg-blue-900 text-white' : 'text-blue-100 hover:bg-blue-900 hover:text-white' }}">
-                        📝 Assegnazioni
-                    </a>
-
-                    {{-- Clubs --}}
-                    <a href="{{ route('admin.clubs.index') }}"
-                        class="block px-3 py-2 rounded-md text-base font-medium transition duration-150 ease-in-out
-                        {{ request()->routeIs('admin.clubs.*') ? 'bg-blue-900 text-white' : 'text-blue-100 hover:bg-blue-900 hover:text-white' }}">
-                        🏌️ Circoli
-                    </a>
-
-                    {{-- ✅ LETTERHEADS MOBILE MENU --}}
-                    <a href="{{ route('admin.letterheads.index') }}"
-                        class="block px-3 py-2 rounded-md text-base font-medium transition duration-150 ease-in-out
-                        {{ request()->routeIs('admin.letterheads.*') ? 'bg-blue-900 text-white' : 'text-blue-100 hover:bg-blue-900 hover:text-white' }}">
-                        📄 Letterheads
-                    </a>
-
-                    {{-- ✅ STATISTICS MOBILE MENU --}}
-                    <a href="{{ route('admin.statistics.dashboard') }}"
-                        class="block px-3 py-2 rounded-md text-base font-medium transition duration-150 ease-in-out
-                        {{ request()->routeIs('admin.statistics.*') ? 'bg-blue-900 text-white' : 'text-blue-100 hover:bg-blue-900 hover:text-white' }}">
-                        📊 Statistiche
-                    </a>
-
-                    {{-- ✅ NOTIFICATIONS MOBILE - ROUTE FIXATA --}}
-                    <a href="{{ route('admin.notifications.index') }}"
-                        class="block px-3 py-2 rounded-md text-base font-medium transition duration-150 ease-in-out
-                        {{ request()->routeIs('admin.notifications.*') ? 'bg-blue-900 text-white' : 'text-blue-100 hover:bg-blue-900 hover:text-white' }}">
-                        🔔 Notifiche
-                    </a>
-
-                    {{-- ✅ MONITORING MOBILE MENU --}}
-                    <a href="{{ route('admin.monitoring.dashboard') }}"
-                        class="block px-3 py-2 rounded-md text-base font-medium transition duration-150 ease-in-out
-                        {{ request()->routeIs('admin.monitoring.*') ? 'bg-blue-900 text-white' : 'text-blue-100 hover:bg-blue-900 hover:text-white' }}">
-                        🖥️ Monitoraggio
-                    </a>
-
-                    {{-- Communications --}}
-                    <a href="{{ route('admin.communications.index') }}"
-                        class="block px-3 py-2 rounded-md text-base font-medium transition duration-150 ease-in-out
-                        {{ request()->routeIs('admin.communications.*') ? 'bg-blue-900 text-white' : 'text-blue-100 hover:bg-blue-900 hover:text-white' }}">
-                        📢 Comunicazioni
-                    </a>
-
-                    {{-- Letter Templates --}}
-                    <a href="{{ route('admin.letter-templates.index') }}"
-                        class="block px-3 py-2 rounded-md text-base font-medium transition duration-150 ease-in-out
-                        {{ request()->routeIs('admin.letter-templates.*') ? 'bg-blue-900 text-white' : 'text-blue-100 hover:bg-blue-900 hover:text-white' }}">
-                        📝 Template Lettere
-                    </a>
-
-                    {{-- Reports --}}
-                    <a href="{{ route('reports.dashboard') }}"
-                        class="block px-3 py-2 rounded-md text-base font-medium transition duration-150 ease-in-out
-                        {{ request()->routeIs('reports.*') ? 'bg-blue-900 text-white' : 'text-blue-100 hover:bg-blue-900 hover:text-white' }}">
-                        📈 Report
-                    </a>
-
-                    {{-- Documents --}}
-                    <a href="{{ route('admin.documents.index') }}"
-                        class="block px-3 py-2 rounded-md text-base font-medium transition duration-150 ease-in-out
-                        {{ request()->routeIs('admin.documents.*') ? 'bg-blue-900 text-white' : 'text-blue-100 hover:bg-blue-900 hover:text-white' }}">
-                        📁 Documenti
-                    </a>
-                </div>
-            </div>
         </nav>
+
+        {{-- ============================================
+             📱 SIDEBAR MOBILE - COLONNA LATERALE
+             ============================================ --}}
+
+        {{-- Overlay scuro --}}
+        <div x-show="sidebarOpen"
+             x-transition:enter="transition-opacity ease-linear duration-300"
+             x-transition:enter-start="opacity-0"
+             x-transition:enter-end="opacity-100"
+             x-transition:leave="transition-opacity ease-linear duration-300"
+             x-transition:leave-start="opacity-100"
+             x-transition:leave-end="opacity-0"
+             @click="sidebarOpen = false"
+             class="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden"
+             style="display: none;"></div>
+
+        {{-- Sidebar laterale --}}
+        <div x-show="sidebarOpen"
+             x-transition:enter="transform transition ease-in-out duration-300"
+             x-transition:enter-start="-translate-x-full"
+             x-transition:enter-end="translate-x-0"
+             x-transition:leave="transform transition ease-in-out duration-300"
+             x-transition:leave-start="translate-x-0"
+             x-transition:leave-end="-translate-x-full"
+             class="fixed top-0 left-0 h-screen w-80 bg-blue-800 shadow-2xl z-50 md:hidden overflow-y-auto"
+             style="display: none;">
+
+            {{-- Header sidebar --}}
+            <div class="flex items-center justify-between p-4 border-b border-blue-700 bg-blue-900">
+                <h2 class="text-white text-lg font-bold">📋 Menu Navigazione</h2>
+                <button @click="sidebarOpen = false" class="text-white hover:text-blue-200 p-1">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+
+            {{-- Menu items --}}
+            <div class="px-3 py-4 space-y-2">
+
+                {{-- Dashboard --}}
+                <a href="{{ route('admin.dashboard') }}"
+                    class="flex items-center px-4 py-3 rounded-lg text-base font-medium transition duration-200 ease-in-out
+                    {{ request()->routeIs('admin.dashboard') ? 'bg-blue-900 text-white shadow-lg' : 'text-blue-100 hover:bg-blue-700 hover:text-white' }}">
+                    <span class="mr-4 text-xl">🏠</span>
+                    <span>Dashboard</span>
+                </a>
+
+                {{-- Tournaments --}}
+                <a href="{{ route('admin.tournaments.index') }}"
+                    class="flex items-center px-4 py-3 rounded-lg text-base font-medium transition duration-200 ease-in-out
+                    {{ request()->routeIs('admin.tournaments.*') ? 'bg-blue-900 text-white shadow-lg' : 'text-blue-100 hover:bg-blue-700 hover:text-white' }}">
+                    <span class="mr-4 text-xl">📋</span>
+                    <span>Tornei</span>
+                </a>
+
+                {{-- Calendar --}}
+                <a href="{{ route('tournaments.calendar') }}"
+                    class="flex items-center px-4 py-3 rounded-lg text-base font-medium transition duration-200 ease-in-out
+                    {{ request()->routeIs('tournaments.calendar', 'admin.assignments.calendar') ? 'bg-blue-900 text-white shadow-lg' : 'text-blue-100 hover:bg-blue-700 hover:text-white' }}">
+                    <span class="mr-4 text-xl">📅</span>
+                    <span>Calendario</span>
+                </a>
+
+                {{-- Referees --}}
+                <a href="{{ route('admin.referees.index') }}"
+                    class="flex items-center px-4 py-3 rounded-lg text-base font-medium transition duration-200 ease-in-out
+                    {{ request()->routeIs('admin.referees.*') ? 'bg-blue-900 text-white shadow-lg' : 'text-blue-100 hover:bg-blue-700 hover:text-white' }}">
+                    <span class="mr-4 text-xl">👨‍💼</span>
+                    <span>Arbitri</span>
+                </a>
+
+                {{-- Assignments --}}
+                <a href="{{ route('admin.assignments.index') }}"
+                    class="flex items-center px-4 py-3 rounded-lg text-base font-medium transition duration-200 ease-in-out
+                    {{ request()->routeIs('admin.assignments.*') ? 'bg-blue-900 text-white shadow-lg' : 'text-blue-100 hover:bg-blue-700 hover:text-white' }}">
+                    <span class="mr-4 text-xl">📝</span>
+                    <span>Assegnazioni</span>
+                </a>
+
+                {{-- Clubs --}}
+                <a href="{{ route('admin.clubs.index') }}"
+                    class="flex items-center px-4 py-3 rounded-lg text-base font-medium transition duration-200 ease-in-out
+                    {{ request()->routeIs('admin.clubs.*') ? 'bg-blue-900 text-white shadow-lg' : 'text-blue-100 hover:bg-blue-700 hover:text-white' }}">
+                    <span class="mr-4 text-xl">🏌️</span>
+                    <span>Circoli</span>
+                </a>
+
+                {{-- Letterheads --}}
+                <a href="{{ route('admin.letterheads.index') }}"
+                    class="flex items-center px-4 py-3 rounded-lg text-base font-medium transition duration-200 ease-in-out
+                    {{ request()->routeIs('admin.letterheads.*') ? 'bg-blue-900 text-white shadow-lg' : 'text-blue-100 hover:bg-blue-700 hover:text-white' }}">
+                    <span class="mr-4 text-xl">📄</span>
+                    <span>Letterheads</span>
+                </a>
+
+                {{-- Statistics --}}
+                <a href="{{ route('admin.statistics.dashboard') }}"
+                    class="flex items-center px-4 py-3 rounded-lg text-base font-medium transition duration-200 ease-in-out
+                    {{ request()->routeIs('admin.statistics.*') ? 'bg-blue-900 text-white shadow-lg' : 'text-blue-100 hover:bg-blue-700 hover:text-white' }}">
+                    <span class="mr-4 text-xl">📊</span>
+                    <span>Statistiche</span>
+                </a>
+
+                {{-- Notifications --}}
+                <a href="{{ route('admin.notifications.index') }}"
+                    class="flex items-center px-4 py-3 rounded-lg text-base font-medium transition duration-200 ease-in-out
+                    {{ request()->routeIs('admin.notifications.*') ? 'bg-blue-900 text-white shadow-lg' : 'text-blue-100 hover:bg-blue-700 hover:text-white' }}">
+                    <span class="mr-4 text-xl">🔔</span>
+                    <span>Notifiche</span>
+                </a>
+
+                {{-- Monitoring --}}
+                <a href="{{ route('admin.monitoring.dashboard') }}"
+                    class="flex items-center px-4 py-3 rounded-lg text-base font-medium transition duration-200 ease-in-out
+                    {{ request()->routeIs('admin.monitoring.*') ? 'bg-blue-900 text-white shadow-lg' : 'text-blue-100 hover:bg-blue-700 hover:text-white' }}">
+                    <span class="mr-4 text-xl">🖥️</span>
+                    <span>Monitoraggio</span>
+                </a>
+
+                {{-- Communications --}}
+                <a href="{{ route('admin.communications.index') }}"
+                    class="flex items-center px-4 py-3 rounded-lg text-base font-medium transition duration-200 ease-in-out
+                    {{ request()->routeIs('admin.communications.*') ? 'bg-blue-900 text-white shadow-lg' : 'text-blue-100 hover:bg-blue-700 hover:text-white' }}">
+                    <span class="mr-4 text-xl">📢</span>
+                    <span>Comunicazioni</span>
+                </a>
+
+                {{-- Letter Templates --}}
+                <a href="{{ route('admin.letter-templates.index') }}"
+                    class="flex items-center px-4 py-3 rounded-lg text-base font-medium transition duration-200 ease-in-out
+                    {{ request()->routeIs('admin.letter-templates.*') ? 'bg-blue-900 text-white shadow-lg' : 'text-blue-100 hover:bg-blue-700 hover:text-white' }}">
+                    <span class="mr-4 text-xl">📝</span>
+                    <span>Template Lettere</span>
+                </a>
+
+                {{-- Reports --}}
+                <a href="{{ route('reports.dashboard') }}"
+                    class="flex items-center px-4 py-3 rounded-lg text-base font-medium transition duration-200 ease-in-out
+                    {{ request()->routeIs('reports.*') ? 'bg-blue-900 text-white shadow-lg' : 'text-blue-100 hover:bg-blue-700 hover:text-white' }}">
+                    <span class="mr-4 text-xl">📈</span>
+                    <span>Report</span>
+                </a>
+
+                {{-- Documents --}}
+                <a href="{{ route('admin.documents.index') }}"
+                    class="flex items-center px-4 py-3 rounded-lg text-base font-medium transition duration-200 ease-in-out
+                    {{ request()->routeIs('admin.documents.*') ? 'bg-blue-900 text-white shadow-lg' : 'text-blue-100 hover:bg-blue-700 hover:text-white' }}">
+                    <span class="mr-4 text-xl">📁</span>
+                    <span>Documenti</span>
+                </a>
+
+            </div>
+        </div>
 
         {{-- ============================================
              📄 MAIN CONTENT AREA
