@@ -5,50 +5,26 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Letterhead;
 use App\Models\Zone;
-use App\Models\User; // ✅ AGGIUNGI
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Gate; // ✅ AGGIUNGI
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
-use Illuminate\Foundation\Auth\Access\AuthorizesRequests; // ✅ AGGIUNGI
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 
 class LetterheadController extends Controller
 {
-    use AuthorizesRequests; // ✅ AGGIUNGI questo trait per $this->authorize()
-
-    // /**
-    //  * Constructor con middleware
-    //  */
-    // public function __construct()
-    // {
-    //     // Middleware di autorizzazione base
-    //     $this->middleware('auth');
-
-    //     // Middleware personalizzato per admin (definito sotto)
-    //     $this->middleware(function ($request, $next) {
-    //         $user = auth()->user();
-
-    //         // Solo admin possono gestire letterheads (tranne visualizzazioni)
-    //         $allowedActions = ['show', 'preview', 'getLetterheads'];
-    //         $currentAction = $request->route()->getActionMethod();
-
-    //         if (!in_array($currentAction, $allowedActions)) {
-    //             if (!in_array($user->user_type, ['super_admin', 'national_admin', 'zone_admin'])) {
-    //                 abort(403, 'Non autorizzato a gestire letterheads.');
-    //             }
-    //         }
-
-    //         return $next($request);
-    //     });
-    // }
+    use AuthorizesRequests;
 
     /**
      * Display a listing of letterheads
      */
     public function index(Request $request)
     {
+        // Verifica autorizzazione
+        $this->authorize('viewAny', Letterhead::class);
+
         $query = Letterhead::with(['zone', 'updatedBy']);
 
         // Filtro ricerca
@@ -78,15 +54,16 @@ class LetterheadController extends Controller
         }
 
         // Scope per zone (se l'utente non è super admin)
-        if (auth()->user()->user_type !== 'super_admin' && auth()->user()->zone_id) {
-            $query->where(function ($q) {
-                $q->where('zone_id', auth()->user()->zone_id)
+        $user = auth()->user();
+        if ($user->user_type !== 'super_admin' && $user->zone_id) {
+            $query->where(function ($q) use ($user) {
+                $q->where('zone_id', $user->zone_id)
                   ->orWhereNull('zone_id'); // Letterheads globali
             });
         }
 
         $letterheads = $query->latest()->paginate(15)->withQueryString();
-        $zones = Zone::where('is_active', true)->orderBy('name')->get(); // ✅ FIX: active() scope
+        $zones = Zone::where('is_active', true)->orderBy('name')->get();
 
         return view('admin.letterheads.index', compact('letterheads', 'zones'));
     }
@@ -96,11 +73,14 @@ class LetterheadController extends Controller
      */
     public function create()
     {
-        $zones = Zone::where('is_active', true)->orderBy('name')->get(); // ✅ FIX: active() scope
+        $this->authorize('create', Letterhead::class);
+
+        $zones = Zone::where('is_active', true)->orderBy('name')->get();
+        $user = auth()->user();
 
         // Se l'utente non è super admin, limitare alle sue zone
-        if (auth()->user()->user_type !== 'super_admin' && auth()->user()->zone_id) {
-            $zones = $zones->where('id', auth()->user()->zone_id);
+        if ($user->user_type !== 'super_admin' && $user->zone_id) {
+            $zones = $zones->where('id', $user->zone_id);
         }
 
         return view('admin.letterheads.create', compact('zones'));
@@ -111,6 +91,8 @@ class LetterheadController extends Controller
      */
     public function store(Request $request)
     {
+        $this->authorize('create', Letterhead::class);
+
         $validated = $request->validate([
             'title' => 'required|string|max:255',
             'description' => 'nullable|string|max:500',
@@ -118,10 +100,11 @@ class LetterheadController extends Controller
                 'nullable',
                 Rule::exists('zones', 'id'),
                 function ($attribute, $value, $fail) {
+                    $user = auth()->user();
                     // Se non è super admin, può creare solo per la sua zona
-                    if (auth()->user()->user_type !== 'super_admin' &&
-                        auth()->user()->zone_id &&
-                        $value != auth()->user()->zone_id) {
+                    if ($user->user_type !== 'super_admin' &&
+                        $user->zone_id &&
+                        $value != $user->zone_id) {
                         $fail('Non puoi creare letterheads per altre zone.');
                     }
                 },
@@ -172,7 +155,7 @@ class LetterheadController extends Controller
 
         $letterhead = Letterhead::create($validated);
 
-        // Set as default if requested (usa metodo sicuro)
+        // Set as default if requested
         if ($validated['is_default'] ?? false) {
             $this->setLetterheadAsDefault($letterhead);
         }
@@ -187,13 +170,7 @@ class LetterheadController extends Controller
      */
     public function show(Letterhead $letterhead)
     {
-        // ✅ Usa try-catch per gestire errori di autorizzazione
-        try {
-            $this->authorize('view', $letterhead);
-        } catch (\Illuminate\Auth\Access\AuthorizationException $e) {
-            abort(403, 'Non autorizzato a visualizzare questa letterhead.');
-        }
-
+        $this->authorize('view', $letterhead);
         $letterhead->load(['zone', 'updatedBy']);
 
         return view('admin.letterheads.show', compact('letterhead'));
@@ -204,17 +181,14 @@ class LetterheadController extends Controller
      */
     public function edit(Letterhead $letterhead)
     {
-        try {
-            $this->authorize('update', $letterhead);
-        } catch (\Illuminate\Auth\Access\AuthorizationException $e) {
-            abort(403, 'Non autorizzato a modificare questa letterhead.');
-        }
+        $this->authorize('update', $letterhead);
 
         $zones = Zone::where('is_active', true)->orderBy('name')->get();
+        $user = auth()->user();
 
         // Se l'utente non è super admin, limitare alle sue zone
-        if (auth()->user()->user_type !== 'super_admin' && auth()->user()->zone_id) {
-            $zones = $zones->where('id', auth()->user()->zone_id);
+        if ($user->user_type !== 'super_admin' && $user->zone_id) {
+            $zones = $zones->where('id', $user->zone_id);
         }
 
         return view('admin.letterheads.edit', compact('letterhead', 'zones'));
@@ -225,11 +199,7 @@ class LetterheadController extends Controller
      */
     public function update(Request $request, Letterhead $letterhead)
     {
-        try {
-            $this->authorize('update', $letterhead);
-        } catch (\Illuminate\Auth\Access\AuthorizationException $e) {
-            abort(403, 'Non autorizzato a modificare questa letterhead.');
-        }
+        $this->authorize('update', $letterhead);
 
         $validated = $request->validate([
             'title' => 'required|string|max:255',
@@ -238,10 +208,10 @@ class LetterheadController extends Controller
                 'nullable',
                 Rule::exists('zones', 'id'),
                 function ($attribute, $value, $fail) {
-                    // Se non è super admin, può modificare solo la sua zona
-                    if (auth()->user()->user_type !== 'super_admin' &&
-                        auth()->user()->zone_id &&
-                        $value != auth()->user()->zone_id) {
+                    $user = auth()->user();
+                    if ($user->user_type !== 'super_admin' &&
+                        $user->zone_id &&
+                        $value != $user->zone_id) {
                         $fail('Non puoi modificare letterheads per altre zone.');
                     }
                 },
@@ -302,11 +272,7 @@ class LetterheadController extends Controller
      */
     public function destroy(Letterhead $letterhead)
     {
-        try {
-            $this->authorize('delete', $letterhead);
-        } catch (\Illuminate\Auth\Access\AuthorizationException $e) {
-            abort(403, 'Non autorizzato a eliminare questa letterhead.');
-        }
+        $this->authorize('delete', $letterhead);
 
         // Cannot delete default letterhead
         if ($letterhead->is_default) {
@@ -330,10 +296,7 @@ class LetterheadController extends Controller
      */
     public function toggleActive(Letterhead $letterhead)
     {
-        // Controllo manuale autorizzazione (fallback se Policy non funziona)
-        if (!$this->canManageLetterhead($letterhead)) {
-            abort(403, 'Non autorizzato a modificare questa letterhead.');
-        }
+        $this->authorize('update', $letterhead);
 
         // Cannot deactivate default letterhead
         if ($letterhead->is_default && $letterhead->is_active) {
@@ -355,9 +318,7 @@ class LetterheadController extends Controller
      */
     public function setDefault(Letterhead $letterhead)
     {
-        if (!$this->canManageLetterhead($letterhead)) {
-            abort(403, 'Non autorizzato a modificare questa letterhead.');
-        }
+        $this->authorize('update', $letterhead);
 
         if (!$letterhead->is_active) {
             return back()->with('error', 'La letterhead deve essere attiva per essere impostata come predefinita.');
@@ -373,9 +334,8 @@ class LetterheadController extends Controller
      */
     public function duplicate(Letterhead $letterhead)
     {
-        if (!$this->canViewLetterhead($letterhead) || !$this->canCreateLetterheads()) {
-            abort(403, 'Non autorizzato a duplicare questa letterhead.');
-        }
+        $this->authorize('view', $letterhead);
+        $this->authorize('create', Letterhead::class);
 
         $clone = $this->cloneLetterhead($letterhead, [
             'title' => $letterhead->title . ' (Copia)',
@@ -394,9 +354,7 @@ class LetterheadController extends Controller
      */
     public function preview(Letterhead $letterhead)
     {
-        if (!$this->canViewLetterhead($letterhead)) {
-            abort(403, 'Non autorizzato a visualizzare questa letterhead.');
-        }
+        $this->authorize('view', $letterhead);
 
         // Generate sample content for preview
         $sampleData = [
@@ -416,9 +374,7 @@ class LetterheadController extends Controller
      */
     public function uploadLogo(Request $request)
     {
-        if (!$this->canCreateLetterheads()) {
-            return response()->json(['error' => 'Non autorizzato'], 403);
-        }
+        $this->authorize('create', Letterhead::class);
 
         $request->validate([
             'logo' => 'required|image|mimes:jpeg,png,jpg,gif,svg|max:2048',
@@ -438,9 +394,7 @@ class LetterheadController extends Controller
      */
     public function removeLogo(Letterhead $letterhead)
     {
-        if (!$this->canManageLetterhead($letterhead)) {
-            abort(403, 'Non autorizzato a modificare questa letterhead.');
-        }
+        $this->authorize('update', $letterhead);
 
         if ($letterhead->logo_path && Storage::disk('public')->exists($letterhead->logo_path)) {
             Storage::disk('public')->delete($letterhead->logo_path);
@@ -459,7 +413,7 @@ class LetterheadController extends Controller
      */
     public function getLetterheads(Request $request)
     {
-        $query = Letterhead::where('is_active', true); // ✅ FIX: active() scope
+        $query = Letterhead::where('is_active', true);
 
         if ($request->filled('zone_id')) {
             $query->where(function ($q) use ($request) {
@@ -490,54 +444,6 @@ class LetterheadController extends Controller
     // =====================================
     // METODI HELPER PRIVATI
     // =====================================
-
-    /**
-     * Controlla se l'utente può gestire la letterhead
-     */
-    private function canManageLetterhead(Letterhead $letterhead): bool
-    {
-        $user = auth()->user();
-
-        if ($user->user_type === 'super_admin') {
-            return true;
-        }
-
-        if ($user->user_type === 'national_admin') {
-            return true;
-        }
-
-        if ($user->user_type === 'zone_admin' && $user->zone_id) {
-            return $letterhead->zone_id === $user->zone_id;
-        }
-
-        return false;
-    }
-
-    /**
-     * Controlla se l'utente può visualizzare la letterhead
-     */
-    private function canViewLetterhead(Letterhead $letterhead): bool
-    {
-        $user = auth()->user();
-
-        if (in_array($user->user_type, ['super_admin', 'national_admin'])) {
-            return true;
-        }
-
-        if ($user->zone_id) {
-            return $letterhead->zone_id === $user->zone_id || $letterhead->zone_id === null;
-        }
-
-        return false;
-    }
-
-    /**
-     * Controlla se l'utente può creare letterheads
-     */
-    private function canCreateLetterheads(): bool
-    {
-        return in_array(auth()->user()->user_type, ['super_admin', 'national_admin', 'zone_admin']);
-    }
 
     /**
      * Imposta letterhead come predefinita (metodo sicuro)

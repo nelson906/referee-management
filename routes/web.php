@@ -425,6 +425,35 @@ Route::prefix('letterheads')->name('letterheads.')->group(function () {
     Route::get('/create', [LetterheadController::class, 'create'])->name('create');
     // ... altre route
 });
+// Routes protette da autenticazione + middleware admin
+Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(function () {
+
+    // Letterheads Routes
+    Route::resource('letterheads', LetterheadController::class);
+
+    // Extra letterhead routes
+    Route::patch('letterheads/{letterhead}/toggle-active', [LetterheadController::class, 'toggleActive'])
+        ->name('letterheads.toggle-active');
+
+    Route::patch('letterheads/{letterhead}/set-default', [LetterheadController::class, 'setDefault'])
+        ->name('letterheads.set-default');
+
+    Route::post('letterheads/{letterhead}/duplicate', [LetterheadController::class, 'duplicate'])
+        ->name('letterheads.duplicate');
+
+    Route::get('letterheads/{letterhead}/preview', [LetterheadController::class, 'preview'])
+        ->name('letterheads.preview');
+
+    Route::post('letterheads/upload-logo', [LetterheadController::class, 'uploadLogo'])
+        ->name('letterheads.upload-logo');
+
+    Route::delete('letterheads/{letterhead}/remove-logo', [LetterheadController::class, 'removeLogo'])
+        ->name('letterheads.remove-logo');
+
+    // AJAX routes
+    Route::get('api/letterheads', [LetterheadController::class, 'getLetterheads'])
+        ->name('letterheads.api.get');
+});
 
 // ✅ STATISTICS
 Route::prefix('statistics')->name('statistics.')->group(function () {
