@@ -275,9 +275,9 @@ class CreateGolfAdmin extends Command
     private function generateAdminName(Zone $zone, string $userType): string
     {
         if ($userType === 'national_admin') {
-            return "Amministratore Nazionale {$zone->code}";
+            return "{$zone->code}";
         } else {
-            return "Amministratore {$zone->name}";
+            return "{$zone->code}";
         }
     }
 

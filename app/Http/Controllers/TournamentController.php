@@ -342,12 +342,33 @@ class TournamentController extends Controller
     {
         if ($isAdmin) {
             // Admin: colore basato su CATEGORIA TORNEO (logica originale)
-            return match ($tournament->tournamentType->name ?? 'default') {
-                'Categoria A' => '#FF6B6B',  // Rosso
-                'Categoria B' => '#4ECDC4',  // Teal
-                'Categoria C' => '#45B7D1',  // Blu
-                'Categoria D' => '#96CEB4',  // Verde
-                default => '#3B82F6'         // Blu default
+        // Usa short_name per mappatura più efficiente
+        $shortName = $tournament->tournamentType->short_name ?? 'default';
+
+        return match ($shortName) {
+            // 🟢 GARE GIOVANILI (Verde chiaro)
+            'G12', 'G14', 'G16', 'G18' => '#96CEB4',  // Verde - Gare Giovanili
+            'S14', 'T18' => '#96CEB4',                 // Verde - Circuiti Giovanili
+            'USK' => '#96CEB4',                        // Verde - US Kids
+
+            // 🔵 GARE NORMALI (Blu)
+            'GN36', 'GN54', 'GN72' => '#45B7D1',      // Blu - Gare normali
+            'MP' => '#45B7D1',                         // Blu - Match Play
+            'EVEN' => '#45B7D1',                       // Blu - Eventi
+
+            // 🟡 TROFEI (Teal)
+            'TG', 'TGF' => '#4ECDC4',                  // Teal - Trofei Giovanili
+            'TR', 'TNZ' => '#4ECDC4',                  // Teal - Trofei Regionali/Nazionali
+
+            // 🔴 CAMPIONATI (Rosso)
+            'CR', 'CNZ', 'CI' => '#FF6B6B',           // Rosso - Campionati
+
+            // 🟠 PROFESSIONALI (Amber)
+            'PRO', 'PATR' => '#F59E0B',               // Amber - Professionistiche/Patrocinate
+            'GRS' => '#F59E0B',                        // Amber - Regolamento Speciale
+
+            // 🔵 DEFAULT
+            default => '#3B82F6'                       // Blu default
             };
         } else {
             // Referee: colore basato su personal status

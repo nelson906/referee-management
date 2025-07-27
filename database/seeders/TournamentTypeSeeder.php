@@ -187,12 +187,11 @@ class TournamentTypeSeeder extends Seeder
             [
                 'name' => 'Trofeo Regionale',
                 'short_name' => 'TR',
-                'level' => 'zonale',
                 'description' => '',
                 'is_national' => false,
                 'priority_level' => 1,
                 'active' => true,
-                'zonale',
+                'level' => 'zonale',
                 'min_referees' => 2,
                 'max_referees' => 5
             ],
@@ -216,9 +215,9 @@ class TournamentTypeSeeder extends Seeder
                 'is_national' => false,
                 'priority_level' => 1,
                 'active' => true,
-                ' level' => 'nazionale',
+                'level' => 'nazionale',
                 'min_referees' => 3,
-                'ma_(referees' => 5
+                'max_referees' => 5
             ],
 
             [
@@ -370,22 +369,22 @@ class TournamentTypeSeeder extends Seeder
 
         // Verifica numero totale
         $totalTypes = TournamentType::count();
-        if ($totalTypes !== 6) {
-            $this->command->error("❌ Errore: dovrebbero esserci 6 tipologie, trovate {$totalTypes}");
+        if ($totalTypes !== 22) {
+            $this->command->error("❌ Errore: dovrebbero esserci 22 tipologie, trovate {$totalTypes}");
             return;
         }
 
         // Verifica categorie zonali
         $zonalTypes = TournamentType::where('is_national', false)->count();
-        if ($zonalTypes !== 3) {
-            $this->command->error("❌ Errore: dovrebbero esserci 3 categorie zonali, trovate {$zonalTypes}");
+        if ($zonalTypes !== 18) {
+            $this->command->error("❌ Errore: dovrebbero esserci 18 categorie zonali, trovate {$zonalTypes}");
             return;
         }
 
         // Verifica categorie nazionali
         $nationalTypes = TournamentType::where('is_national', true)->count();
-        if ($nationalTypes !== 3) {
-            $this->command->error("❌ Errore: dovrebbero esserci 3 categorie nazionali, trovate {$nationalTypes}");
+        if ($nationalTypes !== 4) {
+            $this->command->error("❌ Errore: dovrebbero esserci 4 categorie nazionali, trovate {$nationalTypes}");
             return;
         }
 

@@ -61,10 +61,10 @@ class ZoneSeeder extends Seeder
     {
         $this->command->info('🔍 Validando integrità zone...');
 
-        // Verifica che ci siano esattamente 7 zone
+        // Verifica che ci siano esattamente 8 zone
         $zoneCount = Zone::count();
-        if ($zoneCount !== 7) {
-            $this->command->error("❌ Errore: dovrebbero esserci 7 zone, trovate {$zoneCount}");
+        if ($zoneCount !== 8) {
+            $this->command->error("❌ Errore: dovrebbero esserci 8 zone, trovate {$zoneCount}");
             return;
         }
 

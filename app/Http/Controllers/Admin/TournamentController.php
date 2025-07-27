@@ -100,6 +100,19 @@ class TournamentController extends Controller
                 $q->where('zone_id', $user->zone_id);
             })
             ->get();
+// === DEBUG START ===
+\Log::info('=== DEBUG TOURNAMENT TYPES ===');
+$allTypes = \App\Models\TournamentType::all();
+foreach ($allTypes as $type) {
+    \Log::info("ID: {$type->id} | Name: '{$type->name}' | Short: {$type->short_name}");
+}
+
+\Log::info('=== DEBUG TOURNAMENTS WITH TYPES ===');
+foreach ($tournaments->take(5) as $tournament) {
+    $typeName = $tournament->tournamentType->name ?? 'NULL';
+    \Log::info("Tournament: {$tournament->name} | Type: '{$typeName}'");
+}
+// === DEBUG END ===
 
         // Get zones for filter
         $zones = $isNationalAdmin
@@ -132,8 +145,8 @@ class TournamentController extends Controller
                 'title' => $tournament->name,
                 'start' => $tournament->start_date->format('Y-m-d'),
                 'end' => $tournament->end_date->addDay()->format('Y-m-d'),
-                'color' => '#3b82f6', // Default color
-                'borderColor' => '#1e40af',
+'color' => $this->getAdminEventColor($tournament),
+'borderColor' => $this->getAdminBorderColor($tournament),
                 'extendedProps' => [
                     'club' => $tournament->club->name ?? 'N/A',
                     'zone' => $tournament->zone->name ?? 'N/A',
@@ -552,5 +565,121 @@ class TournamentController extends Controller
     protected function checkAccess($tournament): void
     {
         $this->checkTournamentAccess($tournament);
+    }
+
+    // ===============================================
+    // 🎨 COLOR LOGIC PER ADMIN CALENDAR
+    // ===============================================
+
+    /**
+     * 🎨 Get event color for admin calendar - NOMI REALI DAL DATABASE
+     */
+    private function getAdminEventColor($tournament): string
+    {
+        // Usa short_name per mappatura più efficiente
+        $shortName = $tournament->tournamentType->short_name ?? 'default';
+        return match ($shortName) {
+            // 🟢 GARE GIOVANILI (Verde chiaro)
+            'G12', 'G14', 'G16', 'G18' => '#96CEB4',  // Verde - Gare Giovanili
+            'S14', 'T18' => '#96CEB4',                 // Verde - Circuiti Giovanili
+            'USK' => '#96CEB4',                        // Verde - US Kids
+
+            // 🔵 GARE NORMALI (Blu)
+            'GN36', 'GN54', 'GN72' => '#45B7D1',      // Blu - Gare normali
+            'MP' => '#45B7D1',                         // Blu - Match Play
+            'EVEN' => '#45B7D1',                       // Blu - Eventi
+
+            // 🟡 TROFEI (Teal)
+            'TG', 'TGF' => '#4ECDC4',                  // Teal - Trofei Giovanili
+            'TR', 'TNZ' => '#4ECDC4',                  // Teal - Trofei Regionali/Nazionali
+
+            // 🔴 CAMPIONATI (Rosso)
+            'CR', 'CNZ', 'CI' => '#FF6B6B',           // Rosso - Campionati
+
+            // 🟠 PROFESSIONALI (Amber)
+            'PRO', 'PATR' => '#F59E0B',               // Amber - Professionistiche/Patrocinate
+            'GRS' => '#F59E0B',                        // Amber - Regolamento Speciale
+
+            // 🔵 DEFAULT
+            default => '#3B82F6'                       // Blu default
+        };
+    }
+
+// ============================================
+// 🔍 METODO DEBUG (aggiungere temporaneamente)
+// ============================================
+
+    /**
+     * 🔍 Debug method - aggiungere temporaneamente per vedere i nomi effettivi
+     */
+    private function debugTournamentTypes()
+    {
+        $types = \App\Models\TournamentType::all();
+        \Log::info('=== DEBUG TOURNAMENT TYPES ===');
+        foreach ($types as $type) {
+            \Log::info("ID: {$type->id} | Name: '{$type->name}' | Short: {$type->short_name}");
+        }
+
+        // Debug also tournaments with their types
+        $tournaments = \App\Models\Tournament::with('tournamentType')->take(5)->get();
+        \Log::info('=== DEBUG TOURNAMENTS ===');
+        foreach ($tournaments as $tournament) {
+            $typeName = $tournament->tournamentType->name ?? 'NULL';
+            \Log::info("Tournament: {$tournament->name} | Type: '{$typeName}'");
+        }
+    }
+    /**
+     * 🎨 Get border color for admin calendar
+     */
+    private function getAdminBorderColor($tournament): string
+    {
+        // Admin border: basato su STATUS TORNEO
+        return match ($tournament->status) {
+            'draft' => '#F59E0B',       // Amber - Draft
+            'open' => '#10B981',        // Green - Published/Open
+            'closed' => '#6B7280',      // Gray - Closed
+            'assigned' => '#059669',    // Dark Green - Assigned
+            'completed' => '#374151',   // Dark Gray - Completed
+            'cancelled' => '#EF4444',   // Red - Cancelled
+            default => '#10B981'        // Green default
+        };
+    }
+
+    /**
+     * 🎨 Calculate management priority
+     */
+    private function getManagementPriority($tournament): string
+    {
+        try {
+            $availabilities = $tournament->availabilities()->count();
+            $assignments = $tournament->assignments()->count();
+            $required = $tournament->required_referees ?? $tournament->tournamentType->min_referees ?? 1;
+
+            // Calcola giorni fino alla deadline
+            $daysUntilDeadline = 999;
+            if ($tournament->availability_deadline) {
+                $daysUntilDeadline = $tournament->availability_deadline->diffInDays(now(), false);
+            }
+
+            // Urgent: Missing referees or overdue deadline
+            if ($daysUntilDeadline < 0 || $assignments < $required) {
+                return 'urgent';
+            }
+
+            // Complete: Fully staffed
+            if ($assignments >= $required) {
+                return 'complete';
+            }
+
+            // In progress: Has some availability/assignments but not complete
+            if ($availabilities > 0 || $assignments > 0) {
+                return 'in_progress';
+            }
+
+            // Open: Ready for availability submissions
+            return 'open';
+        } catch (\Exception $e) {
+            return 'unknown';
+        }
     }
 }
