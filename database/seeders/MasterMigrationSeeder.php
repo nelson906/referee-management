@@ -51,6 +51,7 @@ class MasterMigrationSeeder extends Seeder
         $this->command->info('✅ Database verificato, procedo con migrazione USER CENTRIC...');
 
         $this->createZones();           // Manuale: SZR1-SZR7, CRC
+        $this->createAdminUsers();      // ✅ AGGIUNTO: Crea admin per ogni zona
         $this->createTournamentTypes(); // Manuale: defaults con short_name
         $this->migrateArbitri();        // arbitri → users + referees
         $this->migrateCircoli();        // circoli → clubs
@@ -158,6 +159,138 @@ class MasterMigrationSeeder extends Seeder
         $this->stats['zones'] = count($zones);
         $this->command->info("✅ Create {$this->stats['zones']} zone");
     }
+
+    /**
+     * Crea admin zonali e nazionali (SZR1-SZR7 admin, CRC national_admin)
+     * Da chiamare DOPO createZones() nel metodo run()
+     */
+    private function createAdminUsers()
+    {
+        $this->command->info('👤 Creazione utenti admin zonali e nazionali...');
+
+        // Controlla se esistono già admin
+        $existingAdmins = DB::table('users')
+            ->whereIn('user_type', ['admin', 'national_admin', 'super_admin'])
+            ->count();
+
+        if ($existingAdmins > 0) {
+            $this->command->info("✅ Admin già esistenti ({$existingAdmins} trovati)");
+            return;
+        }
+
+        $zones = DB::table('zones')->get();
+        $createdCount = 0;
+
+        foreach ($zones as $zone) {
+            // Determina il tipo di admin basato sulla zona
+            $userType = $zone->is_national ? 'national_admin' : 'admin';
+
+            // Email unica per la zona
+            $email = strtolower($zone->code) . '@federgolf.it';
+
+            // Nome admin basato sulla zona
+            $adminName = $zone->is_national
+                ? "Amministratore Nazionale {$zone->code}"
+                : "Amministratore {$zone->name}";
+
+            $adminData = [
+                'name' => $adminName,
+                'email' => $email,
+                'password' => bcrypt($this->generateAdminPassword($zone->code)),
+                'user_type' => $userType,
+                'zone_id' => $zone->id,
+                'email_verified_at' => now(),
+                'is_active' => true,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ];
+
+            $success = $this->dryRunInsert(
+                'users',
+                $adminData,
+                "Creazione {$userType}: {$adminName} ({$zone->code})"
+            );
+
+            if ($success) {
+                $createdCount++;
+
+                if (!$this->dryRun) {
+                    $this->command->info("  ✅ {$adminName}");
+                    $this->command->line("     Email: {$email}");
+                    $this->command->line("     Password temporanea: " . $this->getReadablePassword($zone->code));
+                }
+            }
+        }
+
+        // Crea SUPER ADMIN se non esiste
+        $this->createSuperAdmin();
+
+        $this->stats['admin_users'] = $createdCount;
+        $this->command->info("✅ Creati {$createdCount} admin users");
+
+        if (!$this->dryRun) {
+            $this->command->warn("⚠️  IMPORTANTE: Cambiare le password temporanee al primo accesso!");
+        }
+    }
+
+    /**
+     * Crea Super Admin se non esiste
+     */
+    private function createSuperAdmin()
+    {
+        if (!$this->dryRun) {
+            $existingSuperAdmin = DB::table('users')
+                ->where('user_type', 'super_admin')
+                ->first();
+
+            if ($existingSuperAdmin) {
+                $this->command->info("✅ Super Admin già esistente: {$existingSuperAdmin->name}");
+                return;
+            }
+        }
+
+        $superAdminData = [
+            'name' => 'Super Amministratore FIG',
+            'email' => 'superadmin@federgolf.it',
+            'password' => bcrypt('password'),
+            'user_type' => 'super_admin',
+            'zone_id' => null, // Super admin non è limitato a una zona
+            'email_verified_at' => now(),
+            'is_active' => true,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ];
+
+        $success = $this->dryRunInsert(
+            'users',
+            $superAdminData,
+            "Creazione Super Admin FIG"
+        );
+
+        if ($success && !$this->dryRun) {
+            $this->command->info("  ✅ Super Amministratore FIG");
+            $this->command->line("     Email: superadmin@federgolf.it");
+            $this->command->line("     Password temporanea: SuperAdmin@Golf2024!");
+        }
+    }
+
+    /**
+     * Genera password sicura per admin basata sulla zona
+     */
+    private function generateAdminPassword(string $zoneCode): string
+    {
+        // Password pattern: ZoneCode + Anno + Simbolo
+        return $zoneCode . '2024@Golf';
+    }
+
+    /**
+     * Ottieni password leggibile per output
+     */
+    private function getReadablePassword(string $zoneCode): string
+    {
+        return $this->generateAdminPassword($zoneCode);
+    }
+
 
     /**
      * Crea tournament types da dati reali - legge i tipi dalla colonna "tipo" in gare_2025
@@ -1637,6 +1770,7 @@ class MasterMigrationSeeder extends Seeder
     {
         $this->stats = [
             'zones' => 0,
+            'admin_users' => 0,        // ✅ AGGIUNTO
             'tournament_types' => 0,
             'arbitri' => 0,
             'conflitti_risolti' => 0,
@@ -1658,6 +1792,7 @@ class MasterMigrationSeeder extends Seeder
         $this->command->line("│             MIGRAZIONE              │");
         $this->command->line("├─────────────────────────────────────┤");
         $this->command->line("│ Zone:                    {$this->formatStat($this->stats['zones'])} │");
+        $this->command->line("│ Admin Users:             {$this->formatStat($this->stats['admin_users'])} │");  // ✅ AGGIUNTO
         $this->command->line("│ Tournament Types:        {$this->formatStat($this->stats['tournament_types'])} │");
         $this->command->line("│ Arbitri:                 {$this->formatStat($this->stats['arbitri'])} │");
         $this->command->line("│ Circoli:                 {$this->formatStat($this->stats['circoli'])} │");
@@ -1671,7 +1806,6 @@ class MasterMigrationSeeder extends Seeder
         $this->command->line("│ Record GIOV saltati:     {$this->formatStat($this->stats['record_giov_saltati'])} │");
         $this->command->line("└─────────────────────────────────────┘");
     }
-
     /**
      * Formatta statistiche per output allineato
      */

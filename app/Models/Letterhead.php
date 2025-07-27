@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\Storage;
+use Carbon\Carbon;
 
 class Letterhead extends Model
 {
@@ -17,17 +18,17 @@ class Letterhead extends Model
      * @var array<int, string>
      */
     protected $fillable = [
-        'zone_id',
         'title',
+        'description',
+        'zone_id',
         'logo_path',
         'header_text',
-        'header_content',
         'footer_text',
-        'footer_content',
         'contact_info',
+        'settings',
         'is_active',
         'is_default',
-        'settings',
+        'updated_by',
     ];
 
     /**
@@ -37,19 +38,11 @@ class Letterhead extends Model
      */
     protected $casts = [
         'contact_info' => 'array',
+        'settings' => 'array',
         'is_active' => 'boolean',
         'is_default' => 'boolean',
-        'settings' => 'array',
-    ];
-
-    /**
-     * Default settings structure
-     */
-    protected $attributes = [
-        'settings' => '{}',
-        'contact_info' => '{}',
-        'is_active' => true,
-        'is_default' => false,
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
     ];
 
     /**
@@ -58,6 +51,14 @@ class Letterhead extends Model
     public function zone(): BelongsTo
     {
         return $this->belongsTo(Zone::class);
+    }
+
+    /**
+     * Get the user who last updated this letterhead.
+     */
+    public function updatedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'updated_by');
     }
 
     /**
@@ -77,18 +78,21 @@ class Letterhead extends Model
     }
 
     /**
-     * Scope a query to get letterhead for a specific zone.
+     * Scope a query to filter by zone.
      */
-    public function scopeForZone($query, $zoneId)
+    public function scopeForZone($query, $zoneId = null)
     {
+        if ($zoneId === null) {
+            return $query->whereNull('zone_id');
+        }
+
         return $query->where(function ($q) use ($zoneId) {
-            $q->where('zone_id', $zoneId)
-              ->orWhereNull('zone_id');
+            $q->where('zone_id', $zoneId)->orWhereNull('zone_id');
         });
     }
 
     /**
-     * Get the logo URL
+     * Get the logo URL.
      */
     public function getLogoUrlAttribute(): ?string
     {
@@ -100,11 +104,15 @@ class Letterhead extends Model
     }
 
     /**
-     * Get formatted contact info
+     * Get formatted contact information.
      */
     public function getFormattedContactInfoAttribute(): string
     {
-        $info = $this->contact_info ?? [];
+        if (!$this->contact_info) {
+            return '';
+        }
+
+        $info = $this->contact_info;
         $parts = [];
 
         if (!empty($info['address'])) {
@@ -127,7 +135,7 @@ class Letterhead extends Model
     }
 
     /**
-     * Get scope display
+     * Get scope display name.
      */
     public function getScopeDisplayAttribute(): string
     {
@@ -135,7 +143,7 @@ class Letterhead extends Model
     }
 
     /**
-     * Set as default for zone
+     * Set this letterhead as default for its zone.
      */
     public function setAsDefault(): void
     {
@@ -144,37 +152,40 @@ class Letterhead extends Model
             ->where('id', '!=', $this->id)
             ->update(['is_default' => false]);
 
-        // Set this as default
-        $this->update(['is_default' => true]);
+        // Set this as default and ensure it's active
+        $this->update([
+            'is_default' => true,
+            'is_active' => true,
+        ]);
     }
 
     /**
-     * Get margin settings
+     * Get margin settings with defaults.
      */
     public function getMarginSettingsAttribute(): array
     {
-        return $this->settings['margins'] ?? [
+        return array_merge([
             'top' => 20,
             'bottom' => 20,
             'left' => 25,
             'right' => 25,
-        ];
+        ], $this->settings['margins'] ?? []);
     }
 
     /**
-     * Get font settings
+     * Get font settings with defaults.
      */
     public function getFontSettingsAttribute(): array
     {
-        return $this->settings['font'] ?? [
+        return array_merge([
             'family' => 'Arial',
             'size' => 11,
             'color' => '#000000',
-        ];
+        ], $this->settings['font'] ?? []);
     }
 
     /**
-     * Clone letterhead
+     * Clone this letterhead.
      */
     public function cloneLetterhead(array $overrides = []): self
     {
@@ -190,7 +201,7 @@ class Letterhead extends Model
         // Copy logo if exists
         if ($this->logo_path && Storage::exists($this->logo_path)) {
             $extension = pathinfo($this->logo_path, PATHINFO_EXTENSION);
-            $newPath = 'letterheads/logo_' . uniqid() . '.' . $extension;
+            $newPath = 'letterheads/logos/logo_' . uniqid() . '.' . $extension;
             Storage::copy($this->logo_path, $newPath);
             $clone->logo_path = $newPath;
         }
@@ -201,15 +212,181 @@ class Letterhead extends Model
     }
 
     /**
-     * Delete logo file when deleting letterhead
+     * Generate letterhead HTML for preview or PDF generation.
+     */
+    public function generateHtml(array $variables = []): string
+    {
+        $variables = array_merge([
+            'date' => now()->format('d/m/Y'),
+            'zone_name' => $this->zone?->name ?? 'Golf Referee Management',
+        ], $variables);
+
+        $html = '<!DOCTYPE html>';
+        $html .= '<html lang="it">';
+        $html .= '<head>';
+        $html .= '<meta charset="UTF-8">';
+        $html .= '<meta name="viewport" content="width=device-width, initial-scale=1.0">';
+        $html .= '<title>' . e($this->title) . '</title>';
+        $html .= $this->generateCss();
+        $html .= '</head>';
+        $html .= '<body>';
+
+        // Header
+        $html .= '<div class="letterhead-header">';
+        if ($this->logo_path) {
+            $html .= '<div class="logo">';
+            $html .= '<img src="' . Storage::url($this->logo_path) . '" alt="Logo">';
+            $html .= '</div>';
+        }
+        if ($this->header_text) {
+            $html .= '<div class="header-text">';
+            $html .= nl2br(e($this->replaceVariables($this->header_text, $variables)));
+            $html .= '</div>';
+        }
+        $html .= '</div>';
+
+        // Contact info
+        if ($this->contact_info) {
+            $html .= '<div class="contact-info">';
+            $html .= e($this->formatted_contact_info);
+            $html .= '</div>';
+        }
+
+        // Content area (placeholder)
+        $html .= '<div class="content">';
+        $html .= '<p>Questo è un esempio di contenuto che verrà sostituito dal testo della lettera.</p>';
+        $html .= '<p>Le variabili come {{referee_name}} e {{tournament_name}} verranno sostituite automaticamente.</p>';
+        $html .= '</div>';
+
+        // Footer
+        if ($this->footer_text) {
+            $html .= '<div class="letterhead-footer">';
+            $html .= nl2br(e($this->replaceVariables($this->footer_text, $variables)));
+            $html .= '</div>';
+        }
+
+        $html .= '</body>';
+        $html .= '</html>';
+
+        return $html;
+    }
+
+    /**
+     * Generate CSS for letterhead.
+     */
+    private function generateCss(): string
+    {
+        $margins = $this->margin_settings;
+        $font = $this->font_settings;
+
+        return '<style>
+            body {
+                margin: 0;
+                padding: ' . $margins['top'] . 'mm ' . $margins['right'] . 'mm ' . $margins['bottom'] . 'mm ' . $margins['left'] . 'mm;
+                font-family: "' . $font['family'] . '", Arial, sans-serif;
+                font-size: ' . $font['size'] . 'pt;
+                color: ' . $font['color'] . ';
+                line-height: 1.4;
+            }
+            .letterhead-header {
+                display: flex;
+                align-items: center;
+                margin-bottom: 20px;
+                padding-bottom: 15px;
+                border-bottom: 1px solid #ddd;
+            }
+            .logo {
+                margin-right: 20px;
+            }
+            .logo img {
+                max-height: 60px;
+                max-width: 120px;
+                object-fit: contain;
+            }
+            .header-text {
+                flex: 1;
+                font-weight: bold;
+            }
+            .contact-info {
+                text-align: center;
+                font-size: ' . ($font['size'] - 1) . 'pt;
+                margin-bottom: 20px;
+                color: #666;
+            }
+            .content {
+                min-height: 300px;
+                margin-bottom: 30px;
+            }
+            .letterhead-footer {
+                margin-top: 30px;
+                padding-top: 15px;
+                border-top: 1px solid #ddd;
+                font-size: ' . ($font['size'] - 1) . 'pt;
+                text-align: center;
+                color: #666;
+            }
+        </style>';
+    }
+
+    /**
+     * Replace variables in text.
+     */
+    private function replaceVariables(string $text, array $variables): string
+    {
+        foreach ($variables as $key => $value) {
+            $text = str_replace('{{' . $key . '}}', $value, $text);
+        }
+
+        return $text;
+    }
+
+    /**
+     * Get available variables for this letterhead.
+     */
+    public function getAvailableVariables(): array
+    {
+        return [
+            'referee_name' => 'Nome dell\'arbitro',
+            'tournament_name' => 'Nome del torneo',
+            'tournament_date' => 'Data del torneo',
+            'tournament_dates' => 'Date del torneo (inizio-fine)',
+            'club_name' => 'Nome del circolo',
+            'club_address' => 'Indirizzo del circolo',
+            'club_phone' => 'Telefono del circolo',
+            'club_email' => 'Email del circolo',
+            'zone_name' => 'Nome della zona',
+            'assignment_role' => 'Ruolo dell\'assegnazione',
+            'arrival_time' => 'Orario di arrivo',
+            'dress_code' => 'Codice abbigliamento',
+            'special_instructions' => 'Istruzioni speciali',
+            'date' => 'Data odierna',
+            'fee_amount' => 'Importo compenso',
+            'contact_person' => 'Persona di contatto',
+            'deadline_date' => 'Data scadenza',
+            'deadline_time' => 'Ora scadenza',
+        ];
+    }
+
+    /**
+     * Boot method to set up model events.
      */
     protected static function boot()
     {
         parent::boot();
 
+        // Delete logo file when deleting letterhead
         static::deleting(function ($letterhead) {
             if ($letterhead->logo_path && Storage::exists($letterhead->logo_path)) {
                 Storage::delete($letterhead->logo_path);
+            }
+        });
+
+        // Ensure only one default per zone
+        static::saving(function ($letterhead) {
+            if ($letterhead->is_default && $letterhead->isDirty('is_default')) {
+                self::where('zone_id', $letterhead->zone_id)
+                    ->where('id', '!=', $letterhead->id)
+                    ->update(['is_default' => false]);
             }
         });
     }

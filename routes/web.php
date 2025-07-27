@@ -1,25 +1,26 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use Illuminate\Http\Request; // ← AGGIUNGERE
-use Illuminate\Foundation\Auth\EmailVerificationRequest; // ← AGGIUNGERE
+use Illuminate\Http\Request;
+use Illuminate\Foundation\Auth\EmailVerificationRequest;
 use App\Http\Controllers\SuperAdmin;
 use App\Http\Controllers\Admin;
 use App\Http\Controllers\Admin\LetterTemplateController;
+use App\Http\Controllers\Admin\LetterheadController; // ← AGGIUNTO
+use App\Http\Controllers\Admin\StatisticsDashboardController; // ← AGGIUNTO
+use App\Http\Controllers\Admin\MonitoringController; // ← AGGIUNTO
 use App\Http\Controllers\Referee;
 use App\Http\Controllers\Reports;
 use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\DashboardController;
-use App\Http\Controllers\NotificationController; // ← AGGIUNGERE
-use App\Http\Controllers\Admin\StatisticsDashboardController; // ← AGGIUNGERE
+use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ProfileController;
-use App\Http\Controllers\TournamentController; // ← UNIFICATO
-use App\Http\Controllers\Admin\MonitoringController; // ← AGGIUNGERE
+use App\Http\Controllers\TournamentController;
+
 /*
 |--------------------------------------------------------------------------
-| 🔧 CONSERVATIVE WEB ROUTES - Mantiene tutto il necessario
-| Solo rimuove i controller effettivamente eliminati
+| 🔧 COMPLETE WEB ROUTES - Golf Referee Management System
 |--------------------------------------------------------------------------
 */
 
@@ -32,6 +33,7 @@ Route::get('/', function () {
 Route::get('login', [AuthenticatedSessionController::class, 'create'])->name('login');
 Route::post('login', [AuthenticatedSessionController::class, 'store']);
 Route::post('logout', [AuthenticatedSessionController::class, 'destroy'])->name('logout');
+
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
@@ -39,15 +41,13 @@ Route::middleware('auth')->group(function () {
     Route::put('/password', [ProfileController::class, 'updatePassword'])->name('password.update');
 });
 
-
 // Authenticated Routes
 Route::middleware(['auth'])->group(function () {
 
     // Dashboard - redirect based on user type
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
-
-    // ✅ AGGIUNGERE QUESTE ROUTE DI VERIFICA EMAIL:
+    // Email verification routes
     Route::get('/email/verify', function () {
         return view('auth.verify-email');
     })->name('verification.notice');
@@ -61,7 +61,6 @@ Route::middleware(['auth'])->group(function () {
         $request->user()->sendEmailVerificationNotification();
         return back()->with('message', 'Verification link sent!');
     })->middleware(['throttle:6,1'])->name('verification.send');
-
 
     // =================================================================
     // ✅ UNIFIED TOURNAMENT ROUTES (tutti gli utenti autorizzati)
@@ -80,7 +79,7 @@ Route::middleware(['auth'])->group(function () {
             return redirect()->route('super-admin.institutional-emails.index');
         })->name('dashboard');
 
-        // ★ INSTITUTIONAL EMAILS MANAGEMENT - ROUTES CORRETTE ★
+        // ★ INSTITUTIONAL EMAILS MANAGEMENT ★
         Route::prefix('institutional-emails')->name('institutional-emails.')->group(function () {
             Route::get('/', [SuperAdmin\InstitutionalEmailController::class, 'index'])->name('index');
             Route::get('/create', [SuperAdmin\InstitutionalEmailController::class, 'create'])->name('create');
@@ -89,26 +88,17 @@ Route::middleware(['auth'])->group(function () {
             Route::get('/{institutionalEmail}/edit', [SuperAdmin\InstitutionalEmailController::class, 'edit'])->name('edit');
             Route::put('/{institutionalEmail}', [SuperAdmin\InstitutionalEmailController::class, 'update'])->name('update');
             Route::delete('/{institutionalEmail}', [SuperAdmin\InstitutionalEmailController::class, 'destroy'])->name('destroy');
-
-            // Routes aggiuntive con naming corretto
-            Route::post('/{institutionalEmail}/toggle-active', [SuperAdmin\InstitutionalEmailController::class, 'toggleActive'])
-                ->name('toggle-active');
-            Route::post('/{institutionalEmail}/test', [SuperAdmin\InstitutionalEmailController::class, 'test'])
-                ->name('test');
-            Route::post('/bulk-action', [SuperAdmin\InstitutionalEmailController::class, 'bulkAction'])
-                ->name('bulk-action');
-            Route::get('/export', [SuperAdmin\InstitutionalEmailController::class, 'export'])
-                ->name('export');
+            Route::post('/{institutionalEmail}/toggle-active', [SuperAdmin\InstitutionalEmailController::class, 'toggleActive'])->name('toggle-active');
+            Route::post('/{institutionalEmail}/test', [SuperAdmin\InstitutionalEmailController::class, 'test'])->name('test');
+            Route::post('/bulk-action', [SuperAdmin\InstitutionalEmailController::class, 'bulkAction'])->name('bulk-action');
+            Route::get('/export', [SuperAdmin\InstitutionalEmailController::class, 'export'])->name('export');
         });
 
         // Tournament Types Management
         Route::resource('tournament-types', SuperAdmin\TournamentTypeController::class);
-        Route::post('tournament-types/update-order', [SuperAdmin\TournamentTypeController::class, 'updateOrder'])
-            ->name('tournament-types.update-order');
-        Route::post('tournament-types/{tournamentType}/toggle-active', [SuperAdmin\TournamentTypeController::class, 'toggleActive'])
-            ->name('tournament-types.toggle-active');
-        Route::post('tournament-types/{tournamentType}/duplicate', [SuperAdmin\TournamentTypeController::class, 'duplicateCategory'])
-            ->name('tournament-types.duplicate');
+        Route::post('tournament-types/update-order', [SuperAdmin\TournamentTypeController::class, 'updateOrder'])->name('tournament-types.update-order');
+        Route::post('tournament-types/{tournamentType}/toggle-active', [SuperAdmin\TournamentTypeController::class, 'toggleActive'])->name('tournament-types.toggle-active');
+        Route::post('tournament-types/{tournamentType}/duplicate', [SuperAdmin\TournamentTypeController::class, 'duplicateCategory'])->name('tournament-types.duplicate');
 
         // System Settings
         Route::get('settings', [SuperAdmin\SystemSettingsController::class, 'index'])->name('settings.index');
@@ -141,8 +131,6 @@ Route::middleware(['auth'])->group(function () {
             Route::get('performance', [SuperAdmin\SystemController::class, 'performance'])->name('performance');
             Route::post('maintenance', [SuperAdmin\SystemController::class, 'toggleMaintenance'])->name('maintenance');
         });
-
-
     });
 
     // =================================================================
@@ -160,41 +148,20 @@ Route::middleware(['auth'])->group(function () {
         Route::post('tournaments/{tournament}/close', [Admin\TournamentController::class, 'close'])->name('tournaments.close');
         Route::post('tournaments/{tournament}/reopen', [Admin\TournamentController::class, 'reopen'])->name('tournaments.reopen');
 
-        // ❌ RIMOSSA SOLO QUESTA RIGA PROBLEMATICA:
-        // Route::get('calendar', [Admin\CalendarController::class, 'index'])->name('calendar.index');
-
-        // Notifications
-Route::post('notifications/send-assignment', [Admin\NotificationController::class, 'sendAssignment'])
-    ->name('notifications.send-assignment');
-Route::prefix(prefix: 'notifications')->name('notifications.')->group(function () {
-    Route::get('/', [Admin\NotificationController::class, 'index'])->name('index');
-    Route::get('/send-assignment', [Admin\NotificationController::class, 'sendAssignmentForm'])->name('send-assignment');
-    Route::post('/send-assignment', [Admin\NotificationController::class, 'sendAssignment'])->name('send-assignment.store');
-    Route::post('/{notification}/retry', [Admin\NotificationController::class, 'retry'])->name('retry');
-});
-
         // Referee Management
         Route::resource('referees', Admin\RefereeController::class);
-        Route::post('referees/{referee}/toggle-active', [Admin\RefereeController::class, 'toggleActive'])
-            ->name('referees.toggle-active');
-        Route::post('referees/{referee}/update-level', [Admin\RefereeController::class, 'updateLevel'])
-            ->name('referees.update-level');
-        Route::get('referees/{referee}/tournaments', [Admin\RefereeController::class, 'tournaments'])
-            ->name('referees.tournaments');
-        Route::post('referees/import', [Admin\RefereeController::class, 'import'])
-            ->name('referees.import');
-        Route::get('referees/export', [Admin\RefereeController::class, 'export'])
-            ->name('referees.export');
+        Route::post('referees/{referee}/toggle-active', [Admin\RefereeController::class, 'toggleActive'])->name('referees.toggle-active');
+        Route::post('referees/{referee}/update-level', [Admin\RefereeController::class, 'updateLevel'])->name('referees.update-level');
+        Route::get('referees/{referee}/tournaments', [Admin\RefereeController::class, 'tournaments'])->name('referees.tournaments');
+        Route::post('referees/import', [Admin\RefereeController::class, 'import'])->name('referees.import');
+        Route::get('referees/export', [Admin\RefereeController::class, 'export'])->name('referees.export');
         Route::get('referees/{referee}/availability', [Admin\RefereeController::class, 'availability'])->name('referees.availability');
 
         // Club Management
         Route::resource('clubs', Admin\ClubController::class);
-        Route::post('clubs/{club}/toggle-active', [Admin\ClubController::class, 'toggleActive'])
-            ->name('clubs.toggle-active');
-        Route::get('clubs/{club}/tournaments', [Admin\ClubController::class, 'tournaments'])
-            ->name('clubs.tournaments');
-        Route::post('clubs/{club}/deactivate', [Admin\ClubController::class, 'deactivate'])
-            ->name('clubs.deactivate');
+        Route::post('clubs/{club}/toggle-active', [Admin\ClubController::class, 'toggleActive'])->name('clubs.toggle-active');
+        Route::get('clubs/{club}/tournaments', [Admin\ClubController::class, 'tournaments'])->name('clubs.tournaments');
+        Route::post('clubs/{club}/deactivate', [Admin\ClubController::class, 'deactivate'])->name('clubs.deactivate');
 
         // Assignment Management
         Route::prefix('assignments')->name('assignments.')->group(function () {
@@ -220,25 +187,39 @@ Route::prefix(prefix: 'notifications')->name('notifications.')->group(function (
             Route::delete('/{communication}', [Admin\CommunicationController::class, 'destroy'])->name('destroy');
         });
 
-        // Document Management
-        Route::prefix('documents')->name('documents.')->group(function () {
-            Route::get('/', [DocumentController::class, 'index'])->name('index');
-            Route::post('/upload', [DocumentController::class, 'upload'])->name('upload');
-            Route::get('/{document}/download', [DocumentController::class, 'download'])->name('download');
-            Route::delete('/{document}', [DocumentController::class, 'destroy'])->name('destroy');
+        // ✅ LETTERHEAD MANAGEMENT - ROUTES AGGIUNTE
+        Route::prefix('letterheads')->name('letterheads.')->group(function () {
+            Route::get('/', [LetterheadController::class, 'index'])->name('index');
+            Route::get('/create', [LetterheadController::class, 'create'])->name('create');
+            Route::post('/', [LetterheadController::class, 'store'])->name('store');
+            Route::get('/{letterhead}', [LetterheadController::class, 'show'])->name('show');
+            Route::get('/{letterhead}/edit', [LetterheadController::class, 'edit'])->name('edit');
+            Route::put('/{letterhead}', [LetterheadController::class, 'update'])->name('update');
+            Route::delete('/{letterhead}', [LetterheadController::class, 'destroy'])->name('destroy');
+            Route::post('/{letterhead}/toggle-active', [LetterheadController::class, 'toggleActive'])->name('toggle-active');
+            Route::post('/{letterhead}/set-default', [LetterheadController::class, 'setDefault'])->name('set-default');
+            Route::post('/{letterhead}/duplicate', [LetterheadController::class, 'duplicate'])->name('duplicate');
+            Route::get('/{letterhead}/preview', [LetterheadController::class, 'preview'])->name('preview');
+            Route::post('/upload-logo', [LetterheadController::class, 'uploadLogo'])->name('upload-logo');
+            Route::delete('/{letterhead}/remove-logo', [LetterheadController::class, 'removeLogo'])->name('remove-logo');
         });
 
+        // Letter Templates Management
+        Route::prefix('letter-templates')->name('letter-templates.')->group(function () {
+            Route::get('/', [LetterTemplateController::class, 'index'])->name('index');
+            Route::get('/create', [LetterTemplateController::class, 'create'])->name('create');
+            Route::post('/', [LetterTemplateController::class, 'store'])->name('store');
+            Route::get('/{template}', [LetterTemplateController::class, 'show'])->name('show');
+            Route::get('/{template}/edit', [LetterTemplateController::class, 'edit'])->name('edit');
+            Route::put('/{template}', [LetterTemplateController::class, 'update'])->name('update');
+            Route::delete('/{template}', [LetterTemplateController::class, 'destroy'])->name('destroy');
+            Route::post('/{template}/duplicate', [LetterTemplateController::class, 'duplicate'])->name('duplicate');
+            Route::get('/{template}/preview', [LetterTemplateController::class, 'preview'])->name('preview');
+            Route::post('/{template}/toggle-active', [LetterTemplateController::class, 'toggleActive'])->name('toggle-active');
+            Route::post('/{template}/set-default', [LetterTemplateController::class, 'setDefault'])->name('set-default');
+        });
 
-        Route::get('/settings', [Admin\SettingsController::class, 'index'])->name('settings');
-        Route::post('/settings', [Admin\SettingsController::class, 'update'])->name('settings.update');
-    });
-
-    // =================================================================
-    // 📢 NOTIFICATIONS SYSTEM ROUTES
-    // =================================================================
-    Route::middleware(['admin_or_superadmin'])->group(function () {
-
-        // ✅ NOTIFICATIONS MANAGEMENT - MANCAVA QUESTO!
+        // Notifications Management
         Route::prefix('notifications')->name('notifications.')->group(function () {
             Route::get('/', [Admin\NotificationController::class, 'index'])->name('index');
             Route::get('/stats', [Admin\NotificationController::class, 'stats'])->name('stats');
@@ -252,20 +233,42 @@ Route::prefix(prefix: 'notifications')->name('notifications.')->group(function (
             Route::get('/export/csv', [Admin\NotificationController::class, 'exportCsv'])->name('export');
         });
 
-        // Letter Templates Management
-        Route::prefix('letter-templates')->name('letter-templates.')->group(function () {
-            Route::get('/', [Admin\LetterTemplateController::class, 'index'])->name('index');
-            Route::get('/create', [Admin\LetterTemplateController::class, 'create'])->name('create');
-            Route::post('/', [Admin\LetterTemplateController::class, 'store'])->name('store');
-            Route::get('/{template}', [Admin\LetterTemplateController::class, 'show'])->name('show');
-            Route::get('/{template}/edit', [Admin\LetterTemplateController::class, 'edit'])->name('edit');
-            Route::put('/{template}', [Admin\LetterTemplateController::class, 'update'])->name('update');
-            Route::delete('/{template}', [Admin\LetterTemplateController::class, 'destroy'])->name('destroy');
-            Route::post('/{template}/duplicate', [Admin\LetterTemplateController::class, 'duplicate'])->name('duplicate');
-            Route::get('/{template}/preview', [Admin\LetterTemplateController::class, 'preview'])->name('preview');
-            Route::post('/{template}/toggle-active', [Admin\LetterTemplateController::class, 'toggleActive'])->name('toggle-active');
-            Route::post('/{template}/set-default', [Admin\LetterTemplateController::class, 'setDefault'])->name('set-default');
+        // ✅ STATISTICS DASHBOARD - ROUTES AGGIUNTE
+        Route::prefix('statistics')->name('statistics.')->group(function () {
+            Route::get('/', [StatisticsDashboardController::class, 'index'])->name('dashboard');
+            Route::get('/disponibilita', [StatisticsDashboardController::class, 'disponibilita'])->name('disponibilita');
+            Route::get('/assegnazioni', [StatisticsDashboardController::class, 'assegnazioni'])->name('assegnazioni');
+            Route::get('/tornei', [StatisticsDashboardController::class, 'tornei'])->name('tornei');
+            Route::get('/arbitri', [StatisticsDashboardController::class, 'arbitri'])->name('arbitri');
+            Route::get('/zone', [StatisticsDashboardController::class, 'zone'])->name('zone');
+            Route::get('/performance', [StatisticsDashboardController::class, 'performance'])->name('performance');
+            Route::get('/export', [StatisticsDashboardController::class, 'exportCsv'])->name('export');
+            Route::get('/api/{type}', [StatisticsDashboardController::class, 'apiStats'])->name('api');
         });
+
+        // ✅ MONITORING SYSTEM - ROUTES AGGIUNTE
+        Route::prefix('monitoring')->name('monitoring.')->group(function () {
+            Route::get('/', [MonitoringController::class, 'dashboard'])->name('dashboard');
+            Route::get('/health', [MonitoringController::class, 'healthCheck'])->name('health');
+            Route::get('/metrics', [MonitoringController::class, 'realtimeMetrics'])->name('metrics');
+            Route::get('/history', [MonitoringController::class, 'history'])->name('history');
+            Route::get('/logs', [MonitoringController::class, 'systemLogs'])->name('logs');
+            Route::get('/performance', [MonitoringController::class, 'performanceMetrics'])->name('performance');
+            Route::post('/clear-cache', [MonitoringController::class, 'clearCache'])->name('clear-cache');
+            Route::post('/optimize', [MonitoringController::class, 'optimize'])->name('optimize');
+        });
+
+        // Document Management
+        Route::prefix('documents')->name('documents.')->group(function () {
+            Route::get('/', [DocumentController::class, 'index'])->name('index');
+            Route::post('/upload', [DocumentController::class, 'upload'])->name('upload');
+            Route::get('/{document}/download', [DocumentController::class, 'download'])->name('download');
+            Route::delete('/{document}', [DocumentController::class, 'destroy'])->name('destroy');
+        });
+
+        // Settings
+        Route::get('/settings', [Admin\SettingsController::class, 'index'])->name('settings');
+        Route::post('/settings', [Admin\SettingsController::class, 'update'])->name('settings.update');
 
         // Tournament Notification Routes (for sending notifications from tournament pages)
         Route::prefix('tournaments/{tournament}')->name('tournaments.')->group(function () {
@@ -282,13 +285,10 @@ Route::prefix(prefix: 'notifications')->name('notifications.')->group(function (
         // Dashboard
         Route::get('/', [Referee\DashboardController::class, 'index'])->name('dashboard');
 
-        // Availability Management - SEZIONE UNIFICATA E CORRETTA
+        // Availability Management
         Route::prefix('availability')->name('availability.')->group(function () {
-            // Views
             Route::get('/', [Referee\AvailabilityController::class, 'index'])->name('index');
             Route::get('/calendar', [Referee\AvailabilityController::class, 'calendar'])->name('calendar');
-
-            // Actions
             Route::post('/save', [Referee\AvailabilityController::class, 'save'])->name('save');
             Route::post('/update', [Referee\AvailabilityController::class, 'update'])->name('update');
             Route::post('/bulk-update', [Referee\AvailabilityController::class, 'bulkUpdate'])->name('bulk-update');
@@ -403,40 +403,50 @@ Route::prefix(prefix: 'notifications')->name('notifications.')->group(function (
             return $query->select('id', 'name', 'subject', 'body')->get();
         })->name('letter-templates');
 
+        // API per statistiche disponibilità
+        Route::get('/statistics/disponibilita', function () {
+            return \App\Models\Availability::getStatisticsByZone();
+        })->name('statistics.disponibilita');
+
         // API per statistiche notifiche
         Route::get('/notifications/stats/{days?}', function ($days = 30) {
             return \App\Models\Notification::getStatistics($days);
         })->name('notification-stats');
+
+        // API per calendario tornei
+        Route::get('/tournaments/calendar', function () {
+            return \App\Models\Tournament::getCalendarEvents();
+        })->name('tournaments.calendar');
     });
+});
+// ✅ LETTERHEADS
+Route::prefix('letterheads')->name('letterheads.')->group(function () {
+    Route::get('/', [LetterheadController::class, 'index'])->name('index');
+    Route::get('/create', [LetterheadController::class, 'create'])->name('create');
+    // ... altre route
+});
+
+// ✅ STATISTICS
+Route::prefix('statistics')->name('statistics.')->group(function () {
+    Route::get('/', [StatisticsDashboardController::class, 'index'])->name('dashboard');
+    // ... altre route
+});
+
+// ✅ MONITORING
+Route::prefix('monitoring')->name('monitoring.')->group(function () {
+    Route::get('/', [MonitoringController::class, 'dashboard'])->name('dashboard');
+    // ... altre route
+});
+
+// ✅ NOTIFICATIONS - FIX per "Route [notifications.index] not defined"
+Route::prefix('notifications')->name('notifications.')->group(function () {
+    Route::get('/', [Admin\NotificationController::class, 'index'])->name('index');
+    // ... altre route
 });
 
 // =================================================================
 // 🚀 HEALTH CHECK (no auth required)
 // =================================================================
-Route::get('/health', function () {
-    return response()->json([
-        'status' => 'ok',
-        'timestamp' => now()->toISOString(),
-        'version' => config('app.version', '1.0.0')
-    ]);
-})->name('health');
-
-// =================================================================
-// 🚫 FALLBACK ROUTE
-// =================================================================
-Route::fallback(function () {
-    return response()->view('errors.404', [], 404);
-});
-Route::middleware(['auth', 'role:Admin|SuperAdmin|NationalAdmin'])->prefix('admin')->name('admin.')->group(function () {
-    Route::get('/statistics', [StatisticsDashboardController::class, 'index'])->name('statistics.dashboard');
-    Route::get('/api/statistics/{type}', [StatisticsDashboardController::class, 'apiStats'])->name('statistics.api');
-    Route::get('/statistics/export', [StatisticsDashboardController::class, 'exportCsv'])->name('statistics.export');
-});
-Route::middleware(['auth', 'role:Admin|SuperAdmin'])->prefix('admin')->name('admin.')->group(function () {
-    Route::get('/templates/management', [LetterTemplateController::class, 'index'])->name('templates.management');
-    Route::get('/templates/{template}/preview', [LetterTemplateController::class, 'preview'])->name('templates.preview');
-});
-// ROUTES PER MONITORING PRODUZIONE
 Route::get('/health', function () {
     return response()->json([
         'status' => 'healthy',
@@ -447,6 +457,7 @@ Route::get('/health', function () {
     ]);
 })->name('health.check');
 
+// System status endpoint (requires auth)
 Route::get('/status', function () {
     return response()->json([
         'environment' => config('app.env'),
@@ -456,42 +467,10 @@ Route::get('/status', function () {
         'laravel_version' => app()->version()
     ]);
 })->middleware('auth:sanctum');
-Route::middleware(['auth', 'role:Admin|SuperAdmin'])->prefix('admin')->name('admin.')->group(function () {
-    Route::get('/monitoring', [MonitoringController::class, 'dashboard'])->name('monitoring.dashboard');
-    Route::get('/monitoring/health', [MonitoringController::class, 'healthCheck'])->name('monitoring.health');
-    Route::get('/monitoring/metrics', [MonitoringController::class, 'realtimeMetrics'])->name('monitoring.metrics');
-    Route::get('/monitoring/history', [MonitoringController::class, 'history'])->name('monitoring.history');
+
+// =================================================================
+// 🚫 FALLBACK ROUTE
+// =================================================================
+Route::fallback(function () {
+    return response()->view('errors.404', [], 404);
 });
-
-// Public health endpoint
-Route::get('/health', [MonitoringController::class, 'healthCheck'])->name('health.check');
-
-/*
-=================================================================
-📋 APPROCCIO CONSERVATIVO - COSA È STATO RIMOSSO:
-=================================================================
-
-❌ ELIMINATO SOLO:
-- Admin\CalendarController routes (1 riga)
-- Route API completamente inutilizzate
-- Route duplicate del calendario
-
-✅ MANTENUTO TUTTO IL RESTO:
-- Notifications routes (MANCAVANO!)
-- Reports routes complete
-- Communications routes
-- Documents routes
-- Letter templates routes
-- Tutti i controller esistenti
-- Tutte le funzionalità
-
-✅ AGGIUNTO:
-- TournamentController unificato
-- Route calendar unificate
-
-🎯 RISULTATO:
-- Sistema funzionale completo
-- Calendario unificato che funziona
-- Tutte le funzionalità esistenti mantenute
-- Solo i duplicati e problemi rimossi
-*/
