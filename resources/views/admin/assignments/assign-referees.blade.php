@@ -39,7 +39,6 @@
             {{ session('error') }}
         </div>
     @endif
-
     {{-- Currently Assigned Referees --}}
     @if($assignedReferees->count() > 0)
     <div class="bg-green-50 border border-green-200 rounded-lg p-6 mb-6">
@@ -51,9 +50,9 @@
             <div class="bg-white p-4 rounded-lg border border-green-200">
                 <div class="flex justify-between items-start">
                     <div>
-                        <h4 class="font-medium text-gray-900">{{ $assignment->user->name }}</h4>
-                        <p class="text-sm text-gray-600">{{ $assignment->referee->referee_code ?? 'N/A' }}</p>
-                        <p class="text-sm text-gray-600">{{ $assignment->referee->level ?? 'N/A' }}</p>
+                        <h4 class="font-medium text-gray-900">{{ $assignment->name }}</h4>
+                        <p class="text-sm text-gray-600">{{ $assignment->referee_code ?? 'N/A' }}</p>
+                        <p class="text-sm text-gray-600">{{ $assignment->level ?? 'N/A' }}</p>
                         <p class="text-sm font-medium text-green-600">{{ $assignment->role }}</p>
                         @if($assignment->notes)
                             <p class="text-xs text-gray-500 mt-1">{{ $assignment->notes }}</p>
