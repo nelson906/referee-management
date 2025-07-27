@@ -203,7 +203,7 @@ class AssignmentController extends Controller
             'role' => $request->role,
             'notes' => $request->notes,
             'assigned_at' => now(),
-            'assigned_by' => auth()->id(),
+            'assigned_by_id' => auth()->id(),
             'is_confirmed' => true, // SEMPRE confermato
         ]);
 

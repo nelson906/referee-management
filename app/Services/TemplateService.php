@@ -155,7 +155,7 @@ class TemplateService
             'assignment_role' => $assignment->role,
             'assignment_notes' => $assignment->notes ?? '',
             'assigned_date' => $assignment->created_at->format('d/m/Y'),
-            'assigned_by' => $assignment->assignedBy->name ?? 'Sistema',
+            'assigned_by_id' => $assignment->assignedBy->name ?? 'Sistema',
 
             // Date e sistema
             'current_date' => now()->format('d/m/Y'),

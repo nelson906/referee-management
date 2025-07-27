@@ -132,7 +132,7 @@ class User extends Authenticatable
      */
     public function assignmentsMade(): HasMany
     {
-        return $this->hasMany(Assignment::class, 'assigned_by');
+        return $this->hasMany(Assignment::class, 'assigned_by_id');
     }
 
     /**

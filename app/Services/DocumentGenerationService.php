@@ -171,7 +171,7 @@ class DocumentGenerationService
             'role' => $assignment->role,
             'assignment_notes' => $assignment->notes,
             'assigned_date' => $assignment->assigned_at->format('d/m/Y'),
-            'assigned_by' => $assignment->assignedBy->name,
+            'assigned_by_id' => $assignment->assignedBy->name,
             'current_date' => Carbon::now()->format('d/m/Y'),
             'current_year' => Carbon::now()->year,
         ];
