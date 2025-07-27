@@ -35,140 +35,36 @@
                             </h1>
                         </div>
 
-                        {{-- Desktop Navigation Menu --}}
-<div class="ml-4 flex space-x-2 overflow-x-auto" style="white-space: nowrap; max-width: 60vw; overflow-y: visible;">
+{{-- Desktop Navigation Menu - DUE RIGHE --}}
+<div class="ml-4">
+    {{-- Prima riga --}}
+    <div class="flex space-x-3 mb-1">
+        <a href="{{ route('admin.dashboard') }}" class="px-2 py-1 rounded text-xs text-blue-700 hover:bg-blue-800 hover:text-white font-medium whitespace-nowrap {{ request()->routeIs('admin.dashboard') ? 'bg-blue-800 text-white' : 'text-blue-100 hover:bg-blue-800 hover:text-white' }}">🏠 Dashboard</a>
+        <a href="{{ route('admin.tournaments.index') }}" class="px-2 py-1 rounded text-xs text-blue-700 hover:bg-blue-800 hover:text-white font-medium whitespace-nowrap {{ request()->routeIs('admin.tournaments.*') ? 'bg-blue-800 text-white' : 'text-blue-100 hover:bg-blue-800 hover:text-white' }}">📋 Tornei</a>
+        <a href="{{ route('tournaments.calendar') }}" class="px-2 py-1 rounded text-xs text-blue-700 hover:bg-blue-800 hover:text-white font-medium whitespace-nowrap {{ request()->routeIs('tournaments.calendar', 'admin.assignments.calendar') ? 'bg-blue-800 text-white' : 'text-blue-100 hover:bg-blue-800 hover:text-white' }}">📅 Calendario</a>
+        <a href="{{ route('admin.referees.index') }}" class="px-2 py-1 rounded text-xs text-blue-700 hover:bg-blue-800 hover:text-white font-medium whitespace-nowrap {{ request()->routeIs('admin.referees.*') ? 'bg-blue-800 text-white' : 'text-blue-100 hover:bg-blue-800 hover:text-white' }}">👨‍💼 Arbitri</a>
+        <a href="{{ route('admin.assignments.index') }}" class="px-2 py-1 rounded text-xs text-blue-700 hover:bg-blue-800 hover:text-white font-medium whitespace-nowrap {{ request()->routeIs('admin.assignments.*') ? 'bg-blue-800 text-white' : 'text-blue-100 hover:bg-blue-800 hover:text-white' }}">📝 Assegnazioni</a>
+    </div>
 
-                            {{-- Dashboard --}}
-                            <a href="{{ route('admin.dashboard') }}"
-class="px-2 py-2 rounded-md text-xs font-medium whitespace-nowrap transition duration-150 ease-in-out  text-blue-700 hover:bg-blue-800 hover:text-white
-                                {{ request()->routeIs('admin.dashboard') ? 'bg-blue-800 text-white' : 'text-blue-100 hover:bg-blue-800 hover:text-white' }}">
-                                🏠 Dashboard
-                            </a>
-
-                            {{-- Tournaments --}}
-                            <a href="{{ route('admin.tournaments.index') }}"
-class="px-2 py-2 rounded-md text-xs font-medium whitespace-nowrap transition duration-150 ease-in-out  text-blue-700 hover:bg-blue-800 hover:text-white
-                                {{ request()->routeIs('admin.tournaments.*') ? 'bg-blue-800 text-white' : 'text-blue-100 hover:bg-blue-800 hover:text-white' }}">
-                                📋 Tornei
-                            </a>
-
-                            {{-- Calendar --}}
-                            <a href="{{ route('tournaments.calendar') }}"
-class="px-2 py-2 rounded-md text-xs font-medium whitespace-nowrap transition duration-150 ease-in-out  text-blue-700 hover:bg-blue-800 hover:text-white
-                                {{ request()->routeIs('tournaments.calendar', 'admin.assignments.calendar') ? 'bg-blue-800 text-white' : 'text-blue-100 hover:bg-blue-800 hover:text-white' }}">
-                                📅 Calendario
-                            </a>
-
-                            {{-- Referees --}}
-                            <a href="{{ route('admin.referees.index') }}"
-class="px-2 py-2 rounded-md text-xs font-medium whitespace-nowrap transition duration-150 ease-in-out  text-blue-700 hover:bg-blue-800 hover:text-white
-                                {{ request()->routeIs('admin.referees.*') ? 'bg-blue-800 text-white' : 'text-blue-100 hover:bg-blue-800 hover:text-white' }}">
-                                👨‍💼 Arbitri
-                            </a>
-
-                            {{-- Assignments --}}
-                            <a href="{{ route('admin.assignments.index') }}"
-class="px-2 py-2 rounded-md text-xs font-medium whitespace-nowrap transition duration-150 ease-in-out  text-blue-700 hover:bg-blue-800 hover:text-white
-                                {{ request()->routeIs('admin.assignments.*') ? 'bg-blue-800 text-white' : 'text-blue-100 hover:bg-blue-800 hover:text-white' }}">
-                                📝 Assegnazioni
-                            </a>
-
-                            {{-- Clubs --}}
-                            <a href="{{ route('admin.clubs.index') }}"
-class="px-2 py-2 rounded-md text-xs font-medium whitespace-nowrap transition duration-150 ease-in-out  text-blue-700 hover:bg-blue-800 hover:text-white
-                                {{ request()->routeIs('admin.clubs.*') ? 'bg-blue-800 text-white' : 'text-blue-100 hover:bg-blue-800 hover:text-white' }}">
-                                🏌️ Circoli
-                            </a>
-
-                            {{-- ✅ LETTERHEADS MENU - AGGIUNTO --}}
-                            <a href="{{ route('admin.letterheads.index') }}"
-class="px-2 py-2 rounded-md text-xs font-medium whitespace-nowrap transition duration-150 ease-in-out  text-blue-700 hover:bg-blue-800 hover:text-white
-                                {{ request()->routeIs('admin.letterheads.*') ? 'bg-blue-800 text-white' : 'text-blue-100 hover:bg-blue-800 hover:text-white' }}">
-                                📄 Letterheads
-                            </a>
-
-                            {{-- ✅ STATISTICS MENU - AGGIUNTO --}}
-                            <a href="{{ route('admin.statistics.dashboard') }}"
-class="px-2 py-2 rounded-md text-xs font-medium whitespace-nowrap transition duration-150 ease-in-out  text-blue-700 hover:bg-blue-800 hover:text-white
-                                {{ request()->routeIs('admin.statistics.*') ? 'bg-blue-800 text-white' : 'text-blue-100 hover:bg-blue-800 hover:text-white' }}">
-                                📊 Statistiche
-                            </a>
-
-                            {{-- Dropdown Menu for More Options --}}
-                            <div class="relative" x-data="{ dropdownOpen: false }">
-<button @click="dropdownOpen = !dropdownOpen; console.log('Dropdown:', dropdownOpen)"
-                                    class="px-3 py-2 rounded-md whitespace-nowrap text-xs font-medium text-blue-100 hover:bg-blue-800 hover:text-white transition duration-150 ease-in-out flex items-center">
-                                    ⚙️ Gestione
-                                    <svg class="ml-1 h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
-                                        <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
-                                    </svg>
-                                </button>
-
-                                <div x-show="dropdownOpen"
-                                     x-transition:enter="transition ease-out duration-100"
-                                     x-transition:enter-start="transform opacity-0 scale-95"
-                                     x-transition:enter-end="transform opacity-100 scale-100"
-                                     x-transition:leave="transition ease-in duration-75"
-                                     x-transition:leave-start="transform opacity-100 scale-100"
-                                     x-transition:leave-end="transform opacity-0 scale-95"
-                                     @click.away="dropdownOpen = false"
-class="absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5" style="z-index: 9999;">
-                                    <div class="py-1">
-
-                                        {{-- Communications --}}
-                                        <a href="{{ route('admin.communications.index') }}"
-                                            class="block px-4 py-2 whitespace-nowrap text-xs text-gray-700 hover:bg-gray-100
-                                            {{ request()->routeIs('admin.communications.*') ? 'bg-gray-50 text-gray-900' : '' }}">
-                                            📢 Comunicazioni
-                                        </a>
-
-                                        {{-- Letter Templates --}}
-                                        <a href="{{ route('admin.letter-templates.index') }}"
-                                            class="block px-4 py-2 whitespace-nowrap text-xs text-gray-700 hover:bg-gray-100
-                                            {{ request()->routeIs('admin.letter-templates.*') ? 'bg-gray-50 text-gray-900' : '' }}">
-                                            📝 Template Lettere
-                                        </a>
-
-                                        {{-- ✅ NOTIFICATIONS - ROUTE FIXATA --}}
-                                        <a href="{{ route('admin.notifications.index') }}"
-                                            class="block px-4 py-2 whitespace-nowrap text-xs text-gray-700 hover:bg-gray-100
-                                            {{ request()->routeIs('admin.notifications.*') ? 'bg-gray-50 text-gray-900' : '' }}">
-                                            🔔 Notifiche
-                                        </a>
-
-                                        <div class="border-t border-gray-100 my-1"></div>
-
-                                        {{-- ✅ MONITORING - AGGIUNTO --}}
-                                        <a href="{{ route('admin.monitoring.dashboard') }}"
-                                            class="block px-4 py-2 whitespace-nowrap text-xs text-gray-700 hover:bg-gray-100
-                                            {{ request()->routeIs('admin.monitoring.*') ? 'bg-gray-50 text-gray-900' : '' }}">
-                                            🖥️ Monitoraggio
-                                        </a>
-
-                                        {{-- Reports --}}
-                                        <a href="{{ route('reports.dashboard') }}"
-                                            class="block px-4 py-2 whitespace-nowrap text-xs text-gray-700 hover:bg-gray-100
-                                            {{ request()->routeIs('reports.*') ? 'bg-gray-50 text-gray-900' : '' }}">
-                                            📈 Report
-                                        </a>
-
-                                        {{-- Documents --}}
-                                        <a href="{{ route('admin.documents.index') }}"
-                                            class="block px-4 py-2 whitespace-nowrap text-xs text-gray-700 hover:bg-gray-100
-                                            {{ request()->routeIs('admin.documents.*') ? 'bg-gray-50 text-gray-900' : '' }}">
-                                            📁 Documenti
-                                        </a>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+    {{-- Seconda riga --}}
+    <div class="flex space-x-3">
+        <a href="{{ route('admin.clubs.index') }}" class="px-2 py-1 rounded text-xs text-blue-700 hover:bg-blue-800 hover:text-white font-medium whitespace-nowrap {{ request()->routeIs('admin.clubs.*') ? 'bg-blue-800 text-white' : 'text-blue-100 hover:bg-blue-800 hover:text-white' }}">🏌️ Circoli</a>
+        <a href="{{ route('admin.letterheads.index') }}" class="px-2 py-1 rounded text-xs text-blue-700 hover:bg-blue-800 hover:text-white font-medium whitespace-nowrap {{ request()->routeIs('admin.letterheads.*') ? 'bg-blue-800 text-white' : 'text-blue-100 hover:bg-blue-800 hover:text-white' }}">📄 Letterheads</a>
+        <a href="{{ route('admin.statistics.dashboard') }}" class="px-2 py-1 rounded text-xs text-blue-700 hover:bg-blue-800 hover:text-white font-medium whitespace-nowrap {{ request()->routeIs('admin.statistics.*') ? 'bg-blue-800 text-white' : 'text-blue-100 hover:bg-blue-800 hover:text-white' }}">📊 Statistiche</a>
+        <a href="{{ route('admin.communications.index') }}" class="px-2 py-1 rounded text-xs text-blue-700 hover:bg-blue-800 hover:text-white font-medium whitespace-nowrap {{ request()->routeIs('admin.communications.*') ? 'bg-blue-800 text-white' : 'text-blue-100 hover:bg-blue-800 hover:text-white' }}">📢 Comunicazioni</a>
+        <a href="{{ route('admin.letter-templates.index') }}" class="px-2 py-1 rounded text-xs text-blue-700 hover:bg-blue-800 hover:text-white font-medium whitespace-nowrap {{ request()->routeIs('admin.letter-templates.*') ? 'bg-blue-800 text-white' : 'text-blue-100 hover:bg-blue-800 hover:text-white' }}">📝 Template</a>
+        <a href="{{ route('admin.notifications.index') }}" class="px-2 py-1 rounded text-xs text-blue-700 hover:bg-blue-800 hover:text-white font-medium whitespace-nowrap {{ request()->routeIs('admin.notifications.*') ? 'bg-blue-800 text-white' : 'text-blue-100 hover:bg-blue-800 hover:text-white' }}">🔔 Notifiche</a>
+        <a href="{{ route('admin.monitoring.dashboard') }}" class="px-2 py-1 rounded text-xs text-blue-700 hover:bg-blue-800 hover:text-white font-medium whitespace-nowrap {{ request()->routeIs('admin.monitoring.*') ? 'bg-blue-800 text-white' : 'text-blue-100 hover:bg-blue-800 hover:text-white' }}">🖥️ Monitoraggio</a>
+        <a href="{{ route('reports.dashboard') }}" class="px-2 py-1 rounded text-xs text-blue-700 hover:bg-blue-800 hover:text-white font-medium whitespace-nowrap {{ request()->routeIs('reports.*') ? 'bg-blue-800 text-white' : 'text-blue-100 hover:bg-blue-800 hover:text-white' }}">📈 Report</a>
+        <a href="{{ route('admin.documents.index') }}" class="px-2 py-1 rounded text-xs text-blue-700 hover:bg-blue-800 hover:text-white font-medium whitespace-nowrap {{ request()->routeIs('admin.documents.*') ? 'bg-blue-800 text-white' : 'text-blue-100 hover:bg-blue-800 hover:text-white' }}">📁 Documenti</a>
+    </div>
+</div>
 
                     {{-- User Menu --}}
                     <div class="flex items-center">
                         <div class="relative" x-data="{ userMenuOpen: false }">
                             <button @click="userMenuOpen = !userMenuOpen"
-                                class="flex items-center max-w-xs text-sm text-white focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-blue-900">
+                                class="flex items-center max-w-xs text-sm text-blue-700 hover:bg-blue-800 hover:text-white focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-blue-900">
                                 <span class="mr-2">{{ Auth::user()->name ?? 'Admin' }}</span>
                                 <div class="h-8 w-8 rounded-full bg-blue-700 flex items-center justify-center">
                                     {{ strtoupper(substr(Auth::user()->name ?? 'A', 0, 1)) }}
