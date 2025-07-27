@@ -177,7 +177,7 @@
                             <div class="w-3 h-3 rounded-full mr-2"
                                  style="background-color: {{ $tournament->tournamentType->calendar_color }}"></div>
                             <span class="text-sm text-gray-900">
-                                {{ $tournament->tournamentType->name }}
+                                {{ $tournament->tournamentType->short_name }}
                             </span>
                         </div>
                         @if($tournament->tournamentType->is_national)

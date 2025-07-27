@@ -167,7 +167,7 @@ class TournamentController extends Controller
                 'is_editable' => method_exists($tournament, 'isEditable') ? $tournament->isEditable() : true,
             ];
 
-            $assignedReferees = $tournament->assignments()->with('user')->get();
+            $assignedReferees = $tournament->assignedReferees;
             $availableReferees = $tournament->availabilities()->with('user')->get();
         }
 

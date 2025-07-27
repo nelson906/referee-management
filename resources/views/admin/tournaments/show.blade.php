@@ -270,16 +270,21 @@
                                             </div>
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap">
-                                            <span class="text-sm text-gray-900">{{ $referee->pivot->role }}</span>
+                                            <span
+                                                class="text-sm text-gray-900">{{ $referee->pivot->role ?? 'N/A' }}</span>
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                            {{ \Carbon\Carbon::parse($referee->pivot->assigned_at)->format('d/m/Y H:i') }}
-                                            <div class="text-xs">da
-                                                {{ $tournament->assignments->where('user_id', $referee->id)->first()->assignedBy->name }}
-                                            </div>
+                                            @if ($referee->pivot?->assigned_at)
+                                                {{ \Carbon\Carbon::parse($referee->pivot->assigned_at)->format('d/m/Y H:i') }}
+                                                <div class="text-xs">da
+                                                    {{ $tournament->assignments->where('user_id', $referee->id)->first()?->assignedBy?->name ?? 'Sconosciuto' }}
+                                                </div>
+                                            @else
+                                                N/A
+                                            @endif
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-center">
-                                            @if ($referee->pivot->is_confirmed)
+                                            @if ($referee->pivot?->is_confirmed)
                                                 <span
                                                     class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
                                                     Confermato
@@ -293,22 +298,28 @@
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                             @if ($tournament->status !== 'completed')
-                                                <form
-                                                    action="{{ route('admin.assignments.remove', $tournament->assignments->where('user_id', $referee->id)->first()) }}"
-                                                    method="POST" class="inline"
-                                                    onsubmit="return confirm('Sei sicuro di voler rimuovere questa assegnazione?');">
-                                                    @csrf
-                                                    @method('DELETE')
-                                                    <button type="submit" class="text-red-600 hover:text-red-900">
-                                                        <svg class="w-5 h-5" fill="none" stroke="currentColor"
-                                                            viewBox="0 0 24 24">
-                                                            <path stroke-linecap="round" stroke-linejoin="round"
-                                                                stroke-width="2"
-                                                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16">
-                                                            </path>
-                                                        </svg>
-                                                    </button>
-                                                </form>
+                                                @php
+                                                    $assignment = $tournament->assignments
+                                                        ->where('user_id', $referee->id)
+                                                        ->first();
+                                                @endphp
+                                                @if ($assignment)
+                                                    <form action="{{ route('admin.assignments.destroy', $assignment) }}"
+                                                        method="POST" class="inline"
+                                                        onsubmit="return confirm('Sei sicuro di voler rimuovere questa assegnazione?');">
+                                                        @csrf
+                                                        @method('DELETE')
+                                                        <button type="submit" class="text-red-600 hover:text-red-900">
+                                                            <svg class="w-5 h-5" fill="none" stroke="currentColor"
+                                                                viewBox="0 0 24 24">
+                                                                <path stroke-linecap="round" stroke-linejoin="round"
+                                                                    stroke-width="2"
+                                                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16">
+                                                                </path>
+                                                            </svg>
+                                                        </button>
+                                                    </form>
+                                                @endif
                                             @endif
                                         </td>
                                     </tr>
@@ -434,7 +445,7 @@
                                     <div>
                                         <span class="font-medium">{{ $availability->user->name }}</span>
                                         <span class="text-gray-500 text-xs block">
-                                            {{ $availability->submitted_at->diffForHumans() }}
+                                            {{ $availability->submitted_at?->diffForHumans() ?? 'Data non disponibile' }}
                                         </span>
                                     </div>
                                     @if (!$tournament->assignments()->where('user_id', $availability->user_id)->exists())

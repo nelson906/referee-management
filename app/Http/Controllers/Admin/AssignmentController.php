@@ -11,15 +11,16 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
 use Carbon\Carbon;
 use App\Services\DocumentGenerationService;
+
 class AssignmentController extends Controller
 {
 
     protected $documentService;
 
-public function __construct(DocumentGenerationService $documentService)
-{
-    $this->documentService = $documentService;
-}
+    public function __construct(DocumentGenerationService $documentService)
+    {
+        $this->documentService = $documentService;
+    }
 
     /**
      * Display a listing of assignments.
@@ -357,7 +358,7 @@ public function __construct(DocumentGenerationService $documentService)
         return User::with(['referee', 'zone'])
             ->where('user_type', 'referee')
             ->where('is_active', true)
-->whereIn('level', ['nazionale', 'internazionale'])
+            ->whereIn('level', ['nazionale', 'internazionale'])
             ->whereNotIn('id', $excludeIds)
             ->orderBy('name')
             ->get();
@@ -366,43 +367,43 @@ public function __construct(DocumentGenerationService $documentService)
     /**
      * Show assignment interface for a specific tournament.
      */
-public function assignReferees(Tournament $tournament): View
-{
-    $this->checkTournamentAccess($tournament);
+    public function assignReferees(Tournament $tournament): View
+    {
+        $this->checkTournamentAccess($tournament);
 
-    $user = auth()->user();
-    $isNationalAdmin = in_array($user->user_type, ['national_admin', 'super_admin']);
+        $user = auth()->user();
+        $isNationalAdmin = in_array($user->user_type, ['national_admin', 'super_admin']);
 
-    // Load tournament with relations
+        // Load tournament with relations
         // CORRETTO ✅
-    $tournament->load(['club', 'zone', 'tournamentType']);
+        $tournament->load(['club', 'zone', 'tournamentType']);
 
         // Get currently assigned referees - CORRETTO ✅
-    $assignedReferees = $tournament->assignments()->with('user')->get();
-    $assignedRefereeIds = $assignedReferees->pluck('user_id')->toArray();
+        $assignedReferees = $tournament->assignedReferees;
+        $assignedRefereeIds = $assignedReferees->pluck('user_id')->toArray();
 
         // Get available referees - CORRETTO ✅
-    $availableReferees = User::with('zone')
-        ->whereHas('availabilities', function ($q) use ($tournament) {
-            $q->where('tournament_id', $tournament->id);
-        })
-        ->where('user_type', 'referee')
-        ->where('is_active', true)
-        ->whereNotIn('id', $assignedRefereeIds)
-        ->orderBy('name')
-        ->get();
+        $availableReferees = User::with('zone')
+            ->whereHas('availabilities', function ($q) use ($tournament) {
+                $q->where('tournament_id', $tournament->id);
+            })
+            ->where('user_type', 'referee')
+            ->where('is_active', true)
+            ->whereNotIn('id', $assignedRefereeIds)
+            ->orderBy('name')
+            ->get();
 
         // Get possible referees (zone referees who haven't declared availability) - EXCLUDE already assigned
-    $possibleReferees = User::with(['referee', 'zone'])
-        ->where('user_type', 'referee')
-        ->where('is_active', true)
-        ->where('zone_id', $tournament->zone_id)
-        ->whereDoesntHave('availabilities', function ($q) use ($tournament) {
-            $q->where('tournament_id', $tournament->id);
-        })
-        ->whereNotIn('id', $assignedRefereeIds)
-        ->orderBy('name')
-        ->get();
+        $possibleReferees = User::with(['referee', 'zone'])
+            ->where('user_type', 'referee')
+            ->where('is_active', true)
+            ->where('zone_id', $tournament->zone_id)
+            ->whereDoesntHave('availabilities', function ($q) use ($tournament) {
+                $q->where('tournament_id', $tournament->id);
+            })
+            ->whereNotIn('id', $assignedRefereeIds)
+            ->orderBy('name')
+            ->get();
 
 
         // Get national referees (for national tournaments) - EXCLUDE already assigned
@@ -441,11 +442,11 @@ public function assignReferees(Tournament $tournament): View
     public function bulkAssign(Request $request): RedirectResponse
     {
         $request->validate([
-'referees' => 'required|array|min:1',
-'referees.*' => 'array',
-'referees.*.selected' => 'nullable|in:1',
-'referees.*.user_id' => 'required_with:referees.*.selected|exists:users,id',
-'referees.*.role' => 'required_with:referees.*.selected|in:Arbitro,Direttore di Torneo,Osservatore',
+            'referees' => 'required|array|min:1',
+            'referees.*' => 'array',
+            'referees.*.selected' => 'nullable|in:1',
+            'referees.*.user_id' => 'required_with:referees.*.selected|exists:users,id',
+            'referees.*.role' => 'required_with:referees.*.selected|in:Arbitro,Direttore di Torneo,Osservatore',
         ]);
 
         $tournament = Tournament::findOrFail($request->tournament_id);
@@ -458,15 +459,15 @@ public function assignReferees(Tournament $tournament): View
         try {
             // Process the referees array
             foreach ($request->referees as $key => $refereeData) {
-    // Controlla se il referee è stato selezionato
-    if (!isset($refereeData['selected']) || $refereeData['selected'] !== '1') {
-        continue;
-    }
+                // Controlla se il referee è stato selezionato
+                if (!isset($refereeData['selected']) || $refereeData['selected'] !== '1') {
+                    continue;
+                }
 
-    // Verifica che abbia i dati necessari
-    if (!isset($refereeData['user_id']) || !isset($refereeData['role'])) {
-        continue;
-    }
+                // Verifica che abbia i dati necessari
+                if (!isset($refereeData['user_id']) || !isset($refereeData['role'])) {
+                    continue;
+                }
                 $referee = User::findOrFail($refereeData['user_id']);
 
                 // Check if already assigned
