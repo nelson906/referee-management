@@ -8,7 +8,7 @@
     <div class="mb-6">
         <div class="flex items-center justify-between">
             <div class="flex items-center space-x-3">
-                <a href="{{ route('letterheads.index') }}" class="text-gray-500 hover:text-gray-700">
+                <a href="{{ route('admin.letterheads.index') }}" class="text-gray-500 hover:text-gray-700">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
                     </svg>
@@ -47,7 +47,7 @@
 
             {{-- Actions --}}
             <div class="flex space-x-2">
-                <a href="{{ route('letterheads.preview', $letterhead) }}"
+                <a href="{{ route('admin.letterheads.preview', $letterhead) }}"
                    class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
                     <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
@@ -56,7 +56,7 @@
                     Anteprima
                 </a>
 
-                <a href="{{ route('letterheads.edit', $letterhead) }}"
+                <a href="{{ route('admin.letterheads.edit', $letterhead) }}"
                    class="inline-flex items-center px-3 py-2 border border-transparent shadow-sm text-sm leading-4 font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700">
                     <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
@@ -299,19 +299,19 @@
                     <h3 class="text-lg font-medium text-gray-900">Azioni Rapide</h3>
                 </div>
                 <div class="px-6 py-4 space-y-3">
-                    <a href="{{ route('letterheads.edit', $letterhead) }}"
+                    <a href="{{ route('admin.letterheads.edit', $letterhead) }}"
                        class="w-full inline-flex justify-center items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
                         ✏️ Modifica
                     </a>
 
-                    <a href="{{ route('letterheads.preview', $letterhead) }}"
+                    <a href="{{ route('admin.letterheads.preview', $letterhead) }}"
                        class="w-full inline-flex justify-center items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
                        target="_blank">
                         🔍 Anteprima
                     </a>
 
                     @if(!$letterhead->is_default)
-                        <form method="POST" action="{{ route('letterheads.duplicate', $letterhead) }}">
+                        <form method="POST" action="{{ route('admin.letterheads.duplicate', $letterhead) }}">
                             @csrf
                             <button type="submit"
                                     class="w-full inline-flex justify-center items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">

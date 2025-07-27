@@ -211,46 +211,59 @@ class DocumentGenerationService
         $properties->setSubject('Arbitraggio Tornei Golf');
     }
 
-    /**
-     * Add letterhead to section
-     */
-    protected function addLetterhead($section, $zoneId): void
-    {
-        // Get active letterhead for zone
-        $letterhead = Letterhead::where('zone_id', $zoneId)
-            ->where('is_active', true)
-            ->orderBy('is_default', 'desc')
+/**
+ * Add letterhead to section - SOLUZIONE OTTIMALE
+ */
+protected function addLetterhead($section, $zoneId): void
+{
+    // Get active letterhead for zone
+    $letterhead = Letterhead::where('zone_id', $zoneId)
+        ->where('is_active', true)
+        ->orderBy('is_default', 'desc')
+        ->first();
+
+    if (!$letterhead) {
+        // Use default letterhead
+        $letterhead = Letterhead::whereNull('zone_id')
+            ->where('is_default', true)
             ->first();
-
-        if (!$letterhead) {
-            // Use default letterhead
-            $letterhead = Letterhead::whereNull('zone_id')
-                ->where('is_default', true)
-                ->first();
-        }
-
-        if ($letterhead) {
-            // Add header
-            $header = $section->addHeader();
-
-            // Add logo if exists
-            if ($letterhead->logo_path && Storage::exists('public/' . $letterhead->logo_path)) {
-                $header->addImage(
-                    storage_path('app/public/' . $letterhead->logo_path),
-                    [
-                        'width' => 100,
-                        'height' => 50,
-                        'alignment' => \PhpOffice\PhpWord\SimpleType\Jc::LEFT
-                    ]
-                );
-            }
-
-            // Add header text
-            if ($letterhead->header_content) {
-                Html::addHtml($header, $letterhead->header_content);
-            }
-        }
     }
+
+    if ($letterhead && $letterhead->logo_path && Storage::disk('public')->exists($letterhead->logo_path)) {
+        // ✅ OPZIONE 1: Intestazione come prima sezione del documento
+        $section->addImage(
+            storage_path('app/public/' . $letterhead->logo_path),
+            [
+                'width' => 590,
+                'height' => 100,
+                'alignment' => \PhpOffice\PhpWord\SimpleType\Jc::CENTER,
+            ]
+        );
+
+        // Linea separatrice opzionale
+        $section->addLine([
+            'weight' => 1,
+            'width' => 590,
+            'height' => 0,
+            'alignment' => \PhpOffice\PhpWord\SimpleType\Jc::CENTER,
+            'marginTop' => 100,
+            'marginBottom' => 200,
+        ]);
+
+        $section->addTextBreak(1);
+
+    } elseif ($letterhead && $letterhead->header_content) {
+        // Fallback testuale
+        $section->addText($letterhead->header_content, [
+            'bold' => true,
+            'size' => 16,
+        ], [
+            'alignment' => \PhpOffice\PhpWord\SimpleType\Jc::CENTER,
+            'marginBottom' => 200,
+        ]);
+        $section->addTextBreak(2);
+    }
+}
 
     /**
      * Add document content

@@ -256,4 +256,77 @@
         @method('DELETE')
     </form>
 @endif
+<script>
+
+document.addEventListener('DOMContentLoaded', function() {
+    const websiteField = document.getElementById('contact_website');
+
+    if (websiteField) {
+        // Rimuovi suggerimenti esistenti
+        function removeHints() {
+            const hints = websiteField.parentNode.querySelectorAll('.url-hint');
+            hints.forEach(hint => hint.remove());
+        }
+
+        // Auto-completa URL
+        function autoCompleteUrl() {
+            let value = websiteField.value.trim();
+            if (value && !value.startsWith('http://') && !value.startsWith('https://')) {
+                websiteField.value = 'https://' + value;
+                removeHints();
+
+                // Mostra conferma temporanea
+                const confirmation = document.createElement('p');
+                confirmation.className = 'url-confirmation mt-1 text-xs text-green-600';
+                confirmation.textContent = '✓ https:// aggiunto automaticamente';
+                websiteField.parentNode.appendChild(confirmation);
+
+                setTimeout(() => confirmation.remove(), 3000);
+            }
+        }
+
+        // Mostra suggerimento
+        function showHint() {
+            removeHints();
+            let value = websiteField.value.trim();
+            if (value && !value.startsWith('http://') && !value.startsWith('https://')) {
+                const hint = document.createElement('p');
+                hint.className = 'url-hint mt-1 text-xs text-blue-600 cursor-pointer';
+                hint.innerHTML = '💡 <span class="underline">Clicca qui per aggiungere https://</span>';
+                hint.addEventListener('click', autoCompleteUrl);
+                websiteField.parentNode.appendChild(hint);
+            }
+        }
+
+        // Eventi
+        websiteField.addEventListener('blur', showHint);
+        websiteField.addEventListener('input', function() {
+            removeHints();
+            // Auto-completa se l'utente preme Enter
+            if (event.inputType === 'insertCompositionText' || event.inputType === 'insertText') {
+                const value = this.value.trim();
+                if (value && (value.endsWith('.com') || value.endsWith('.it') || value.endsWith('.org'))) {
+                    setTimeout(autoCompleteUrl, 100);
+                }
+            }
+        });
+
+        // Auto-completa su Enter
+        websiteField.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                autoCompleteUrl();
+            }
+        });
+
+        // Rimuovi suggerimenti quando il campo è corretto
+        websiteField.addEventListener('focus', function() {
+            if (this.value.startsWith('http://') || this.value.startsWith('https://')) {
+                removeHints();
+            }
+        });
+    }
+});
+</script>
+
 @endsection

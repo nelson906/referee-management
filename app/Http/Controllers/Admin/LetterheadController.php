@@ -32,10 +32,10 @@ class LetterheadController extends Controller
             $search = $request->search;
             $query->where(function ($q) use ($search) {
                 $q->where('title', 'like', "%{$search}%")
-                  ->orWhere('description', 'like', "%{$search}%")
-                  ->orWhereHas('zone', function ($zq) use ($search) {
-                      $zq->where('name', 'like', "%{$search}%");
-                  });
+                    ->orWhere('description', 'like', "%{$search}%")
+                    ->orWhereHas('zone', function ($zq) use ($search) {
+                        $zq->where('name', 'like', "%{$search}%");
+                    });
             });
         }
 
@@ -58,7 +58,7 @@ class LetterheadController extends Controller
         if ($user->user_type !== 'super_admin' && $user->zone_id) {
             $query->where(function ($q) use ($user) {
                 $q->where('zone_id', $user->zone_id)
-                  ->orWhereNull('zone_id'); // Letterheads globali
+                    ->orWhereNull('zone_id'); // Letterheads globali
             });
         }
 
@@ -102,9 +102,11 @@ class LetterheadController extends Controller
                 function ($attribute, $value, $fail) {
                     $user = auth()->user();
                     // Se non è super admin, può creare solo per la sua zona
-                    if ($user->user_type !== 'super_admin' &&
+                    if (
+                        $user->user_type !== 'super_admin' &&
                         $user->zone_id &&
-                        $value != $user->zone_id) {
+                        $value != $user->zone_id
+                    ) {
                         $fail('Non puoi creare letterheads per altre zone.');
                     }
                 },
@@ -209,9 +211,11 @@ class LetterheadController extends Controller
                 Rule::exists('zones', 'id'),
                 function ($attribute, $value, $fail) {
                     $user = auth()->user();
-                    if ($user->user_type !== 'super_admin' &&
+                    if (
+                        $user->user_type !== 'super_admin' &&
                         $user->zone_id &&
-                        $value != $user->zone_id) {
+                        $value != $user->zone_id
+                    ) {
                         $fail('Non puoi modificare letterheads per altre zone.');
                     }
                 },
@@ -223,7 +227,7 @@ class LetterheadController extends Controller
             'contact_info.address' => 'nullable|string|max:255',
             'contact_info.phone' => 'nullable|string|max:50',
             'contact_info.email' => 'nullable|email|max:255',
-            'contact_info.website' => 'nullable|url|max:255',
+            'contact_info.website' => 'nullable|string|max:255', // ✅ Cambiato da url a string
             'settings' => 'nullable|array',
             'settings.margins.top' => 'nullable|integer|min:0|max:100',
             'settings.margins.bottom' => 'nullable|integer|min:0|max:100',
@@ -235,6 +239,15 @@ class LetterheadController extends Controller
             'is_active' => 'boolean',
             'is_default' => 'boolean',
         ]);
+        // Aggiustamento automatico del website se non ha schema
+        if (!empty($request->input('contact_info.website'))) {
+            $website = $request->input('contact_info.website');
+            if (!str_starts_with($website, 'http://') && !str_starts_with($website, 'https://')) {
+                $contact_info = $request->input('contact_info');
+                $contact_info['website'] = 'https://' . $website;
+                $request->merge(['contact_info' => $contact_info]);
+            }
+        }
 
         // Handle logo upload
         if ($request->hasFile('logo')) {
@@ -418,7 +431,7 @@ class LetterheadController extends Controller
         if ($request->filled('zone_id')) {
             $query->where(function ($q) use ($request) {
                 $q->where('zone_id', $request->zone_id)
-                  ->orWhereNull('zone_id'); // Include global letterheads
+                    ->orWhereNull('zone_id'); // Include global letterheads
             });
         }
 
@@ -427,16 +440,16 @@ class LetterheadController extends Controller
         }
 
         $letterheads = $query->select('id', 'title', 'zone_id', 'is_default')
-                            ->with('zone:id,name')
-                            ->get()
-                            ->map(function ($letterhead) {
-                                return [
-                                    'id' => $letterhead->id,
-                                    'title' => $letterhead->title,
-                                    'zone' => $letterhead->zone?->name ?? 'Globale',
-                                    'is_default' => $letterhead->is_default,
-                                ];
-                            });
+            ->with('zone:id,name')
+            ->get()
+            ->map(function ($letterhead) {
+                return [
+                    'id' => $letterhead->id,
+                    'title' => $letterhead->title,
+                    'zone' => $letterhead->zone?->name ?? 'Globale',
+                    'is_default' => $letterhead->is_default,
+                ];
+            });
 
         return response()->json($letterheads);
     }
@@ -452,8 +465,8 @@ class LetterheadController extends Controller
     {
         // Rimuovi default da tutte le altre letterheads della stessa zona
         Letterhead::where('zone_id', $letterhead->zone_id)
-                  ->where('id', '!=', $letterhead->id)
-                  ->update(['is_default' => false]);
+            ->where('id', '!=', $letterhead->id)
+            ->update(['is_default' => false]);
 
         // Imposta questa come default e attiva
         $letterhead->update([
