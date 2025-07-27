@@ -1,4 +1,4 @@
-{{-- File: resources/views/admin/letter-templates/index.blade.php --}}
+{{-- File: resources/views/admin/admin.letter-templates/index.blade.php --}}
 @extends('layouts.admin')
 
 @section('title', ' ' )
@@ -15,7 +15,7 @@
                    class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
                     📧 Notifiche
                 </a>
-                <a href="{{ route('letter-templates.create') }}"
+                <a href="{{ route('admin.letter-templates.create') }}"
                    class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700">
                     ➕ Nuovo Template
                 </a>
@@ -109,7 +109,7 @@
                                 <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700">
                                     🔍 Filtra
                                 </button>
-                                <a href="{{ route('letter-templates.index') }}" class="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400">
+                                <a href="{{ route('admin.letter-templates.index') }}" class="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400">
                                     🗑️ Reset
                                 </a>
                             </div>
@@ -159,29 +159,29 @@
                                                     </svg>
                                                 </button>
                                                 <div id="dropdown-{{ $template->id }}" class="hidden absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg z-20 border border-gray-200">
-                                                    <a href="{{ route('letter-templates.show', $template) }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                                    <a href="{{ route('admin.letter-templates.show', $template) }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
                                                         👁️ Visualizza
                                                     </a>
-                                                    <a href="{{ route('letter-templates.preview', $template) }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                                    <a href="{{ route('admin.letter-templates.preview', $template) }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
                                                         🔍 Anteprima
                                                     </a>
-                                                    <a href="{{ route('letter-templates.edit', $template) }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                                    <a href="{{ route('admin.letter-templates.edit', $template) }}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
                                                         ✏️ Modifica
                                                     </a>
-                                                    <form method="POST" action="{{ route('letter-templates.duplicate', $template) }}" class="block">
+                                                    <form method="POST" action="{{ route('admin.letter-templates.duplicate', $template) }}" class="block">
                                                         @csrf
                                                         <button type="submit" class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
                                                             📋 Duplica
                                                         </button>
                                                     </form>
-                                                    <form method="POST" action="{{ route('letter-templates.toggle-active', $template) }}" class="block">
+                                                    <form method="POST" action="{{ route('admin.letter-templates.toggle-active', $template) }}" class="block">
                                                         @csrf
                                                         <button type="submit" class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
                                                             {{ $template->is_active ? '⏸️ Disattiva' : '▶️ Attiva' }}
                                                         </button>
                                                     </form>
                                                     <div class="border-t border-gray-200">
-                                                        <form method="POST" action="{{ route('letter-templates.destroy', $template) }}"
+                                                        <form method="POST" action="{{ route('admin.letter-templates.destroy', $template) }}"
                                                               onsubmit="return confirm('Sei sicuro di voler eliminare questo template?')">
                                                             @csrf
                                                             @method('DELETE')
@@ -254,11 +254,11 @@
                                                 Creato {{ $template->created_at->diffForHumans() }}
                                             </div>
                                             <div class="flex space-x-2">
-                                                <a href="{{ route('letter-templates.preview', $template) }}"
+                                                <a href="{{ route('admin.letter-templates.preview', $template) }}"
                                                    class="inline-flex items-center px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200">
                                                     🔍 Anteprima
                                                 </a>
-                                                <a href="{{ route('letter-templates.edit', $template) }}"
+                                                <a href="{{ route('admin.letter-templates.edit', $template) }}"
                                                    class="inline-flex items-center px-2 py-1 text-xs bg-indigo-100 text-indigo-700 rounded hover:bg-indigo-200">
                                                     ✏️ Modifica
                                                 </a>
@@ -280,7 +280,7 @@
                             <div class="text-6xl mb-4">📝</div>
                             <h3 class="text-lg font-medium text-gray-900 mb-2">Nessun template trovato</h3>
                             <p class="text-gray-500 mb-6">Non ci sono template che corrispondono ai criteri di ricerca.</p>
-                            <a href="{{ route('letter-templates.create') }}"
+                            <a href="{{ route('admin.letter-templates.create') }}"
                                class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700">
                                 ➕ Crea Primo Template
                             </a>

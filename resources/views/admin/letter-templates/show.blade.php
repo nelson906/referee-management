@@ -8,7 +8,7 @@
     <div class="mb-6">
         <div class="flex items-center justify-between">
             <div class="flex items-center space-x-3">
-                <a href="{{ route('letter-templates.index') }}" class="text-gray-500 hover:text-gray-700">
+                <a href="{{ route('admin.letter-templates.index') }}" class="text-gray-500 hover:text-gray-700">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
                     </svg>
@@ -41,7 +41,7 @@
 
             {{-- Actions --}}
             <div class="flex space-x-2">
-                <a href="{{ route('letter-templates.preview', $template) }}"
+                <a href="{{ route('admin.letter-templates.preview', $template) }}"
                    class="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
                     <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
@@ -50,7 +50,7 @@
                     Anteprima
                 </a>
 
-                <a href="{{ route('letter-templates.edit', $template) }}"
+                <a href="{{ route('admin.letter-templates.edit', $template) }}"
                    class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700">
                     <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
@@ -166,7 +166,7 @@
             <div class="bg-white rounded-lg shadow p-6">
                 <h3 class="text-lg font-medium text-gray-900 mb-4">Azioni</h3>
                 <div class="space-y-3">
-                    <form method="POST" action="{{ route('letter-templates.duplicate', $template) }}">
+                    <form method="POST" action="{{ route('admin.letter-templates.duplicate', $template) }}">
                         @csrf
                         <button type="submit" class="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-md">
                             📋 Duplica Template
@@ -185,7 +185,7 @@
                         {{ $template->is_active ? '🔒 Disattiva' : '✅ Attiva' }}
                     </button>
 
-                    <form method="POST" action="{{ route('letter-templates.destroy', $template) }}"
+                    <form method="POST" action="{{ route('admin.letter-templates.destroy', $template) }}"
                           onsubmit="return confirm('Sei sicuro di voler eliminare questo template?')">
                         @csrf
                         @method('DELETE')
@@ -201,7 +201,7 @@
 
 <script>
 function toggleActive(templateId) {
-    fetch(`/letter-templates/${templateId}/toggle-active`, {
+    fetch(`/admin.letter-templates/${templateId}/toggle-active`, {
         method: 'POST',
         headers: {
             'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
@@ -217,7 +217,7 @@ function toggleActive(templateId) {
 }
 
 function setAsDefault(templateId) {
-    fetch(`/letter-templates/${templateId}/set-default`, {
+    fetch(`/admin.letter-templates/${templateId}/set-default`, {
         method: 'POST',
         headers: {
             'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
