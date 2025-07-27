@@ -363,7 +363,43 @@
             </div>
         </div>
     </div>
+{{-- Nel file preview.blade.php --}}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Fix per il pulsante chiudi
+    const closeButtons = document.querySelectorAll('[data-action="close"]');
+    closeButtons.forEach(button => {
+        button.addEventListener('click', function(e) {
+            e.preventDefault();
 
+            // Prova diverse strategie per chiudere
+            if (window.opener && !window.opener.closed) {
+                window.close();
+            } else if (history.length > 1) {
+                history.back();
+            } else {
+                window.location.href = '{{ route("admin.letterheads.index") }}';
+            }
+        });
+    });
+
+    // Fix per il pulsante X in alto a destra se c'è
+    const closeX = document.querySelector('.modal-close, .close-button, [aria-label="close"]');
+    if (closeX) {
+        closeX.addEventListener('click', function(e) {
+            e.preventDefault();
+            window.close() || history.back() || (window.location.href = '{{ route("admin.letterheads.index") }}');
+        });
+    }
+});
+
+// Tasto ESC per chiudere
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        window.close() || history.back() || (window.location.href = '{{ route("admin.letterheads.index") }}');
+    }
+});
+</script>
     <script>
         function toggleWatermark() {
             const watermark = document.getElementById('watermark');

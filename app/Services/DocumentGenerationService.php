@@ -212,58 +212,66 @@ class DocumentGenerationService
     }
 
 /**
- * Add letterhead to section - SOLUZIONE OTTIMALE
+ * Add letterhead to section - VERSIONE CORRETTA
  */
 protected function addLetterhead($section, $zoneId): void
 {
     // Get active letterhead for zone
-    $letterhead = Letterhead::where('zone_id', $zoneId)
+    $letterhead = \App\Models\Letterhead::where('zone_id', $zoneId)
         ->where('is_active', true)
         ->orderBy('is_default', 'desc')
         ->first();
 
     if (!$letterhead) {
         // Use default letterhead
-        $letterhead = Letterhead::whereNull('zone_id')
+        $letterhead = \App\Models\Letterhead::whereNull('zone_id')
             ->where('is_default', true)
             ->first();
     }
 
-    if ($letterhead && $letterhead->logo_path && Storage::disk('public')->exists($letterhead->logo_path)) {
-        // ✅ OPZIONE 1: Intestazione come prima sezione del documento
-        $section->addImage(
-            storage_path('app/public/' . $letterhead->logo_path),
-            [
-                'width' => 590,
-                'height' => 100,
+    if ($letterhead && $letterhead->logo_path) {
+        // Debug - aggiungi temporaneamente per verificare
+        \Log::info('Letterhead processing', [
+            'letterhead_id' => $letterhead->id,
+            'logo_path' => $letterhead->logo_path,
+            'full_path' => storage_path('app/public/' . $letterhead->logo_path),
+            'file_exists' => file_exists(storage_path('app/public/' . $letterhead->logo_path)),
+        ]);
+
+        $logoPath = storage_path('app/public/' . $letterhead->logo_path);
+
+        if (file_exists($logoPath)) {
+            // ✅ INTESTAZIONE A INIZIO DOCUMENTO (non header)
+            $section->addImage($logoPath, [
+                'width' => 550,           // Larghezza quasi completa
+                'height' => 80,           // Altezza intestazione
                 'alignment' => \PhpOffice\PhpWord\SimpleType\Jc::CENTER,
-            ]
-        );
+                'marginTop' => 0,
+                'marginBottom' => 300,    // Spazio dopo l'intestazione
+            ]);
 
-        // Linea separatrice opzionale
-        $section->addLine([
-            'weight' => 1,
-            'width' => 590,
-            'height' => 0,
-            'alignment' => \PhpOffice\PhpWord\SimpleType\Jc::CENTER,
-            'marginTop' => 100,
-            'marginBottom' => 200,
-        ]);
+            // Aggiungi uno spazio dopo l'intestazione
+            $section->addTextBreak(1);
 
-        $section->addTextBreak(1);
+        } else {
+            \Log::warning('Logo file not found: ' . $logoPath);
+        }
+    }
 
-    } elseif ($letterhead && $letterhead->header_content) {
-        // Fallback testuale
-        $section->addText($letterhead->header_content, [
-            'bold' => true,
-            'size' => 16,
-        ], [
-            'alignment' => \PhpOffice\PhpWord\SimpleType\Jc::CENTER,
-            'marginBottom' => 200,
-        ]);
-        $section->addTextBreak(2);
+    // Fallback testuale se non c'è logo
+    if (!$letterhead || !$letterhead->logo_path) {
+        if ($letterhead && $letterhead->header_content) {
+            $section->addText($letterhead->header_content, [
+                'bold' => true,
+                'size' => 14,
+            ], [
+                'alignment' => \PhpOffice\PhpWord\SimpleType\Jc::CENTER,
+            ]);
+            $section->addTextBreak(2);
+        }
     }
 }
+
 
     /**
      * Add document content
