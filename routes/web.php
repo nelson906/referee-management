@@ -148,6 +148,14 @@ Route::middleware(['auth'])->group(function () {
         Route::post('tournaments/{tournament}/close', [Admin\TournamentController::class, 'close'])->name('tournaments.close');
         Route::post('tournaments/{tournament}/reopen', [Admin\TournamentController::class, 'reopen'])->name('tournaments.reopen');
 
+        // ✅ NOTIFICHE ASSEGNAZIONE - Solo queste 3 route
+        Route::get('tournaments/{tournament}/send-assignment', [Admin\NotificationController::class, 'showAssignmentForm'])
+            ->name('tournaments.show-assignment-form');
+        Route::post('tournaments/{tournament}/send-assignment', [Admin\NotificationController::class, 'sendTournamentAssignment'])
+            ->name('tournaments.send-assignment');
+        Route::post('tournaments/{tournament}/send-assignment-with-convocation', [Admin\NotificationController::class, 'sendAssignmentWithConvocation'])
+            ->name('tournaments.send-assignment-with-convocation');
+
         // Referee Management
         Route::resource('referees', Admin\RefereeController::class);
         Route::post('referees/{referee}/toggle-active', [Admin\RefereeController::class, 'toggleActive'])->name('referees.toggle-active');
@@ -217,12 +225,10 @@ Route::middleware(['auth'])->group(function () {
             Route::delete('/{letterhead}/remove-logo', [Admin\LetterheadController::class, 'removeLogo'])->name('remove-logo');
         });
 
-        // Notifications Management
+        // Notifications Management - PULITO
         Route::prefix('notifications')->name('notifications.')->group(function () {
             Route::get('/', [Admin\NotificationController::class, 'index'])->name('index');
             Route::get('/stats', [Admin\NotificationController::class, 'stats'])->name('stats');
-            Route::get('/send-assignment', [Admin\NotificationController::class, 'sendAssignmentForm'])->name('send-assignment');
-            Route::post('/send-assignment', [Admin\NotificationController::class, 'sendAssignment'])->name('send-assignment.post');
             Route::get('/{notification}', [Admin\NotificationController::class, 'show'])->name('show');
             Route::delete('/{notification}', [Admin\NotificationController::class, 'destroy'])->name('destroy');
             Route::post('/{notification}/retry', [Admin\NotificationController::class, 'retry'])->name('retry');
@@ -230,199 +236,190 @@ Route::middleware(['auth'])->group(function () {
             Route::post('/{notification}/cancel', [Admin\NotificationController::class, 'cancel'])->name('cancel');
             Route::get('/export/csv', [Admin\NotificationController::class, 'exportCsv'])->name('export');
         });
-
-        // ✅ STATISTICS DASHBOARD - ROUTES AGGIUNTE
-        Route::prefix('statistics')->name('statistics.')->group(function () {
-            Route::get('/', [StatisticsDashboardController::class, 'index'])->name('dashboard');
-            Route::get('/disponibilita', [StatisticsDashboardController::class, 'disponibilita'])->name('disponibilita');
-            Route::get('/assegnazioni', [StatisticsDashboardController::class, 'assegnazioni'])->name('assegnazioni');
-            Route::get('/tornei', [StatisticsDashboardController::class, 'tornei'])->name('tornei');
-            Route::get('/arbitri', [StatisticsDashboardController::class, 'arbitri'])->name('arbitri');
-            Route::get('/zone', [StatisticsDashboardController::class, 'zone'])->name('zone');
-            Route::get('/performance', [StatisticsDashboardController::class, 'performance'])->name('performance');
-            Route::get('/export', [StatisticsDashboardController::class, 'exportCsv'])->name('export');
-            Route::get('/api/{type}', [StatisticsDashboardController::class, 'apiStats'])->name('api');
-        });
-
-        // ✅ MONITORING SYSTEM - ROUTES AGGIUNTE
-        Route::prefix('monitoring')->name('monitoring.')->group(function () {
-            Route::get('/', [MonitoringController::class, 'dashboard'])->name('dashboard');
-            Route::get('/health', [MonitoringController::class, 'healthCheck'])->name('health');
-            Route::get('/metrics', [MonitoringController::class, 'realtimeMetrics'])->name('metrics');
-            Route::get('/history', [MonitoringController::class, 'history'])->name('history');
-            Route::get('/logs', [MonitoringController::class, 'systemLogs'])->name('logs');
-            Route::get('/performance', [MonitoringController::class, 'performanceMetrics'])->name('performance');
-            Route::post('/clear-cache', [MonitoringController::class, 'clearCache'])->name('clear-cache');
-            Route::post('/optimize', [MonitoringController::class, 'optimize'])->name('optimize');
-        });
-
-        // Document Management
-        Route::prefix('documents')->name('documents.')->group(function () {
-            Route::get('/', [DocumentController::class, 'index'])->name('index');
-            Route::post('/upload', [DocumentController::class, 'upload'])->name('upload');
-            Route::get('/{document}/download', [DocumentController::class, 'download'])->name('download');
-            Route::delete('/{document}', [DocumentController::class, 'destroy'])->name('destroy');
-        });
-
-        // Settings
-        Route::get('/settings', [Admin\SettingsController::class, 'index'])->name('settings');
-        Route::post('/settings', [Admin\SettingsController::class, 'update'])->name('settings.update');
-
-        // Tournament Notification Routes (for sending notifications from tournament pages)
-        Route::prefix('tournaments/{tournament}')->name('tournaments.')->group(function () {
-            Route::get('/send-notification', [Admin\TournamentNotificationController::class, 'show'])->name('send-notification');
-            Route::post('/send-notification', [Admin\TournamentNotificationController::class, 'send'])->name('send-notification.post');
-        });
     });
 
-    // =================================================================
-    // ⚽ REFEREE ROUTES + Admin/Super Admin Access
-    // =================================================================
-    Route::middleware(['referee_or_admin'])->prefix('referee')->name('referee.')->group(function () {
-
-        // Dashboard
-        Route::get('/', [Referee\DashboardController::class, 'index'])->name('dashboard');
-
-        // Availability Management
-        Route::prefix('availability')->name('availability.')->group(function () {
-            Route::get('/', [Referee\AvailabilityController::class, 'index'])->name('index');
-            Route::get('/calendar', [Referee\AvailabilityController::class, 'calendar'])->name('calendar');
-            Route::post('/save', [Referee\AvailabilityController::class, 'save'])->name('save');
-            Route::post('/update', [Referee\AvailabilityController::class, 'update'])->name('update');
-            Route::post('/bulk-update', [Referee\AvailabilityController::class, 'bulkUpdate'])->name('bulk-update');
-            Route::post('/toggle', [Referee\AvailabilityController::class, 'toggle'])->name('toggle');
-            Route::post('/', [Referee\AvailabilityController::class, 'store'])->name('store');
-            Route::post('/bulk', [Referee\AvailabilityController::class, 'bulk'])->name('bulk');
-            Route::patch('/{availability}', [Referee\AvailabilityController::class, 'update'])->name('update');
-            Route::delete('/{availability}', [Referee\AvailabilityController::class, 'destroy'])->name('destroy');
-        });
-
-        // Tournament Applications
-        Route::prefix('applications')->name('applications.')->group(function () {
-            Route::get('/', [Referee\ApplicationController::class, 'index'])->name('index');
-            Route::post('/{tournament}/apply', [Referee\ApplicationController::class, 'apply'])->name('apply');
-            Route::delete('/{tournament}/withdraw', [Referee\ApplicationController::class, 'withdraw'])->name('withdraw');
-        });
-
-        // Assignment History
-        Route::get('/assignments', [Referee\AssignmentController::class, 'index'])->name('assignments.index');
-        Route::get('/assignments/{assignment}', [Referee\AssignmentController::class, 'show'])->name('assignments.show');
-
-        // Documents and Certifications
-        Route::prefix('documents')->name('documents.')->group(function () {
-            Route::get('/', [Referee\DocumentController::class, 'index'])->name('index');
-            Route::post('/upload', [Referee\DocumentController::class, 'upload'])->name('upload');
-            Route::delete('/{document}', [Referee\DocumentController::class, 'destroy'])->name('destroy');
-        });
+    // ✅ STATISTICS DASHBOARD - ROUTES AGGIUNTE
+    Route::prefix('statistics')->name('statistics.')->group(function () {
+        Route::get('/', [StatisticsDashboardController::class, 'index'])->name('dashboard');
+        Route::get('/disponibilita', [StatisticsDashboardController::class, 'disponibilita'])->name('disponibilita');
+        Route::get('/assegnazioni', [StatisticsDashboardController::class, 'assegnazioni'])->name('assegnazioni');
+        Route::get('/tornei', [StatisticsDashboardController::class, 'tornei'])->name('tornei');
+        Route::get('/arbitri', [StatisticsDashboardController::class, 'arbitri'])->name('arbitri');
+        Route::get('/zone', [StatisticsDashboardController::class, 'zone'])->name('zone');
+        Route::get('/performance', [StatisticsDashboardController::class, 'performance'])->name('performance');
+        Route::get('/export', [StatisticsDashboardController::class, 'exportCsv'])->name('export');
+        Route::get('/api/{type}', [StatisticsDashboardController::class, 'apiStats'])->name('api');
     });
 
-    // =================================================================
-    // 📊 REPORTS ROUTES (All authenticated users with proper permissions)
-    // =================================================================
-    Route::middleware(['admin_or_superadmin'])->prefix('reports')->name('reports.')->group(function () {
-
-        // Dashboard Analytics
-        Route::get('/', [Reports\DashboardController::class, 'index'])->name('dashboard');
-
-        // Tournament Reports
-        Route::prefix('tournaments')->name('tournament.')->group(function () {
-            Route::get('/', [Reports\TournamentReportController::class, 'index'])->name('index');
-            Route::get('/{tournament}', [Reports\TournamentReportController::class, 'show'])->name('show');
-            Route::get('/by-category', [Reports\TournamentReportController::class, 'byCategory'])->name('by-category');
-            Route::get('/by-zone', [Reports\TournamentReportController::class, 'byZone'])->name('by-zone');
-            Route::get('/by-period', [Reports\TournamentReportController::class, 'byPeriod'])->name('by-period');
-            Route::get('/export', [Reports\TournamentReportController::class, 'export'])->name('export');
-        });
-
-        // Referee Reports
-        Route::prefix('referees')->name('referee.')->group(function () {
-            Route::get('/', [Reports\RefereeReportController::class, 'index'])->name('index');
-            Route::get('/{referee}', [Reports\RefereeReportController::class, 'show'])->name('show');
-            Route::get('/performance', [Reports\RefereeReportController::class, 'performance'])->name('performance');
-            Route::get('/availability', [Reports\RefereeReportController::class, 'availability'])->name('availability');
-            Route::get('/workload', [Reports\RefereeReportController::class, 'workload'])->name('workload');
-            Route::get('/export', [Reports\RefereeReportController::class, 'export'])->name('export');
-        });
-
-        // Category Reports
-        Route::prefix('categories')->name('category.')->group(function () {
-            Route::get('/', [Reports\CategoryReportController::class, 'index'])->name('index');
-            Route::get('/{category}', [Reports\CategoryReportController::class, 'show'])->name('show');
-            Route::get('/{category}/tournaments', [Reports\CategoryReportController::class, 'tournaments'])->name('tournaments');
-            Route::get('/export', [Reports\CategoryReportController::class, 'export'])->name('export');
-        });
-
-        // Zone Reports
-        Route::prefix('zones')->name('zone.')->group(function () {
-            Route::get('/', [Reports\ZoneReportController::class, 'index'])->name('index');
-            Route::get('/{zone}', [Reports\ZoneReportController::class, 'show'])->name('show');
-            Route::get('/{zone}/referees', [Reports\ZoneReportController::class, 'referees'])->name('referees');
-            Route::get('/{zone}/tournaments', [Reports\ZoneReportController::class, 'tournaments'])->name('tournaments');
-            Route::get('/export', [Reports\ZoneReportController::class, 'export'])->name('export');
-        });
-
-        // Advanced Analytics
-        Route::prefix('analytics')->name('analytics.')->group(function () {
-            Route::get('/trends', [Reports\AnalyticsController::class, 'trends'])->name('trends');
-            Route::get('/forecasting', [Reports\AnalyticsController::class, 'forecasting'])->name('forecasting');
-            Route::get('/efficiency', [Reports\AnalyticsController::class, 'efficiency'])->name('efficiency');
-            Route::get('/custom', [Reports\AnalyticsController::class, 'custom'])->name('custom');
-        });
+    // ✅ MONITORING SYSTEM - ROUTES AGGIUNTE
+    Route::prefix('monitoring')->name('monitoring.')->group(function () {
+        Route::get('/', [MonitoringController::class, 'dashboard'])->name('dashboard');
+        Route::get('/health', [MonitoringController::class, 'healthCheck'])->name('health');
+        Route::get('/metrics', [MonitoringController::class, 'realtimeMetrics'])->name('metrics');
+        Route::get('/history', [MonitoringController::class, 'history'])->name('history');
+        Route::get('/logs', [MonitoringController::class, 'systemLogs'])->name('logs');
+        Route::get('/performance', [MonitoringController::class, 'performanceMetrics'])->name('performance');
+        Route::post('/clear-cache', [MonitoringController::class, 'clearCache'])->name('clear-cache');
+        Route::post('/optimize', [MonitoringController::class, 'optimize'])->name('optimize');
     });
 
-    // =================================================================
-    // 🔧 API ROUTES UTILI (mantenute solo quelle necessarie)
-    // =================================================================
-    Route::prefix('api')->name('api.')->group(function () {
+    // Document Management
+    Route::prefix('documents')->name('documents.')->group(function () {
+        Route::get('/', [DocumentController::class, 'index'])->name('index');
+        Route::post('/upload', [DocumentController::class, 'upload'])->name('upload');
+        Route::get('/{document}/download', [DocumentController::class, 'download'])->name('download');
+        Route::delete('/{document}', [DocumentController::class, 'destroy'])->name('destroy');
+    });
 
-        // API per selezioni dinamiche nel form notifiche
-        Route::get('/institutional-emails/{zoneId}', function ($zoneId) {
-            return \App\Models\InstitutionalEmail::where('is_active', true)
-                ->where(function ($query) use ($zoneId) {
-                    $query->where('zone_id', $zoneId)
-                        ->orWhere('receive_all_notifications', true);
-                })
-                ->select('id', 'name', 'email', 'category')
-                ->get()
-                ->groupBy('category');
-        })->name('institutional-emails');
+    // Settings
+    Route::get('/settings', [Admin\SettingsController::class, 'index'])->name('settings');
+    Route::post('/settings', [Admin\SettingsController::class, 'update'])->name('settings.update');
 
-        // API per template lettere
-        Route::get('/letter-templates/{type}/{zoneId?}', function ($type, $zoneId = null) {
-            $query = \App\Models\LetterTemplate::where('is_active', true)
-                ->where('type', $type);
-
-            if ($zoneId) {
-                $query->where(function ($q) use ($zoneId) {
-                    $q->where('zone_id', $zoneId)->orWhereNull('zone_id');
-                });
-            }
-
-            return $query->select('id', 'name', 'subject', 'body')->get();
-        })->name('letter-templates');
-
-        // API per statistiche disponibilità
-        Route::get('/statistics/disponibilita', function () {
-            return \App\Models\Availability::getStatisticsByZone();
-        })->name('statistics.disponibilita');
-
-        // API per statistiche notifiche
-        Route::get('/notifications/stats/{days?}', function ($days = 30) {
-            return \App\Models\Notification::getStatistics($days);
-        })->name('notification-stats');
-
-        // API per calendario tornei
-        Route::get('/tournaments/calendar', function () {
-            return \App\Models\Tournament::getCalendarEvents();
-        })->name('tournaments.calendar');
+    // Tournament Notification Routes (for sending notifications from tournament pages)
+    Route::prefix('tournaments/{tournament}')->name('tournaments.')->group(function () {
+        Route::get('/send-notification', [Admin\TournamentNotificationController::class, 'show'])->name('send-notification');
+        Route::post('/send-notification', [Admin\TournamentNotificationController::class, 'send'])->name('send-notification.post');
     });
 });
 
-// ✅ STATISTICS
-Route::prefix('statistics')->name('statistics.')->group(function () {
-    Route::get('/', [StatisticsDashboardController::class, 'index'])->name('dashboard');
-    // ... altre route
+// =================================================================
+// ⚽ REFEREE ROUTES + Admin/Super Admin Access
+// =================================================================
+Route::middleware(['referee_or_admin'])->prefix('referee')->name('referee.')->group(function () {
+
+    // Dashboard
+    Route::get('/', [Referee\DashboardController::class, 'index'])->name('dashboard');
+
+    // Availability Management
+    Route::prefix('availability')->name('availability.')->group(function () {
+        Route::get('/', [Referee\AvailabilityController::class, 'index'])->name('index');
+        Route::get('/calendar', [Referee\AvailabilityController::class, 'calendar'])->name('calendar');
+        Route::post('/save', [Referee\AvailabilityController::class, 'save'])->name('save');
+        Route::post('/update', [Referee\AvailabilityController::class, 'update'])->name('update');
+        Route::post('/bulk-update', [Referee\AvailabilityController::class, 'bulkUpdate'])->name('bulk-update');
+        Route::post('/toggle', [Referee\AvailabilityController::class, 'toggle'])->name('toggle');
+        Route::post('/', [Referee\AvailabilityController::class, 'store'])->name('store');
+        Route::post('/bulk', [Referee\AvailabilityController::class, 'bulk'])->name('bulk');
+        Route::patch('/{availability}', [Referee\AvailabilityController::class, 'update'])->name('update');
+        Route::delete('/{availability}', [Referee\AvailabilityController::class, 'destroy'])->name('destroy');
+    });
+
+    // Tournament Applications
+    Route::prefix('applications')->name('applications.')->group(function () {
+        Route::get('/', [Referee\ApplicationController::class, 'index'])->name('index');
+        Route::post('/{tournament}/apply', [Referee\ApplicationController::class, 'apply'])->name('apply');
+        Route::delete('/{tournament}/withdraw', [Referee\ApplicationController::class, 'withdraw'])->name('withdraw');
+    });
+
+    // Assignment History
+    Route::get('/assignments', [Referee\AssignmentController::class, 'index'])->name('assignments.index');
+    Route::get('/assignments/{assignment}', [Referee\AssignmentController::class, 'show'])->name('assignments.show');
+
+    // Documents and Certifications
+    Route::prefix('documents')->name('documents.')->group(function () {
+        Route::get('/', [Referee\DocumentController::class, 'index'])->name('index');
+        Route::post('/upload', [Referee\DocumentController::class, 'upload'])->name('upload');
+        Route::delete('/{document}', [Referee\DocumentController::class, 'destroy'])->name('destroy');
+    });
 });
+
+// =================================================================
+// 📊 REPORTS ROUTES (All authenticated users with proper permissions)
+// =================================================================
+Route::middleware(['admin_or_superadmin'])->prefix('reports')->name('reports.')->group(function () {
+
+    // Dashboard Analytics
+    Route::get('/', [Reports\DashboardController::class, 'index'])->name('dashboard');
+
+    // Tournament Reports
+    Route::prefix('tournaments')->name('tournament.')->group(function () {
+        Route::get('/', [Reports\TournamentReportController::class, 'index'])->name('index');
+        Route::get('/{tournament}', [Reports\TournamentReportController::class, 'show'])->name('show');
+        Route::get('/by-category', [Reports\TournamentReportController::class, 'byCategory'])->name('by-category');
+        Route::get('/by-zone', [Reports\TournamentReportController::class, 'byZone'])->name('by-zone');
+        Route::get('/by-period', [Reports\TournamentReportController::class, 'byPeriod'])->name('by-period');
+        Route::get('/export', [Reports\TournamentReportController::class, 'export'])->name('export');
+    });
+
+    // Referee Reports
+    Route::prefix('referees')->name('referee.')->group(function () {
+        Route::get('/', [Reports\RefereeReportController::class, 'index'])->name('index');
+        Route::get('/{referee}', [Reports\RefereeReportController::class, 'show'])->name('show');
+        Route::get('/performance', [Reports\RefereeReportController::class, 'performance'])->name('performance');
+        Route::get('/availability', [Reports\RefereeReportController::class, 'availability'])->name('availability');
+        Route::get('/workload', [Reports\RefereeReportController::class, 'workload'])->name('workload');
+        Route::get('/export', [Reports\RefereeReportController::class, 'export'])->name('export');
+    });
+
+    // Category Reports
+    Route::prefix('categories')->name('category.')->group(function () {
+        Route::get('/', [Reports\CategoryReportController::class, 'index'])->name('index');
+        Route::get('/{category}', [Reports\CategoryReportController::class, 'show'])->name('show');
+        Route::get('/{category}/tournaments', [Reports\CategoryReportController::class, 'tournaments'])->name('tournaments');
+        Route::get('/export', [Reports\CategoryReportController::class, 'export'])->name('export');
+    });
+
+    // Zone Reports
+    Route::prefix('zones')->name('zone.')->group(function () {
+        Route::get('/', [Reports\ZoneReportController::class, 'index'])->name('index');
+        Route::get('/{zone}', [Reports\ZoneReportController::class, 'show'])->name('show');
+        Route::get('/{zone}/referees', [Reports\ZoneReportController::class, 'referees'])->name('referees');
+        Route::get('/{zone}/tournaments', [Reports\ZoneReportController::class, 'tournaments'])->name('tournaments');
+        Route::get('/export', [Reports\ZoneReportController::class, 'export'])->name('export');
+    });
+
+    // Advanced Analytics
+    Route::prefix('analytics')->name('analytics.')->group(function () {
+        Route::get('/trends', [Reports\AnalyticsController::class, 'trends'])->name('trends');
+        Route::get('/forecasting', [Reports\AnalyticsController::class, 'forecasting'])->name('forecasting');
+        Route::get('/efficiency', [Reports\AnalyticsController::class, 'efficiency'])->name('efficiency');
+        Route::get('/custom', [Reports\AnalyticsController::class, 'custom'])->name('custom');
+    });
+});
+
+// =================================================================
+// 🔧 API ROUTES UTILI (mantenute solo quelle necessarie)
+// =================================================================
+Route::prefix('api')->name('api.')->group(function () {
+
+    // API per selezioni dinamiche nel form notifiche
+    Route::get('/institutional-emails/{zoneId}', function ($zoneId) {
+        return \App\Models\InstitutionalEmail::where('is_active', true)
+            ->where(function ($query) use ($zoneId) {
+                $query->where('zone_id', $zoneId)
+                    ->orWhere('receive_all_notifications', true);
+            })
+            ->select('id', 'name', 'email', 'category')
+            ->get()
+            ->groupBy('category');
+    })->name('institutional-emails');
+
+    // API per template lettere
+    Route::get('/letter-templates/{type}/{zoneId?}', function ($type, $zoneId = null) {
+        $query = \App\Models\LetterTemplate::where('is_active', true)
+            ->where('type', $type);
+
+        if ($zoneId) {
+            $query->where(function ($q) use ($zoneId) {
+                $q->where('zone_id', $zoneId)->orWhereNull('zone_id');
+            });
+        }
+
+        return $query->select('id', 'name', 'subject', 'body')->get();
+    })->name('letter-templates');
+
+
+    // API per statistiche notifiche
+    Route::get('/notifications/stats/{days?}', function ($days = 30) {
+        return \App\Models\Notification::getStatistics($days);
+    })->name('notification-stats');
+
+    // API per calendario tornei
+    Route::get('/tournaments/calendar', function () {
+        return \App\Models\Tournament::getCalendarEvents();
+    })->name('tournaments.calendar');
+});
+
 
 // ✅ MONITORING
 Route::prefix('monitoring')->name('monitoring.')->group(function () {

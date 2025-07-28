@@ -23,7 +23,8 @@ class Notification extends Model
         'attachments',
         'retry_count',
         'metadata',
-    ];
+        'attachments'
+];
 
     protected $casts = [
         'sent_at' => 'datetime',

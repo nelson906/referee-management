@@ -1,4 +1,4 @@
-@extends('layouts.app')
+@extends('layouts.admin')
 
 @section('title', 'Tornei')
 
@@ -77,10 +77,38 @@
                 </div>
 
                 <div class="flex justify-between items-center">
+                    {{-- Link Visualizza dettagli (esistente) --}}
                     <a href="{{ route('tournaments.show', $tournament) }}"
                        class="text-indigo-600 hover:text-indigo-800 font-medium">
                         Visualizza dettagli →
                     </a>
+
+                    {{-- Pulsanti azione per Admin/SuperAdmin/NationalAdmin --}}
+                    @if(auth()->user()->hasRole('admin') || auth()->user()->hasRole('national_admin') || auth()->user()->hasRole('super_admin'))
+                        <div class="flex space-x-2">
+                            {{-- Pulsante Invia Notifica (se ci sono arbitri assegnati) --}}
+                            @if($tournament->assignedReferees && $tournament->assignedReferees->count() > 0)
+                                <a href="{{ route('admin.tournaments.show-assignment-form', $tournament) }}"
+                                   class="inline-flex items-center px-3 py-1 text-xs font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 transition-colors">
+                                    📧 Notifica
+                                </a>
+                            @endif
+
+                            {{-- Pulsante Assegna Arbitri (se non ci sono arbitri assegnati) --}}
+                            @if(!$tournament->assignedReferees || $tournament->assignedReferees->count() == 0)
+                                <a href="{{ route('admin.tournaments.show', $tournament) }}"
+                                   class="inline-flex items-center px-3 py-1 text-xs font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors">
+                                    👥 Assegna
+                                </a>
+                            @endif
+
+                            {{-- Pulsante Modifica --}}
+                            <a href="{{ route('admin.tournaments.edit', $tournament) }}"
+                               class="inline-flex items-center px-3 py-1 text-xs font-medium text-blue-700 bg-blue-100 rounded-md hover:bg-blue-200 transition-colors">
+                                ✏️ Modifica
+                            </a>
+                        </div>
+                    @endif
                 </div>
             </div>
         </div>

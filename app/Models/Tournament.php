@@ -17,11 +17,17 @@ class Tournament extends Model
      *
      * @var array<int, string>
      */
-protected $fillable = [
-    'name', 'start_date', 'end_date', 'availability_deadline',
-    'club_id', 'tournament_type_id', 'zone_id', // ✅ tournament_type_id
-    'notes', 'status', // ... rest of fields
-];
+    protected $fillable = [
+        'name',
+        'start_date',
+        'end_date',
+        'availability_deadline',
+        'club_id',
+        'tournament_type_id',
+        'zone_id', // ✅ tournament_type_id
+        'notes',
+        'status', // ... rest of fields
+    ];
 
     /**
      * The attributes that should be cast.
@@ -36,6 +42,10 @@ protected $fillable = [
         'convocation_generated_at' => 'datetime',
         'club_letter_generated_at' => 'datetime',
         'document_version' => 'integer',
+        'convocation_file_path',
+        'convocation_file_name',
+        'club_letter_file_path',
+        'club_letter_file_name'
     ];
 
     /**
@@ -118,9 +128,9 @@ protected $fillable = [
     {
         return $query->where(function ($q) use ($zoneId) {
             $q->where('zone_id', $zoneId)
-              ->orWhereHas('tournamentType', function ($q) {
-                  $q->where('is_national', true);
-              });
+                ->orWhereHas('tournamentType', function ($q) {
+                    $q->where('is_national', true);
+                });
         });
     }
 
@@ -154,7 +164,7 @@ protected $fillable = [
     public function scopeOpenForAvailability($query)
     {
         return $query->where('status', self::STATUS_OPEN)
-                     ->where('availability_deadline', '>=', Carbon::today());
+            ->where('availability_deadline', '>=', Carbon::today());
     }
 
     /**
@@ -171,7 +181,7 @@ protected $fillable = [
     public function isOpenForAvailability(): bool
     {
         return $this->status === self::STATUS_OPEN
-               && $this->availability_deadline >= Carbon::today();
+            && $this->availability_deadline >= Carbon::today();
     }
 
     /**
@@ -237,7 +247,7 @@ protected $fillable = [
      */
     public function getStatusColorAttribute(): string
     {
-        return match($this->status) {
+        return match ($this->status) {
             self::STATUS_DRAFT => 'gray',
             self::STATUS_OPEN => 'green',
             self::STATUS_CLOSED => 'yellow',
@@ -298,23 +308,22 @@ protected $fillable = [
     }
 
     /**
- * Get available referees (those who declared availability)
- */
-public function availableReferees()
-{
-    return $this->belongsToMany(User::class, 'availabilities', 'tournament_id', 'user_id')
-                ->withPivot('notes', 'submitted_at')
-                ->withTimestamps();
-}
+     * Get available referees (those who declared availability)
+     */
+    public function availableReferees()
+    {
+        return $this->belongsToMany(User::class, 'availabilities', 'tournament_id', 'user_id')
+            ->withPivot('notes', 'submitted_at')
+            ->withTimestamps();
+    }
 
-/**
- * Get assigned referees
- */
-public function assignedReferees()
-{
-    return $this->belongsToMany(User::class, 'assignments', 'tournament_id', 'user_id')
-                ->withPivot('role', 'is_confirmed', 'assigned_at', 'assigned_by_id', 'notes')
-                ->withTimestamps();
-}
-
+    /**
+     * Get assigned referees
+     */
+    public function assignedReferees()
+    {
+        return $this->belongsToMany(User::class, 'assignments', 'tournament_id', 'user_id')
+            ->withPivot('role', 'is_confirmed', 'assigned_at', 'assigned_by_id', 'notes')
+            ->withTimestamps();
+    }
 }

@@ -12,6 +12,9 @@ use App\Models\Zone;
 use App\Services\NotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Log;
 
 class NotificationController extends Controller
 {
@@ -83,6 +86,42 @@ public function stats(Request $request)
         ->get();
 
     return view('admin.notifications.stats', compact('days', 'stats', 'dailyStats', 'topRecipients', 'templateUsage', 'failedNotifications'));
+}
+
+/**
+ * Show assignment notification form
+ */
+public function showAssignmentForm(Tournament $tournament)
+{
+    // Check authorization
+    $this->checkAssignmentFormAuthorization($tournament);
+    $assignments = $this->getTournamentAssignments($tournament);
+    $templates = \App\Models\LetterTemplate::where('is_active', true)->get();
+            $institutionalEmails = \App\Models\InstitutionalEmail::where('is_active', true)
+                ->orderBy('category')
+                ->orderBy('name')
+                ->get();
+            $groupedEmails = $institutionalEmails->groupBy('category');
+
+    // Get assigned referees
+$assignedReferees = $tournament->assignedReferees()->get();
+
+    // Check existing documents
+    $documentStatus = $this->checkAndSetExistingConvocation($tournament);
+
+    // Per backward compatibility con la vista
+    $hasExistingConvocation = $documentStatus['hasConvocation'] || $documentStatus['hasClubLetter'];
+
+    return view('admin.notifications.assignment_form', compact(
+        'tournament',
+        'assignedReferees',
+        'assignments',
+        'groupedEmails',
+        'documentStatus',
+        'hasExistingConvocation',
+        'templates',
+        'institutionalEmails'
+    ));
 }
     /**
      * Show the form for sending assignment notifications.
@@ -170,7 +209,107 @@ public function stats(Request $request)
                 ->with('error', 'Errore nell\'invio delle notifiche: ' . $e->getMessage());
         }
     }
+/**
+ * Send unified assignment notification
+ */
+public function sendTournamentAssignment(Request $request, Tournament $tournament)
+{
+    $validated = $this->validateAssignmentRequest($request);
 
+    // Create notification record
+    $notification = $this->createNotificationRecord($validated, $tournament);
+
+    // Get assignments
+    $assignments = $this->getTournamentAssignments($tournament);
+
+    // Prepare email data
+    $emailData = [
+        'tournament' => $tournament,
+        'assignments' => $assignments,
+        'subject' => $validated['subject'],
+        'message' => $validated['message']
+    ];
+
+    // Send emails to different recipient types
+    $this->sendToRecipients($request, $notification, $emailData);
+    $this->sendToAdditionalEmails($request, $emailData);
+    $this->sendToinstitutionalEmail($request, $emailData);
+    $this->sendToClub($tournament, $emailData);
+
+    return redirect()->back()->with('success', 'Notification sent successfully');
+}
+
+/**
+ * Send assignment notification with convocation attachment
+ */
+public function sendAssignmentWithConvocation(Request $request, Tournament $tournament)
+{
+    $this->checkAssignmentFormAuthorization($tournament);
+
+    $validated = $this->validateAssignmentWithConvocationRequest($request);
+
+    // Get convocation path if needed
+    $convocationData = $this->getConvocationData($tournament, $request);
+
+    // Get assignments
+    $assignments = $this->getTournamentAssignments($tournament);
+
+    // Prepare email data with attachments
+    $emailData = [
+        'tournament' => $tournament,
+        'assignments' => $assignments,
+        'subject' => $validated['subject'],
+        'message' => $validated['message'],
+        'convocation' => $convocationData
+    ];
+
+    // Create notification record with attachment info
+    $notification = $this->createNotificationRecord($validated, $tournament);
+
+    // Store attachment info in notification
+    if (!empty($convocationData) && is_array($convocationData)) {
+        $attachments = [];
+        foreach ($convocationData as $attachment) {
+            if (isset($attachment['path']) && $attachment['path']) {
+                $attachments[$attachment['type']] = [
+                    'path' => $attachment['path'],
+                    'filename' => $attachment['filename']
+                ];
+            }
+        }
+        if (!empty($attachments)) {
+            $notification->attachments = $attachments;
+            $notification->save();
+        }
+    }
+
+    // Send emails to different recipient types
+    $this->sendToRecipientsWithAttachment($request, $emailData);
+    $this->sendToAdditionalEmailsWithAttachment($request, $emailData);
+    $this->sendToinstitutionalEmailWithAttachment($request, $emailData);
+    $this->sendToClubWithAttachment($tournament, $emailData);
+
+    // Clear session data after successful sending
+    session()->forget(['last_convocation_path', 'last_convocation_filename']);
+
+    $message = 'Notifica inviata con successo';
+
+    // Add attachment info to success message
+    if (!empty($convocationData) && is_array($convocationData)) {
+        $attachmentNames = [];
+        foreach ($convocationData as $attachment) {
+            if (isset($attachment['path']) && $attachment['path']) {
+                $attachmentNames[] = $attachment['type'] === 'convocation' ? 'convocazione' : 'lettera circolo';
+            }
+        }
+
+        if (!empty($attachmentNames)) {
+            $message .= ' con ' . implode(' e ', $attachmentNames) . ' allegata/e.';
+        }
+    }
+
+    return redirect()->back()->with('success', $message);
+}
     /**
      * Display the specified notification.
      */
@@ -238,26 +377,26 @@ public function stats(Request $request)
     /**
      * Send notification to club.
      */
-    private function sendToClub(Tournament $tournament, array $data, array &$results)
-    {
-        if (!$tournament->club->email) {
-            $results['errors'][] = "Il circolo {$tournament->club->name} non ha un indirizzo email.";
-            return;
-        }
+    // private function sendToClub(Tournament $tournament, array $data, array &$results)
+    // {
+    //     if (!$tournament->club->email) {
+    //         $results['errors'][] = "Il circolo {$tournament->club->name} non ha un indirizzo email.";
+    //         return;
+    //     }
 
-        try {
-            $this->notificationService->sendClubNotification($tournament, [
-                'custom_subject' => $data['subject'],
-                'custom_message' => $data['message'],
-                'template_id' => $data['template_id'] ?? null,
-            ]);
+    //     try {
+    //         $this->notificationService->sendClubNotification($tournament, [
+    //             'custom_subject' => $data['subject'],
+    //             'custom_message' => $data['message'],
+    //             'template_id' => $data['template_id'] ?? null,
+    //         ]);
 
-            $results['sent']++;
-        } catch (\Exception $e) {
-            $results['failed']++;
-            $results['errors'][] = "Errore invio a circolo: " . $e->getMessage();
-        }
-    }
+    //         $results['sent']++;
+    //     } catch (\Exception $e) {
+    //         $results['failed']++;
+    //         $results['errors'][] = "Errore invio a circolo: " . $e->getMessage();
+    //     }
+    // }
 
     /**
      * Send notifications to institutional emails.
@@ -316,4 +455,426 @@ public function stats(Request $request)
             }
         }
     }
+    /**
+ * Validate assignment request
+ */
+private function validateAssignmentRequest(Request $request)
+{
+    return $request->validate([
+        'subject' => 'required|string|max:255',
+        'message' => 'required|string',
+        'recipients' => 'nullable|array',
+    ]);
+}
+
+/**
+ * Validate assignment with convocation request
+ */
+private function validateAssignmentWithConvocationRequest(Request $request)
+{
+    return $request->validate([
+        'subject' => 'required|string|max:255',
+        'message' => 'required|string',
+        'recipients' => 'nullable|array',
+        'recipients.*' => 'exists:users,id',
+        'fixed_addresses' => 'nullable|array',
+        'fixed_addresses.*' => 'exists:fixed_addresses,id',
+        'additional_emails' => 'nullable|array',
+        'additional_emails.*' => 'nullable|email',
+        'additional_names' => 'nullable|array',
+        'additional_names.*' => 'nullable|string',
+        'attach_convocation' => 'boolean'
+    ]);
+}
+
+/**
+ * Check authorization for assignment form access
+ */
+private function checkAssignmentFormAuthorization(Tournament $tournament)
+{
+    if (!Auth::user()->hasRole('admin') && !Auth::user()->hasRole('super_admin') && !Auth::user()->hasRole('national_admin')) {
+        abort(403, 'Non hai i permessi per inviare notifiche.');
+    }
+
+    if (Auth::user()->hasRole('national_admin') && (!$tournament->type || !$tournament->type->is_national)) {
+        abort(403, 'Non hai accesso a questo torneo non nazionale.');
+    }
+}
+
+/**
+ * Get convocation data for attachment
+ */
+private function getConvocationData(Tournament $tournament, Request $request)
+{
+    $attachments = [];
+
+    if (!$request->has('attach_convocation') || !$request->attach_convocation) {
+        return $attachments;
+    }
+
+    // 1. CONVOCAZIONE PRINCIPALE
+    $convocationData = $this->getMainConvocationData($tournament);
+    if ($convocationData['path']) {
+        $attachments[] = $convocationData;
+    }
+
+    // 2. LETTERA CIRCOLO
+    $clubLetterData = $this->getClubLetterData($tournament);
+    if ($clubLetterData['path']) {
+        $attachments[] = $clubLetterData;
+    }
+
+    return $attachments;
+}
+
+/**
+ * Get main convocation data
+ */
+private function getMainConvocationData(Tournament $tournament)
+{
+    $convocationData = ['path' => null, 'filename' => 'convocazione.docx', 'type' => 'convocation'];
+
+    // Check session first (recently generated files)
+    if (session()->has('last_convocation_path') && session()->has('last_convocation_filename')) {
+        $sessionPath = session('last_convocation_path');
+        $sessionFilename = session('last_convocation_filename');
+
+        // Check if the file exists in public storage
+        if (Storage::disk('public')->exists($sessionPath)) {
+            $convocationData['path'] = Storage::disk('public')->path($sessionPath);
+            $convocationData['filename'] = $sessionFilename;
+            return $convocationData;
+        }
+    }
+
+    // Check database first (old system)
+    if ($tournament->convocation_file_path && Storage::disk('local')->exists($tournament->convocation_file_path)) {
+        $convocationData['path'] = Storage::disk('local')->path($tournament->convocation_file_path);
+        $convocationData['filename'] = $tournament->convocation_file_name ?? 'convocazione.docx';
+        return $convocationData;
+    }
+
+    // Check public disk (new system)
+    $tournamentName = preg_replace('/[^A-Za-z0-9\-]/', '_', $tournament->name);
+    $tournamentName = substr($tournamentName, 0, 50);
+    $expectedFilename = "convocazione_{$tournament->id}_{$tournamentName}.docx";
+    $expectedPath = 'convocations/' . $expectedFilename;
+
+    if (Storage::disk('public')->exists($expectedPath)) {
+        $convocationData['path'] = Storage::disk('public')->path($expectedPath);
+        $convocationData['filename'] = $expectedFilename;
+    }
+
+    return $convocationData;
+}
+
+/**
+ * Get club letter data
+ */
+private function getClubLetterData(Tournament $tournament)
+{
+    $clubLetterData = ['path' => null, 'filename' => 'lettera_circolo.docx', 'type' => 'club_letter'];
+
+    Log::info('Debug lettera circolo per torneo: ' . $tournament->id, [
+        'club_letter_file_path' => $tournament->club_letter_file_path ?? 'NULL',
+        'club_letter_file_name' => $tournament->club_letter_file_name ?? 'NULL'
+    ]);
+
+    // Check database field first
+    if ($tournament->club_letter_file_path && Storage::disk('public')->exists($tournament->club_letter_file_path)) {
+        $clubLetterData['path'] = Storage::disk('public')->path($tournament->club_letter_file_path);
+        $clubLetterData['filename'] = $tournament->club_letter_file_name ?? 'lettera_circolo.docx';
+        Log::info('Lettera circolo trovata nel database: ' . $clubLetterData['path']);
+        return $clubLetterData;
+    }
+
+    // Fallback: check for standard naming convention
+    $tournamentName = preg_replace('/[^A-Za-z0-9\-]/', '_', $tournament->name);
+    $tournamentName = substr($tournamentName, 0, 50);
+    $expectedFilename = "lettera_circolo_{$tournament->id}_{$tournamentName}.docx";
+    $expectedPath = 'club_letters/' . $expectedFilename;
+
+    if (Storage::disk('public')->exists($expectedPath)) {
+        $clubLetterData['path'] = Storage::disk('public')->path($expectedPath);
+        $clubLetterData['filename'] = $expectedFilename;
+        Log::info('Lettera circolo trovata con naming convention: ' . $clubLetterData['path']);
+    } else {
+        Log::info('Lettera circolo non trovata: ' . $expectedPath);
+    }
+
+    return $clubLetterData;
+}
+/**
+ * Unified method to create and send email with multiple attachments
+ */
+private function createAndSendEmail(array $emailData, string $recipientEmail, ?string $recipientName = null, bool $isClub = false)
+{
+    $mail = new UnifiedAssignmentNotification(
+        $emailData['tournament'],
+        $emailData['assignments'],
+        $emailData['subject'],
+        $emailData['message'],
+        $recipientName,
+        $isClub
+    );
+
+    // Add multiple attachments if provided
+    if (isset($emailData['convocation']) && is_array($emailData['convocation'])) {
+        foreach ($emailData['convocation'] as $attachment) {
+            if (isset($attachment['path']) && $attachment['path'] && file_exists($attachment['path'])) {
+
+                // **CONTROLLO SPECIFICO: La lettera circolo va solo al circolo**
+                if ($attachment['type'] === 'club_letter' && !$isClub) {
+                    // Salta l'allegato lettera circolo se non è il circolo destinatario
+                    Log::info('Lettera circolo non allegata - destinatario non è il circolo', [
+                        'recipient' => $recipientEmail,
+                        'is_club' => $isClub
+                    ]);
+                    continue;
+                }
+
+                $mail->attach($attachment['path'], [
+                    'as' => $attachment['filename'],
+                    'mime' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+                ]);
+
+                Log::info('Allegato aggiunto all\'email', [
+                    'recipient' => $recipientEmail,
+                    'attachment_type' => $attachment['type'],
+                    'attachment_filename' => $attachment['filename']
+                ]);
+            }
+        }
+    }
+
+    // Send the email
+    try {
+        Mail::to($recipientEmail)->send($mail);
+        Log::info('Email inviata con successo', [
+            'recipient' => $recipientEmail,
+            'subject' => $emailData['subject']
+        ]);
+    } catch (\Exception $e) {
+        Log::error('Errore invio email', [
+            'recipient' => $recipientEmail,
+            'error' => $e->getMessage()
+        ]);
+        throw $e;
+    }
+}
+
+/**
+ * Send emails to selected recipients
+ */
+private function sendToRecipients(Request $request, Notification $notification, array $emailData)
+{
+    if (empty($request->recipients)) return;
+
+    $notification->recipients()->attach($request->recipients);
+
+    foreach ($notification->recipients as $recipient) {
+        $this->createAndSendEmail($emailData, $recipient->email, $recipient->name);
+    }
+}
+
+/**
+ * Send emails to additional email addresses
+ */
+private function sendToAdditionalEmails(Request $request, array $emailData)
+{
+    if (empty($request->additional_emails)) return;
+
+    foreach ($request->additional_emails as $index => $email) {
+        if (!empty($email)) {
+            $name = $request->additional_names[$index] ?? null;
+            $this->createAndSendEmail($emailData, $email, $name);
+        }
+    }
+}
+
+/**
+ * Send emails to fixed addresses
+ */
+private function sendToinstitutionalEmail(Request $request, array $emailData)
+{
+    if (empty($request->fixed_addresses)) return;
+
+    $institutionalEmail = FixedAddress::whereIn('id', $request->fixed_addresses)->get();
+    foreach ($institutionalEmail as $address) {
+        $this->createAndSendEmail($emailData, $address->email, $address->name);
+    }
+}
+
+/**
+ * Send email to club
+ */
+private function sendToClub(Tournament $tournament, array $emailData)
+{
+    $clubEmail = $this->getClubEmail($tournament->club);
+    if ($clubEmail) {
+        $this->createAndSendEmail($emailData, $clubEmail, $tournament->club->name, true);
+    }
+}
+
+// VERSIONI "WithAttachment" per invio con allegati
+private function sendToRecipientsWithAttachment(Request $request, array $emailData)
+{
+    if (empty($request->recipients)) return;
+
+    $users = User::whereIn('id', $request->recipients)->get();
+    foreach ($users as $user) {
+        $this->createAndSendEmail($emailData, $user->email, $user->name);
+    }
+}
+
+private function sendToAdditionalEmailsWithAttachment(Request $request, array $emailData)
+{
+    if (empty($request->additional_emails)) return;
+
+    foreach ($request->additional_emails as $index => $email) {
+        if (!empty($email)) {
+            $name = $request->additional_names[$index] ?? null;
+            $this->createAndSendEmail($emailData, $email, $name);
+        }
+    }
+}
+
+private function sendToinstitutionalEmailWithAttachment(Request $request, array $emailData)
+{
+    if (empty($request->fixed_addresses)) return;
+
+    $institutionalEmail = FixedAddress::whereIn('id', $request->fixed_addresses)->get();
+    foreach ($institutionalEmail as $address) {
+        $this->createAndSendEmail($emailData, $address->email, $address->name);
+    }
+}
+
+private function sendToClubWithAttachment(Tournament $tournament, array $emailData)
+{
+    $clubEmail = $this->getClubEmail($tournament->club);
+    if ($clubEmail) {
+        $this->createAndSendEmail($emailData, $clubEmail, $tournament->club->name, true);
+    }
+}
+
+/**
+ * Get tournament assignments - FIXED per referee-management
+ */
+private function getTournamentAssignments(Tournament $tournament)
+{
+    \Log::info('Debug getTournamentAssignments', [
+        'tournament_id' => $tournament->id,
+        'tournament_name' => $tournament->name
+    ]);
+
+    try {
+        // Carica gli assignments step by step per evitare conflitti
+        $assignments = Assignment::where('tournament_id', $tournament->id)->get();
+        \Log::info('Assignments found', ['count' => $assignments->count()]);
+
+        if ($assignments->isEmpty()) {
+            return collect();
+        }
+
+        // Carica le relazioni manualmente per evitare problemi con eager loading
+        $assignments->load(['referee', 'referee.user', 'referee.zone']);
+
+        \Log::info('Assignments with relations loaded', [
+            'count' => $assignments->count()
+        ]);
+
+        return $assignments;
+
+    } catch (\Exception $e) {
+        \Log::error('Error in getTournamentAssignments', [
+            'error' => $e->getMessage(),
+            'trace' => $e->getTraceAsString()
+        ]);
+
+        return collect();
+    }
+}
+/**
+ * Extract email from club data
+ */
+private function getClubEmail($club)
+{
+    // Check for direct email property
+    if (isset($club->email) && filter_var($club->email, FILTER_VALIDATE_EMAIL)) {
+        return $club->email;
+    }
+
+    // Try to extract from contact_info JSON
+    $contactInfo = $club->contact_info;
+
+    // If it's a JSON string, try to decode it
+    if (is_string($contactInfo)) {
+        try {
+            $contactInfo = json_decode($contactInfo, true);
+        } catch (\Exception $e) {
+            Log::warning("Failed to decode contact_info for club {$club->id}: {$e->getMessage()}");
+        }
+    }
+
+    // Check if we have an array with email
+    if (is_array($contactInfo) && isset($contactInfo['email']) && !empty($contactInfo['email'])) {
+        return $contactInfo['email'];
+    }
+
+    // As a fallback, look for any key containing 'email'
+    if (is_array($contactInfo)) {
+        foreach ($contactInfo as $key => $value) {
+            if (stripos($key, 'email') !== false && is_string($value) && !empty($value)) {
+                return $value;
+            }
+        }
+    }
+
+    return null;
+}
+
+/**
+ * Create notification record
+ */
+private function createNotificationRecord(array $validated, Tournament $tournament)
+{
+    $notification = new Notification([
+        'subject' => $validated['subject'],
+        'message' => $validated['message'],
+        'tournament_id' => $tournament->id,
+        'sender_id' => Auth::id(),
+    ]);
+    $notification->save();
+
+    return $notification;
+}
+
+/**
+ * Check and set existing convocation files
+ */
+private function checkAndSetExistingConvocation(Tournament $tournament)
+{
+    $status = [
+        'hasConvocation' => false,
+        'hasClubLetter' => false,
+        'convocationPath' => null,
+        'clubLetterPath' => null
+    ];
+
+    // Check convocation
+    $convocationData = $this->getMainConvocationData($tournament);
+    if ($convocationData['path']) {
+        $status['hasConvocation'] = true;
+        $status['convocationPath'] = $convocationData['path'];
+    }
+
+    // Check club letter
+    $clubLetterData = $this->getClubLetterData($tournament);
+    if ($clubLetterData['path']) {
+        $status['hasClubLetter'] = true;
+        $status['clubLetterPath'] = $clubLetterData['path'];
+    }
+
+    return $status;
+}
 }
