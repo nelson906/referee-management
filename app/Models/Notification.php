@@ -19,6 +19,8 @@ class Notification extends Model
         'status',
         'priority',
         'sent_at',
+            'recipient_name', // ✅ ADDED: Missing field
+
         'error_message',
         'attachments',
         'retry_count',

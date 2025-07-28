@@ -111,6 +111,72 @@
                 </a>
             </div>
         </div>
+<div class="bg-white shadow-sm rounded-lg p-6 mb-6">
+    <h3 class="text-lg font-medium text-gray-900 mb-4">📧 Gestione Notifiche</h3>
+
+    @if($tournament->assignments->count() > 0 || $tournament->assignedReferees->count() > 0)
+        <div class="flex flex-wrap gap-3">
+            {{-- ✅ PULSANTE INVIA NOTIFICHE --}}
+            <a href="{{ route('admin.tournaments.show-assignment-form', $tournament) }}"
+               class="inline-flex items-center px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
+                </svg>
+                📧 Invia Notifiche Assegnazione
+            </a>
+
+            {{-- Verifica documenti disponibili --}}
+            @php
+                $hasConvocation = false;
+                $hasClubLetter = false;
+
+                // Check for convocation
+                if ($tournament->convocation_file_path && \Storage::disk('public')->exists($tournament->convocation_file_path)) {
+                    $hasConvocation = true;
+                } elseif (session()->has('last_convocation_path') && \Storage::disk('public')->exists(session('last_convocation_path'))) {
+                    $hasConvocation = true;
+                }
+
+                // Check for club letter
+                if ($tournament->club_letter_file_path && \Storage::disk('public')->exists($tournament->club_letter_file_path)) {
+                    $hasClubLetter = true;
+                }
+            @endphp
+
+            @if($hasConvocation || $hasClubLetter)
+                <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                    📎 Documenti disponibili per allegati
+                </span>
+            @endif
+        </div>
+
+        <div class="mt-3 text-sm text-gray-600">
+            <p>Arbitri assegnati: <strong>{{ $tournament->assignments->count() ?: $tournament->assignedReferees->count() }}</strong></p>
+            @if($hasConvocation)
+                <p class="text-green-600">✓ Convocazione SZR disponibile</p>
+            @endif
+            @if($hasClubLetter)
+                <p class="text-blue-600">✓ Lettera Circolo disponibile</p>
+            @endif
+        </div>
+    @else
+        <div class="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+            <div class="flex">
+                <div class="flex-shrink-0">
+                    <svg class="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                    </svg>
+                </div>
+                <div class="ml-3">
+                    <h3 class="text-sm font-medium text-yellow-800">Nessun arbitro assegnato</h3>
+                    <div class="mt-2 text-sm text-yellow-700">
+                        <p>Assegna prima gli arbitri per poter inviare le notifiche.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    @endif
+</div>
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {{-- Left Column - Tournament Details --}}
@@ -516,12 +582,12 @@
             }
 
             // Send notifications
-            function sendNotifications() {
-                if (confirm('Inviare le notifiche a tutti gli arbitri assegnati?')) {
-                    // Implementation for sending notifications
-                    alert('Funzionalità in sviluppo');
-                }
-            }
+function sendNotifications() {
+    if (confirm('Inviare le notifiche a tutti gli arbitri assegnati?')) {
+        window.location.href = '{{ route("admin.tournaments.show-assignment-form", $tournament) }}';
+    }
+}
+
         </script>
     @endpush
 @endsection
