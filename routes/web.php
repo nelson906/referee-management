@@ -236,7 +236,6 @@ Route::middleware(['auth'])->group(function () {
             Route::post('/{notification}/cancel', [Admin\NotificationController::class, 'cancel'])->name('cancel');
             Route::get('/export/csv', [Admin\NotificationController::class, 'exportCsv'])->name('export');
         });
-    });
 
     // ✅ STATISTICS DASHBOARD - ROUTES AGGIUNTE
     Route::prefix('statistics')->name('statistics.')->group(function () {
@@ -274,6 +273,7 @@ Route::middleware(['auth'])->group(function () {
     // Settings
     Route::get('/settings', [Admin\SettingsController::class, 'index'])->name('settings');
     Route::post('/settings', [Admin\SettingsController::class, 'update'])->name('settings.update');
+    });
 
 });
 
@@ -416,11 +416,6 @@ Route::prefix('api')->name('api.')->group(function () {
 });
 
 
-// ✅ MONITORING
-Route::prefix('monitoring')->name('monitoring.')->group(function () {
-    Route::get('/', [MonitoringController::class, 'dashboard'])->name('dashboard');
-    // ... altre route
-});
 
 // ✅ NOTIFICATIONS - FIX per "Route [notifications.index] not defined"
 Route::prefix('notifications')->name('notifications.')->group(function () {

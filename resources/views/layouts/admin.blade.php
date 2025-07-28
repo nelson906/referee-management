@@ -66,9 +66,9 @@
 
                             {{-- Seconda riga --}}
                             <div class="flex space-x-3">
-                                {{-- <a href="{{ route('admin.statistics.dashboard') }}"
+                                <a href="{{ route('admin.statistics.dashboard') }}"
                                     class="px-2 py-1 rounded text-xs hover:bg-blue-800 hover:text-white font-medium whitespace-nowrap {{ request()->routeIs('admin.statistics.*') ? 'bg-blue-800 text-white' : 'text-blue-100 hover:bg-blue-800 hover:text-white' }}">📊
-                                    Statistiche</a> --}}
+                                    Statistiche</a>
                                 <a href="{{ route('admin.communications.index') }}"
                                     class="px-2 py-1 rounded text-xs hover:bg-blue-800 hover:text-white font-medium whitespace-nowrap {{ request()->routeIs('admin.communications.*') ? 'bg-blue-800 text-white' : 'text-blue-100 hover:bg-blue-800 hover:text-white' }}">📢
                                     Comunicazioni</a>
@@ -78,15 +78,15 @@
                                 <a href="{{ route('admin.notifications.index') }}"
                                     class="px-2 py-1 rounded text-xs hover:bg-blue-800 hover:text-white font-medium whitespace-nowrap {{ request()->routeIs('admin.notifications.*') ? 'bg-blue-800 text-white' : 'text-blue-100 hover:bg-blue-800 hover:text-white' }}">🔔
                                     Notifiche</a>
-                                {{-- <a href="{{ route('admin.monitoring.dashboard') }}"
+                                <a href="{{ route('admin.monitoring.dashboard') }}"
                                     class="px-2 py-1 rounded text-xs hover:bg-blue-800 hover:text-white font-medium whitespace-nowrap {{ request()->routeIs('admin.monitoring.*') ? 'bg-blue-800 text-white' : 'text-blue-100 hover:bg-blue-800 hover:text-white' }}">🖥️
-                                    Monitoraggio</a> --}}
+                                    Monitoraggio</a>
                                 <a href="{{ route('reports.dashboard') }}"
                                     class="px-2 py-1 rounded text-xs hover:bg-blue-800 hover:text-white font-medium whitespace-nowrap {{ request()->routeIs('reports.*') ? 'bg-blue-800 text-white' : 'text-blue-100 hover:bg-blue-800 hover:text-white' }}">📈
                                     Report</a>
-                                {{-- <a href="{{ route('admin.documents.index') }}"
+                                <a href="{{ route('admin.documents.index') }}"
                                     class="px-2 py-1 rounded text-xs hover:bg-blue-800 hover:text-white font-medium whitespace-nowrap {{ request()->routeIs('admin.documents.*') ? 'bg-blue-800 text-white' : 'text-blue-100 hover:bg-blue-800 hover:text-white' }}">📁
-                                    Documenti</a> --}}
+                                    Documenti</a>
                             </div>
                         </div>
 
@@ -119,10 +119,10 @@
                                             class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
                                             👤 Profilo
                                         </a>
-                                        {{-- <a href="{{ route('admin.settings') }}"
+                                        <a href="{{ route('admin.settings') }}"
                                             class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
                                             ⚙️ Impostazioni
-                                        </a> --}}
+                                        </a>
 
                                         {{-- Super Admin Link --}}
                                         @if (auth()->user()->user_type === 'super_admin')
@@ -239,12 +239,12 @@
                 </a>
 
                 {{-- Statistics --}}
-                {{-- <a href="{{ route('admin.statistics.dashboard') }}"
+                <a href="{{ route('admin.statistics.dashboard') }}"
                     class="flex items-center px-4 py-3 rounded-lg text-base font-medium transition duration-200 ease-in-out
                     {{ request()->routeIs('admin.statistics.*') ? 'bg-blue-900 text-white shadow-lg' : 'text-blue-100 hover:bg-blue-700 hover:text-white' }}">
                     <span class="mr-4 text-xl">📊</span>
                     <span>Statistiche</span>
-                </a> --}}
+                </a>
 
                 {{-- Notifications --}}
                 <a href="{{ route('admin.notifications.index') }}"
@@ -255,12 +255,12 @@
                 </a>
 
                 {{-- Monitoring --}}
-                {{-- <a href="{{ route('admin.monitoring.dashboard') }}"
+                <a href="{{ route('admin.monitoring.dashboard') }}"
                     class="flex items-center px-4 py-3 rounded-lg text-base font-medium transition duration-200 ease-in-out
                     {{ request()->routeIs('admin.monitoring.*') ? 'bg-blue-900 text-white shadow-lg' : 'text-blue-100 hover:bg-blue-700 hover:text-white' }}">
                     <span class="mr-4 text-xl">🖥️</span>
                     <span>Monitoraggio</span>
-                </a> --}}
+                </a>
 
                 {{-- Communications --}}
                 <a href="{{ route('admin.communications.index') }}"
@@ -287,12 +287,12 @@
                 </a>
 
                 {{-- Documents --}}
-                {{-- <a href="{{ route(name: 'admin.documents.index') }}"
+                <a href="{{ route(name: 'admin.documents.index') }}"
                     class="flex items-center px-4 py-3 rounded-lg text-base font-medium transition duration-200 ease-in-out
                     {{ request()->routeIs('admin.documents.*') ? 'bg-blue-900 text-white shadow-lg' : 'text-blue-100 hover:bg-blue-700 hover:text-white' }}">
                     <span class="mr-4 text-xl">📁</span>
                     <span>Documenti</span>
-                </a> --}}
+                </a>
 
             </div>
         </div>
