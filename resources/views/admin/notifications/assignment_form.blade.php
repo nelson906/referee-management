@@ -442,46 +442,50 @@
                                     </div>
                                 @endif
                                 {{-- Institutional Emails --}}
-                                @if ($institutionalEmails && $institutionalEmails->count() > 0)
-                                    <div>
-                                        <label class="block text-sm font-medium text-gray-700 mb-3">
-                                            📮 Email Istituzionali
-                                        </label>
-                                        <div class="space-y-4">
-                                            @foreach ($institutionalEmails as $category => $email)
-                                                <div class="border border-gray-200 rounded-lg">
-                                                    <div class="p-4 space-y-2">
-                                                            @if (is_object($email) && isset($email->id))
-                                                                <div class="flex items-center">
-                                                                    <input type="checkbox" name="institutional_emails[]"
-                                                                        value="{{ $email->id }}"
-                                                                        id="institutional_{{ $email->id }}"
-                                                                        {{ $category === 'convocazioni' ? 'checked' : '' }}
-                                                                        class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded">
+{{-- ✅ Email Istituzionali - CORRETTA --}}
+@if ($groupedEmails && $groupedEmails->count() > 0)
+    <div>
+        <label class="block text-sm font-medium text-gray-700 mb-3">
+            📮 Email Istituzionali
+        </label>
+        <div class="space-y-4">
+            @foreach ($groupedEmails as $category => $emails)
+                <div class="border border-gray-200 rounded-lg">
+                    <div class="px-4 py-2 bg-gray-50 border-b border-gray-200">
+                        <h4 class="text-sm font-medium text-gray-900 capitalize">
+                            {{ ucfirst($category) }}
+                        </h4>
+                    </div>
+                    <div class="p-4 space-y-2">
+                        @foreach ($emails as $email)
+                            @if (is_object($email) && isset($email->id))
+                                <div class="flex items-center">
+                                    <input type="checkbox" name="fixed_addresses[]"
+                                        value="{{ $email->id }}"
+                                        id="institutional_{{ $email->id }}"
+                                        {{ $category === 'convocazioni' ? 'checked' : '' }}
+                                        class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded">
 
-                                                                    <label for="institutional_{{ $email->id }}"
-                                                                        class="ml-2 text-sm text-gray-700">
-                                                                        <span
-                                                                            class="font-medium">{{ $email->name }}</span>
-                                                                        <span
-                                                                            class="text-gray-500">({{ $email->email }})</span>
-                                                                        @if ($email->receive_all_notifications)
-                                                                            <span class="text-xs text-blue-600">• Tutte le
-                                                                                notifiche</span>
-                                                                        @endif
-                                                                    </label>
-                                                                </div>
-                                                            @else
-                                                                {{-- DEBUG: Mostra il tipo di valore non valido --}}
-                                                                <!-- Email non valida: {{ gettype($email) }} - {{ json_encode($email) }} -->
-                                                            @endif
-                                                    </div>
-                                                </div>
-                                            @endforeach
-                                        </div>
-                                    </div>
-                                @endif
-
+                                    <label for="institutional_{{ $email->id }}"
+                                        class="ml-2 text-sm text-gray-700">
+                                        <span class="font-medium">{{ $email->name }}</span>
+                                        <span class="text-gray-500">({{ $email->email }})</span>
+                                        @if ($email->receive_all_notifications)
+                                            <span class="text-xs text-blue-600">• Tutte le notifiche</span>
+                                        @endif
+                                    </label>
+                                </div>
+                            @else
+                                {{-- DEBUG: Mostra il tipo di valore non valido --}}
+                                <!-- Email non valida: {{ gettype($email) }} - {{ json_encode($email) }} -->
+                            @endif
+                        @endforeach
+                    </div>
+                </div>
+            @endforeach
+        </div>
+    </div>
+@endif
                                 <!-- Email Aggiuntive -->
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 mb-3">

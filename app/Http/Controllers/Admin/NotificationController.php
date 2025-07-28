@@ -268,114 +268,229 @@ class NotificationController extends Controller
     // 🔧 PRIVATE METHODS
     // =================================================================
 
-    /**
-     * Process email sending to all recipients
-     */
-    private function processEmailSending(Request $request, array $emailData, Tournament $tournament)
-    {
-        // Send to referees
+/**
+ * ✅ FIXED: Process email sending to all recipients WITH NAMES
+ */
+private function processEmailSending(Request $request, array $emailData, Tournament $tournament)
+{
+    $totalSent = 0;
+    $totalFailed = 0;
+    $errors = [];
+
+    try {
+        // ✅ 1. Send to referees (with names from User model)
         if (!empty($request->recipients)) {
             $users = User::whereIn('id', $request->recipients)->get();
             foreach ($users as $user) {
-                $this->createAndSendEmail($emailData, $user->email, $user->name);
-            }
-        }
-
-        // Send to additional emails
-        if (!empty($request->additional_emails)) {
-            foreach ($request->additional_emails as $index => $email) {
-                if (!empty($email)) {
-                    $name = $request->additional_names[$index] ?? null;
-                    $this->createAndSendEmail($emailData, $email, $name);
+                try {
+                    $this->createAndSendEmail($emailData, $user->email, $user->name);
+                    $totalSent++;
+                    Log::info('Email sent to referee', ['user' => $user->name, 'email' => $user->email]);
+                } catch (\Exception $e) {
+                    $totalFailed++;
+                    $errors[] = "Errore invio a {$user->name} ({$user->email}): " . $e->getMessage();
                 }
             }
         }
 
-        // Send to institutional emails
+        // ✅ 2. Send to additional emails (with provided names)
+        if (!empty($request->additional_emails)) {
+            foreach ($request->additional_emails as $index => $email) {
+                if (!empty($email) && filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                    try {
+                        $name = $request->additional_names[$index] ?? explode('@', $email)[0]; // Use email prefix as fallback
+                        $this->createAndSendEmail($emailData, $email, $name);
+                        $totalSent++;
+                        Log::info('Email sent to additional address', ['name' => $name, 'email' => $email]);
+                    } catch (\Exception $e) {
+                        $totalFailed++;
+                        $errors[] = "Errore invio a {$email}: " . $e->getMessage();
+                    }
+                }
+            }
+        }
+
+        // ✅ 3. Send to institutional emails (with institutional names)
         if (!empty($request->fixed_addresses)) {
             $institutionalEmails = InstitutionalEmail::whereIn('id', $request->fixed_addresses)->get();
             foreach ($institutionalEmails as $address) {
-                $this->createAndSendEmail($emailData, $address->email, $address->name);
+                try {
+                    $this->createAndSendEmail($emailData, $address->email, $address->name);
+                    $totalSent++;
+                    Log::info('Email sent to institutional address', ['name' => $address->name, 'email' => $address->email]);
+                } catch (\Exception $e) {
+                    $totalFailed++;
+                    $errors[] = "Errore invio a {$address->name} ({$address->email}): " . $e->getMessage();
+                }
             }
         }
 
-        // Send to club
+        // ✅ 4. Send to club (with club name)
         if ($request->has('send_to_club')) {
             $clubEmail = $this->getClubEmail($tournament->club);
             if ($clubEmail) {
-                $this->createAndSendEmail($emailData, $clubEmail, $tournament->club->name, true);
+                try {
+                    $this->createAndSendEmail($emailData, $clubEmail, $tournament->club->name, true);
+                    $totalSent++;
+                    Log::info('Email sent to club', ['name' => $tournament->club->name, 'email' => $clubEmail]);
+                } catch (\Exception $e) {
+                    $totalFailed++;
+                    $errors[] = "Errore invio a circolo {$tournament->club->name}: " . $e->getMessage();
+                }
+            } else {
+                $errors[] = "Email del circolo {$tournament->club->name} non trovata.";
             }
         }
+
+        // ✅ Log summary
+        Log::info('Email sending completed', [
+            'tournament_id' => $tournament->id,
+            'total_sent' => $totalSent,
+            'total_failed' => $totalFailed,
+            'errors' => $errors
+        ]);
+
+        // ✅ Add summary to session for user feedback
+        if ($totalSent > 0) {
+            $message = "Inviate {$totalSent} notifiche con successo.";
+            if ($totalFailed > 0) {
+                $message .= " {$totalFailed} invii falliti.";
+            }
+            session()->flash('success', $message);
+        }
+
+        if (!empty($errors)) {
+            session()->flash('warning', 'Alcuni invii hanno avuto problemi: ' . implode('; ', array_slice($errors, 0, 3)));
+        }
+
+    } catch (\Exception $e) {
+        Log::error('Critical error in processEmailSending', [
+            'tournament_id' => $tournament->id,
+            'error' => $e->getMessage(),
+            'trace' => $e->getTraceAsString()
+        ]);
+        throw $e;
     }
+}
+/**
+ * ✅ FIXED: Create and send unified email WITH recipient names
+ */
+private function createAndSendEmail(array $emailData, string $recipientEmail, ?string $recipientName = null, bool $isClub = false)
+{
+    try {
+        // ✅ Create notification record with ALL fields
+        $notification = new Notification([
+            'subject' => $emailData['subject'],
+            'body' => $this->formatEmailBody($emailData),
+            'recipient_email' => $recipientEmail,
+            'recipient_name' => $recipientName, // ✅ ADDED: Save recipient name
+            'recipient_type' => $isClub ? 'club' : ($recipientName ? 'referee' : 'institutional'),
+            'status' => 'pending',
+            'priority' => 'normal', // ✅ ADDED: Set priority
+            'sender_id' => Auth::id(), // ✅ ADDED: Track who sent it
+        ]);
 
-    /**
-     * Create and send unified email
-     */
-    private function createAndSendEmail(array $emailData, string $recipientEmail, ?string $recipientName = null, bool $isClub = false)
-    {
-        try {
-            // Create notification record
-            $notification = new Notification([
-                'subject' => $emailData['subject'],
-                'body' => $this->formatEmailBody($emailData),
-                'recipient_email' => $recipientEmail,
-                'recipient_type' => $isClub ? 'club' : 'referee',
-                'status' => 'pending'
-            ]);
+        // ✅ Add tournament info if available
+        if (isset($emailData['tournament'])) {
+            // Try to find an assignment to link to
+            $assignment = null;
 
-            // Add tournament info if available
-            if (isset($emailData['tournament'])) {
-                $assignment = $emailData['assignments']->first();
-                if ($assignment) {
-                    $notification->assignment_id = $assignment->id;
+            if (isset($emailData['assignments']) && $emailData['assignments']->count() > 0) {
+                // For referees, find their specific assignment
+                if (!$isClub && $recipientEmail) {
+                    $assignment = $emailData['assignments']->first(function($assignment) use ($recipientEmail) {
+                        return $assignment->user->email === $recipientEmail ||
+                               ($assignment->referee && $assignment->referee->user && $assignment->referee->user->email === $recipientEmail);
+                    });
+                }
+
+                // Fallback to first assignment for tournament connection
+                if (!$assignment) {
+                    $assignment = $emailData['assignments']->first();
                 }
             }
 
-            // Handle attachments
-            if (isset($emailData['convocation']) && is_array($emailData['convocation'])) {
-                $attachments = [];
-                foreach ($emailData['convocation'] as $attachment) {
-                    if (isset($attachment['path']) && $attachment['path'] && file_exists($attachment['path'])) {
+            if ($assignment) {
+                $notification->assignment_id = $assignment->id;
+            }
+        }
 
-                        // Club letter only for clubs
-                        if ($attachment['type'] === 'club_letter' && !$isClub) {
-                            continue;
-                        }
+        // ✅ Handle attachments
+        if (isset($emailData['convocation']) && is_array($emailData['convocation'])) {
+            $attachments = [];
+            foreach ($emailData['convocation'] as $attachment) {
+                if (isset($attachment['path']) && $attachment['path'] && file_exists($attachment['path'])) {
 
-                        $storagePath = 'mail_attachments/' . uniqid() . '_' . $attachment['filename'];
-                        Storage::disk('local')->put($storagePath, file_get_contents($attachment['path']));
-                        $attachments[$attachment['filename']] = $storagePath;
+                    // Club letter only for clubs
+                    if ($attachment['type'] === 'club_letter' && !$isClub) {
+                        continue;
                     }
-                }
 
-                if (!empty($attachments)) {
-                    $notification->attachments = $attachments;
+                    $storagePath = 'mail_attachments/' . uniqid() . '_' . $attachment['filename'];
+                    Storage::disk('local')->put($storagePath, file_get_contents($attachment['path']));
+                    $attachments[$attachment['filename']] = $storagePath;
+
+                    Log::info('Attachment prepared for email', [
+                        'recipient' => $recipientEmail,
+                        'attachment_type' => $attachment['type'],
+                        'attachment_filename' => $attachment['filename'],
+                        'storage_path' => $storagePath
+                    ]);
                 }
             }
 
-            $notification->save();
-
-            // Send email
-            $variables = [
-                'tournament' => $emailData['tournament'],
-                'assignments' => $emailData['assignments'],
-                'recipient_name' => $recipientName,
-                'is_club' => $isClub
-            ];
-
-            $mail = new AssignmentNotification($notification, $variables);
-            Mail::to($recipientEmail)->send($mail);
-
-            $notification->update(['status' => 'sent', 'sent_at' => now()]);
-
-        } catch (\Exception $e) {
-            if (isset($notification) && $notification->exists) {
-                $notification->update(['status' => 'failed', 'error_message' => $e->getMessage()]);
+            if (!empty($attachments)) {
+                $notification->attachments = $attachments;
             }
-            throw $e;
         }
-    }
 
+        // ✅ Save notification BEFORE sending
+        $notification->save();
+
+        // ✅ Send email
+        $variables = [
+            'tournament' => $emailData['tournament'],
+            'assignments' => $emailData['assignments'],
+            'recipient_name' => $recipientName,
+            'is_club' => $isClub
+        ];
+
+        $mail = new AssignmentNotification($notification, $variables);
+        Mail::to($recipientEmail)->send($mail);
+
+        // ✅ Update status to sent with timestamp
+        $notification->update([
+            'status' => 'sent',
+            'sent_at' => now(),
+            'retry_count' => 0
+        ]);
+
+        Log::info('Email sent successfully', [
+            'notification_id' => $notification->id,
+            'recipient' => $recipientEmail,
+            'recipient_name' => $recipientName,
+            'subject' => $emailData['subject']
+        ]);
+
+    } catch (\Exception $e) {
+        // ✅ Update status to failed with error message
+        if (isset($notification) && $notification->exists) {
+            $notification->update([
+                'status' => 'failed',
+                'error_message' => $e->getMessage(),
+                'retry_count' => ($notification->retry_count ?? 0) + 1
+            ]);
+        }
+
+        Log::error('Error sending email', [
+            'recipient' => $recipientEmail,
+            'error' => $e->getMessage(),
+            'trace' => $e->getTraceAsString()
+        ]);
+
+        throw $e;
+    }
+}
     // [Altri metodi helper rimangono identici...]
     private function validateAssignmentRequest(Request $request)
     {

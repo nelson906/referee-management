@@ -63,7 +63,6 @@
                     </div>
                 </div>
             @endif
-
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                 <div class="p-6">
 
@@ -166,7 +165,7 @@
                                     </tr>
                                 </thead>
                                 <tbody class="bg-white divide-y divide-gray-200">
-                                    @foreach($notifications as $notification)
+                               @foreach($notifications as $notification)
                                         <tr class="hover:bg-gray-50">
                                             <td class="px-6 py-4 whitespace-nowrap">
                                                 <div class="text-sm text-gray-900">
@@ -233,7 +232,6 @@
                                                 {{-- ✅ CORRETTO COLLEGAMENTO AL TORNEO --}}
                                                 @php
                                                     $tournament = null;
-
                                                     // Tenta di trovare il torneo attraverso assignment
                                                     if ($notification->assignment && $notification->assignment->tournament) {
                                                         $tournament = $notification->assignment->tournament;
