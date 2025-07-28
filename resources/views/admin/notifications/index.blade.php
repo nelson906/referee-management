@@ -122,7 +122,7 @@
                                 <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700">
                                     🔍 Filtra
                                 </button>
-                                <a href="{{ route('notifications.index') }}" class="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400">
+                                <a href="{{ route('admin.notifications.index') }}" class="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400">
                                     🗑️ Reset
                                 </a>
                             </div>
@@ -234,13 +234,13 @@
 
                                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                                 <div class="flex space-x-2">
-                                                    <a href="{{ route('notifications.show', $notification) }}"
+                                                    <a href="{{ route('admin.notifications.show', $notification) }}"
                                                        class="text-indigo-600 hover:text-indigo-900">
                                                         👁️ Dettagli
                                                     </a>
 
                                                     @if($notification->canBeRetried())
-                                                        <form method="POST" action="{{ route('notifications.resend', $notification) }}" class="inline">
+                                                        <form method="POST" action="{{ route('admin.notifications.resend', $notification) }}" class="inline">
                                                             @csrf
                                                             <button type="submit"
                                                                     class="text-green-600 hover:text-green-900"
@@ -251,7 +251,7 @@
                                                     @endif
 
                                                     @if($notification->status === 'pending')
-                                                        <form method="POST" action="{{ route('notifications.cancel', $notification) }}" class="inline">
+                                                        <form method="POST" action="{{ route('admin.notifications.cancel', $notification) }}" class="inline">
                                                             @csrf
                                                             <button type="submit"
                                                                     class="text-red-600 hover:text-red-900"

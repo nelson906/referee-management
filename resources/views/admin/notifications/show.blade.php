@@ -11,13 +11,13 @@
                 📧 Dettagli Notifica
             </h2>
             <div class="flex space-x-3">
-                <a href="{{ route('notifications.index') }}"
+                <a href="{{ route('admin.notifications.index') }}"
                    class="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700">
                     ← Torna all'elenco
                 </a>
 
                 @if($notification->canBeRetried())
-                    <form method="POST" action="{{ route('notifications.resend', $notification) }}" class="inline">
+                    <form method="POST" action="{{ route('admin.notifications.resend', $notification) }}" class="inline">
                         @csrf
                         <button type="submit"
                                 class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
@@ -28,7 +28,7 @@
                 @endif
 
                 @if($notification->status === 'pending')
-                    <form method="POST" action="{{ route('notifications.cancel', $notification) }}" class="inline">
+                    <form method="POST" action="{{ route('admin.notifications.cancel', $notification) }}" class="inline">
                         @csrf
                         <button type="submit"
                                 class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
@@ -312,7 +312,7 @@
                                     </a>
                                 @endif
 
-                                <a href="{{ route('notifications.index') }}?recipient_email={{ urlencode($notification->recipient_email) }}"
+                                <a href="{{ route('admin.notifications.index') }}?recipient_email={{ urlencode($notification->recipient_email) }}"
                                    class="w-full inline-flex justify-center px-3 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
                                     📋 Tutte le Notifiche a Questo Destinatario
                                 </a>

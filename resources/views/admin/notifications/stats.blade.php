@@ -19,12 +19,12 @@
                     <option value="365" {{ $days == 365 ? 'selected' : '' }}>Ultimo anno</option>
                 </select>
 
-                <a href="{{ route('notifications.export') }}?days={{ $days }}"
+                <a href="{{ route('admin.notifications.export') }}?days={{ $days }}"
                    class="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700">
                     📥 Esporta CSV
                 </a>
 
-                <a href="{{ route('notifications.index') }}"
+                <a href="{{ route('admin.notifications.index') }}"
                    class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
                     📧 Tutte le Notifiche
                 </a>
@@ -265,12 +265,12 @@
                                                     </div>
                                                 </div>
                                                 <div class="flex space-x-2">
-                                                    <a href="{{ route('notifications.show', $notification) }}"
+                                                    <a href="{{ route('admin.notifications.show', $notification) }}"
                                                        class="text-xs text-indigo-600 hover:text-indigo-900">
                                                         👁️ Dettagli
                                                     </a>
                                                     @if($notification->canBeRetried())
-                                                        <form method="POST" action="{{ route('notifications.resend', $notification) }}" class="inline">
+                                                        <form method="POST" action="{{ route('admin.notifications.resend', $notification) }}" class="inline">
                                                             @csrf
                                                             <button type="submit"
                                                                     class="text-xs text-green-600 hover:text-green-900"
@@ -290,7 +290,7 @@
                                     </div>
                                 </div>
                                 <div class="mt-4">
-                                    <a href="{{ route('notifications.index') }}?status=failed"
+                                    <a href="{{ route('admin.notifications.index') }}?status=failed"
                                        class="text-sm text-red-600 hover:text-red-500 underline">
                                         Visualizza tutte le notifiche fallite →
                                     </a>
@@ -383,7 +383,7 @@
     <script>
         // Change period function
         function changePeriod(days) {
-            window.location.href = `{{ route('notifications.stats') }}?days=${days}`;
+            window.location.href = `{{ route('admin.notifications.stats') }}?days=${days}`;
         }
 
         // Daily Chart

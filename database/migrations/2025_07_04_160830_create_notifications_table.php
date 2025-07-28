@@ -13,11 +13,11 @@ return new class extends Migration
     {
         Schema::create('notifications', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('assignment_id')->constrained('assignments');
+            $table->foreignId('assignment_id')->constrained('assignments')->nullable();
             $table->enum('recipient_type', ['referee', 'club', 'institutional']);
-            $table->string('recipient_email');
+            $table->string('recipient_email')->nullable();
             $table->string('subject');
-            $table->text('body');
+            $table->text('body')->nullable();
             $table->string('template_used')->nullable();
             $table->enum('status', ['pending', 'sent', 'failed', 'cancelled'])->default('pending');
             $table->timestamp(column: 'sent_at')->nullable();
