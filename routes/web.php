@@ -275,11 +275,6 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/settings', [Admin\SettingsController::class, 'index'])->name('settings');
     Route::post('/settings', [Admin\SettingsController::class, 'update'])->name('settings.update');
 
-    // Tournament Notification Routes (for sending notifications from tournament pages)
-    Route::prefix('tournaments/{tournament}')->name('tournaments.')->group(function () {
-        Route::get('/send-notification', [Admin\TournamentNotificationController::class, 'show'])->name('send-notification');
-        Route::post('/send-notification', [Admin\TournamentNotificationController::class, 'send'])->name('send-notification.post');
-    });
 });
 
 // =================================================================

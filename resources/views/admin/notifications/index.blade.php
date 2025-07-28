@@ -1,4 +1,4 @@
-{{-- File: resources/views/admin/notifications/index.blade.php --}}
+{{-- File: resources/views/admin/notifications/index.blade.php - FIXED --}}
 @extends('layouts.admin')
 
 @section('content')
@@ -9,6 +9,15 @@
             </h2>
 
             <div class="flex space-x-3">
+                {{-- ✅ PULSANTE PER INVIARE NUOVE NOTIFICHE --}}
+                <a href="{{ route('tournaments.index') }}"
+                   class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700">
+                    ➕ Invia Nuova Notifica
+                </a>
+                <a href="{{ route('admin.notifications.stats') }}"
+                   class="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700">
+                    📊 Statistiche
+                </a>
                 <a href="{{ route('admin.letter-templates.index') }}"
                    class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
                     📝 Template
@@ -59,27 +68,28 @@
                 <div class="p-6">
 
                     {{-- Stats Header --}}
+                    @php
+                        $totalNotifications = $notifications->total();
+                        $sentCount = $notifications->where('status', 'sent')->count();
+                        $pendingCount = $notifications->where('status', 'pending')->count();
+                        $failedCount = $notifications->where('status', 'failed')->count();
+                    @endphp
+
                     <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
                         <div class="bg-blue-50 p-4 rounded-lg">
-                            <div class="text-2xl font-bold text-blue-600">{{ $notifications->total() }}</div>
+                            <div class="text-2xl font-bold text-blue-600">{{ $totalNotifications }}</div>
                             <div class="text-sm text-blue-600">Totale Notifiche</div>
                         </div>
                         <div class="bg-green-50 p-4 rounded-lg">
-                            <div class="text-2xl font-bold text-green-600">
-                                {{ $notifications->where('status', 'sent')->count() }}
-                            </div>
+                            <div class="text-2xl font-bold text-green-600">{{ $sentCount }}</div>
                             <div class="text-sm text-green-600">Inviate</div>
                         </div>
                         <div class="bg-yellow-50 p-4 rounded-lg">
-                            <div class="text-2xl font-bold text-yellow-600">
-                                {{ $notifications->where('status', 'pending')->count() }}
-                            </div>
+                            <div class="text-2xl font-bold text-yellow-600">{{ $pendingCount }}</div>
                             <div class="text-sm text-yellow-600">In Sospeso</div>
                         </div>
                         <div class="bg-red-50 p-4 rounded-lg">
-                            <div class="text-2xl font-bold text-red-600">
-                                {{ $notifications->where('status', 'failed')->count() }}
-                            </div>
+                            <div class="text-2xl font-bold text-red-600">{{ $failedCount }}</div>
                             <div class="text-sm text-red-600">Fallite</div>
                         </div>
                     </div>
@@ -163,14 +173,18 @@
                                                     {{ $notification->created_at->format('d/m/Y H:i') }}
                                                 </div>
                                                 <div class="text-xs text-gray-500">
-                                                    {{ $notification->time_since }}
+                                                    {{ $notification->created_at->diffForHumans() }}
                                                 </div>
                                             </td>
 
                                             <td class="px-6 py-4">
                                                 <div class="flex items-center">
                                                     <div class="flex-shrink-0 h-10 w-10">
-                                                        <div class="h-10 w-10 rounded-full {{ $notification->status_color === 'green' ? 'bg-green-100' : ($notification->status_color === 'red' ? 'bg-red-100' : 'bg-yellow-100') }} flex items-center justify-center">
+                                                        <div class="h-10 w-10 rounded-full
+                                                            @if($notification->status === 'sent') bg-green-100
+                                                            @elseif($notification->status === 'failed') bg-red-100
+                                                            @else bg-yellow-100 @endif
+                                                            flex items-center justify-center">
                                                             @if($notification->recipient_type === 'referee')
                                                                 👨‍⚖️
                                                             @elseif($notification->recipient_type === 'club')
@@ -182,7 +196,20 @@
                                                     </div>
                                                     <div class="ml-4">
                                                         <div class="text-sm font-medium text-gray-900">
-                                                            {{ $notification->recipient_type_label }}
+                                                            {{-- ✅ NOME SPECIFICO DEL DESTINATARIO --}}
+                                                            @if($notification->recipient_email)
+                                                                @php
+                                                                    // Estrai il nome dall'email se non c'è recipient_name
+                                                                    $displayName = $notification->recipient_name ??
+                                                                                   explode('@', $notification->recipient_email)[0];
+                                                                @endphp
+                                                                {{ $displayName }}
+                                                                <span class="text-gray-600 text-xs">
+                                                                    ({{ ucfirst($notification->recipient_type) }})
+                                                                </span>
+                                                            @else
+                                                                {{ ucfirst($notification->recipient_type) }}
+                                                            @endif
                                                         </div>
                                                         <div class="text-sm text-gray-500">
                                                             {{ $notification->recipient_email }}
@@ -195,68 +222,141 @@
                                                 <div class="text-sm font-medium text-gray-900">
                                                     {{ Str::limit($notification->subject, 50) }}
                                                 </div>
-                                                @if($notification->template_display_name)
+                                                @if($notification->template_used)
                                                     <div class="text-xs text-gray-500">
-                                                        📝 {{ $notification->template_display_name }}
+                                                        📝 Template: {{ $notification->template_used }}
                                                     </div>
                                                 @endif
                                             </td>
 
                                             <td class="px-6 py-4">
-                                                @if($notification->assignment && $notification->assignment->tournament)
-                                                    <a href="{{ route('tournaments.show', $notification->assignment->tournament) }}"
+                                                {{-- ✅ CORRETTO COLLEGAMENTO AL TORNEO --}}
+                                                @php
+                                                    $tournament = null;
+
+                                                    // Tenta di trovare il torneo attraverso assignment
+                                                    if ($notification->assignment && $notification->assignment->tournament) {
+                                                        $tournament = $notification->assignment->tournament;
+                                                    }
+                                                    // Fallback: cerca per pattern nell'oggetto
+                                                    elseif (preg_match('/torneo\s+(.+?)\s+/i', $notification->subject, $matches)) {
+                                                        $tournamentName = trim($matches[1]);
+                                                        $tournament = \App\Models\Tournament::where('name', 'LIKE', "%{$tournamentName}%")->first();
+                                                    }
+                                                @endphp
+
+                                                @if($tournament)
+                                                    <a href="{{ route('tournaments.show', $tournament) }}"
                                                        class="text-sm text-indigo-600 hover:text-indigo-900">
-                                                        {{ Str::limit($notification->assignment->tournament->name, 40) }}
+                                                        {{ Str::limit($tournament->name, 40) }}
                                                     </a>
                                                     <div class="text-xs text-gray-500">
-                                                        {{ $notification->assignment->tournament->start_date->format('d/m/Y') }}
+                                                        {{ $tournament->start_date->format('d/m/Y') }}
                                                     </div>
                                                 @else
-                                                    <span class="text-sm text-gray-500">N/A</span>
+                                                    {{-- ✅ MOSTRA INFO DAL SUBJECT SE NON TROVA IL TORNEO --}}
+                                                    @if(str_contains($notification->subject, 'torneo'))
+                                                        <div class="text-sm text-gray-600">
+                                                            @php
+                                                                // Estrai nome torneo dal subject
+                                                                if (preg_match('/(?:torneo|tournament)\s+(.+?)(?:\s+che|\s+del|\s*$)/i', $notification->subject, $matches)) {
+                                                                    echo Str::limit(trim($matches[1]), 30);
+                                                                } else {
+                                                                    echo 'Torneo (dettagli nel subject)';
+                                                                }
+                                                            @endphp
+                                                        </div>
+                                                        <div class="text-xs text-gray-400">Da subject</div>
+                                                    @else
+                                                        <span class="text-sm text-gray-400">N/A</span>
+                                                    @endif
                                                 @endif
                                             </td>
 
                                             <td class="px-6 py-4 whitespace-nowrap">
                                                 <span class="inline-flex px-2 py-1 text-xs font-medium rounded-full
-                                                    {{ $notification->status === 'sent' ? 'bg-green-100 text-green-800' : '' }}
-                                                    {{ $notification->status === 'pending' ? 'bg-yellow-100 text-yellow-800' : '' }}
-                                                    {{ $notification->status === 'failed' ? 'bg-red-100 text-red-800' : '' }}
-                                                    {{ $notification->status === 'cancelled' ? 'bg-gray-100 text-gray-800' : '' }}">
-                                                    {{ $notification->status_label }}
+                                                    @switch($notification->status)
+                                                        @case('sent')
+                                                            bg-green-100 text-green-800
+                                                            @break
+                                                        @case('pending')
+                                                            bg-yellow-100 text-yellow-800
+                                                            @break
+                                                        @case('failed')
+                                                            bg-red-100 text-red-800
+                                                            @break
+                                                        @case('cancelled')
+                                                            bg-gray-100 text-gray-800
+                                                            @break
+                                                        @default
+                                                            bg-gray-100 text-gray-800
+                                                    @endswitch">
+                                                    @switch($notification->status)
+                                                        @case('sent')
+                                                            ✅ Inviata
+                                                            @break
+                                                        @case('pending')
+                                                            ⏳ In Sospeso
+                                                            @break
+                                                        @case('failed')
+                                                            ❌ Fallita
+                                                            @break
+                                                        @case('cancelled')
+                                                            🚫 Annullata
+                                                            @break
+                                                        @default
+                                                            {{ ucfirst($notification->status) }}
+                                                    @endswitch
                                                 </span>
 
-                                                @if($notification->hasAttachments())
-                                                    <div class="text-xs text-gray-500 mt-1">
-                                                        📎 {{ $notification->attachment_count }} allegati
+                                                {{-- ✅ INFO ALLEGATI --}}
+                                                @if($notification->attachments && is_array($notification->attachments) && count($notification->attachments) > 0)
+                                                    <div class="text-xs text-blue-600 mt-1">
+                                                        📎 {{ count($notification->attachments) }} allegati
+                                                    </div>
+                                                @endif
+
+                                                {{-- ✅ INFO INVIO --}}
+                                                @if($notification->sent_at)
+                                                    <div class="text-xs text-green-500 mt-1">
+                                                        Inviata: {{ $notification->sent_at->format('H:i') }}
+                                                    </div>
+                                                @endif
+
+                                                {{-- ✅ INFO ERRORE --}}
+                                                @if($notification->status === 'failed' && $notification->error_message)
+                                                    <div class="text-xs text-red-500 mt-1" title="{{ $notification->error_message }}">
+                                                        ⚠️ {{ Str::limit($notification->error_message, 20) }}
                                                     </div>
                                                 @endif
                                             </td>
 
                                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                                <div class="flex space-x-2">
+                                                <div class="flex flex-col space-y-1">
                                                     <a href="{{ route('admin.notifications.show', $notification) }}"
-                                                       class="text-indigo-600 hover:text-indigo-900">
+                                                       class="text-indigo-600 hover:text-indigo-900 text-xs">
                                                         👁️ Dettagli
                                                     </a>
 
-                                                    @if($notification->canBeRetried())
-                                                        <form method="POST" action="{{ route('admin.notifications.resend', $notification) }}" class="inline">
+                                                    @if($notification->status === 'failed')
+                                                        <form method="POST" action="{{ route('admin.notifications.retry', $notification) }}" class="inline">
                                                             @csrf
                                                             <button type="submit"
-                                                                    class="text-green-600 hover:text-green-900"
+                                                                    class="text-green-600 hover:text-green-900 text-xs"
                                                                     onclick="return confirm('Sei sicuro di voler reinviare questa notifica?')">
                                                                 🔄 Reinvia
                                                             </button>
                                                         </form>
                                                     @endif
 
-                                                    @if($notification->status === 'pending')
-                                                        <form method="POST" action="{{ route('admin.notifications.cancel', $notification) }}" class="inline">
+                                                    @if($notification->status !== 'sent')
+                                                        <form method="POST" action="{{ route('admin.notifications.destroy', $notification) }}" class="inline">
                                                             @csrf
+                                                            @method('DELETE')
                                                             <button type="submit"
-                                                                    class="text-red-600 hover:text-red-900"
-                                                                    onclick="return confirm('Sei sicuro di voler annullare questa notifica?')">
-                                                                ❌ Annulla
+                                                                    class="text-red-600 hover:text-red-900 text-xs"
+                                                                    onclick="return confirm('Sei sicuro di voler eliminare questa notifica?')">
+                                                                🗑️ Elimina
                                                             </button>
                                                         </form>
                                                     @endif
@@ -270,7 +370,7 @@
 
                         {{-- Pagination --}}
                         <div class="mt-6">
-                            {{ $notifications->links() }}
+                            {{ $notifications->appends(request()->query())->links() }}
                         </div>
 
                     @else
@@ -281,7 +381,7 @@
                             <p class="text-gray-500 mb-6">Non ci sono notifiche che corrispondono ai criteri di ricerca.</p>
                             <a href="{{ route('tournaments.index') }}"
                                class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700">
-                                📝 Invia Nuova Notifica
+                                📝 Vai ai Tornei per Inviare Notifiche
                             </a>
                         </div>
                     @endif
