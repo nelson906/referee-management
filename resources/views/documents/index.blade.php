@@ -132,7 +132,7 @@
                         </svg>
                         Filtra
                     </button>
-                    <a href="{{ route('documents.index') }}"
+                    <a href="{{ route('admin.documents.index') }}"
                        class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-md flex items-center gap-2 transition-colors">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -228,14 +228,14 @@
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                 <div class="flex items-center justify-end gap-2">
-                                    <a href="{{ route('documents.download', $document) }}"
+                                    <a href="{{ route('admin.documents.download', $document) }}"
                                        class="text-blue-600 hover:text-blue-900 p-1 rounded" title="Download">
                                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                         </svg>
                                     </a>
                                     @if(auth()->user()->id === $document->uploader_id || auth()->user()->user_type === 'super_admin')
-                                    <form method="POST" action="{{ route('documents.destroy', $document) }}"
+                                    <form method="POST" action="{{ route('admin.documents.destroy', $document) }}"
                                           class="inline" onsubmit="return confirm('Eliminare questo documento?')">
                                         @csrf
                                         @method('DELETE')
@@ -291,7 +291,7 @@
                     </svg>
                 </button>
             </div>
-            <form method="POST" action="{{ route('documents.upload') }}" enctype="multipart/form-data" class="space-y-4">
+            <form method="POST" action="{{ route('admin.documents.upload') }}" enctype="multipart/form-data" class="space-y-4">
                 @csrf
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">File *</label>
