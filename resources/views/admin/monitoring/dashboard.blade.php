@@ -311,94 +311,91 @@
 
 @push('scripts')
 <script>
-let refreshInterval;
-let currentInterval = 30; // secondi
+let refreshTimer;
 
-// Gestione auto-refresh dinamico
-function setupAutoRefresh() {
-    if (refreshInterval) {
-        clearInterval(refreshInterval);
+// Salva e ripristina l'intervallo scelto
+function saveRefreshSetting(value) {
+    sessionStorage.setItem('golf_refresh_interval', value);
+}
+
+function loadRefreshSetting() {
+    return sessionStorage.getItem('golf_refresh_interval') || '30';
+}
+
+// Imposta l'intervallo
+function setRefreshInterval(seconds) {
+    if (refreshTimer) {
+        clearInterval(refreshTimer);
+        refreshTimer = null;
     }
 
-    if (currentInterval > 0) {
-        refreshInterval = setInterval(function() {
-            window.location.reload();
-        }, currentInterval * 1000);
+    if (seconds > 0) {
+        refreshTimer = setInterval(() => location.reload(), seconds * 1000);
+        console.log('✓ Refresh attivo:', seconds, 'secondi');
+    } else {
+        console.log('✓ Refresh disabilitato');
     }
 }
 
-// Inizializza auto-refresh
-setupAutoRefresh();
+// Inizializza quando tutto è caricato
+window.onload = function() {
+    const select = document.getElementById('refresh-interval');
+    if (!select) return;
 
-// Event listener per cambio intervallo
-document.getElementById('refresh-interval').addEventListener('change', function(e) {
-    currentInterval = parseInt(e.target.value);
-    setupAutoRefresh();
+    // Ripristina il valore salvato
+    const savedValue = loadRefreshSetting();
+    select.value = savedValue;
 
-    if (currentInterval > 0) {
-        console.log(`Auto-refresh impostato a ${currentInterval} secondi`);
-    } else {
-        console.log('Auto-refresh disabilitato');
-    }
-});
+    // Avvia con il valore ripristinato
+    setRefreshInterval(parseInt(savedValue));
 
-// Refresh manuale
-document.getElementById('refresh-btn').addEventListener('click', function() {
-    window.location.reload();
-});
+    // Listener per i cambi
+    select.onchange = function() {
+        const newValue = this.value;
+        saveRefreshSetting(newValue);
+        setRefreshInterval(parseInt(newValue));
+    };
+
+    // Refresh manuale
+    const btn = document.getElementById('refresh-btn');
+    if (btn) btn.onclick = () => location.reload();
+};
 
 function clearCache() {
-    if (confirm('Sei sicuro di voler pulire la cache del sistema?')) {
+    if (confirm('Pulire la cache?')) {
         fetch('{{ route("admin.monitoring.clear-cache") }}', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'X-CSRF-TOKEN': '{{ csrf_token() }}'
             },
-            body: JSON.stringify({
-                types: ['application', 'config', 'route', 'view']
-            })
+            body: JSON.stringify({types: ['application', 'config', 'route', 'view']})
         })
         .then(response => response.json())
         .then(data => {
-            if (data.status === 'success') {
-                alert('Cache pulita con successo!');
-                window.location.reload();
-            } else {
-                alert('Errore durante la pulizia della cache: ' + data.message);
-            }
-        })
-        .catch(error => {
-            alert('Errore di rete: ' + error);
+            alert(data.status === 'success' ? 'Cache pulita!' : 'Errore: ' + data.message);
+            if (data.status === 'success') location.reload();
         });
     }
 }
 
 function optimizeSystem() {
-    if (confirm('Sei sicuro di voler ottimizzare il sistema?')) {
+    if (confirm('Ottimizzare il sistema?')) {
         fetch('{{ route("admin.monitoring.optimize") }}', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'X-CSRF-TOKEN': '{{ csrf_token() }}'
             },
-            body: JSON.stringify({
-                operations: ['config', 'route', 'view']
-            })
+            body: JSON.stringify({operations: ['config', 'route', 'view']})
         })
         .then(response => response.json())
         .then(data => {
-            if (data.status === 'success') {
-                alert('Sistema ottimizzato con successo!');
-                window.location.reload();
-            } else {
-                alert('Errore durante l\'ottimizzazione: ' + data.message);
-            }
-        })
-        .catch(error => {
-            alert('Errore di rete: ' + error);
+            alert(data.status === 'success' ? 'Sistema ottimizzato!' : 'Errore: ' + data.message);
+            if (data.status === 'success') location.reload();
         });
     }
 }
 </script>
 @endpush
+

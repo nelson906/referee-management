@@ -1,3 +1,4 @@
+{{-- FILE: resources/views/admin/communications/index.blade.php --}}
 @extends('layouts.admin')
 
 @section('title', 'Gestione Comunicazioni')

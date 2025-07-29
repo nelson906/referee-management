@@ -1,4 +1,4 @@
-@extends('layouts.super-admin')
+@extends('layouts.admin')
 
 @section('title', 'Dashboard Analytics')
 
@@ -270,7 +270,7 @@
                             <td class="px-6 py-4 whitespace-nowrap">
                                 <div>
                                     <div class="text-sm font-medium text-gray-900">{{ $category['name'] }}</div>
-                                    <div class="text-sm text-gray-500">{{ $category['code'] }}</div>
+                                    <div class="text-sm text-gray-500">{{ $category['short_name'] }}</div>
                                 </div>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">

@@ -8,7 +8,7 @@ use App\Models\Zone;
 use App\Models\Tournament;
 use App\Models\TournamentType;
 use App\Models\Club;
-use App\Models\TournamentAssignment;
+use App\Models\Assignment;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
@@ -75,9 +75,9 @@ class DashboardController extends Controller
             'completed_tournaments' => Tournament::where('status', 'completed')->count(),
             'total_categories' => TournamentType::count(),
             'active_categories' => TournamentType::where('is_active', true)->count(),
-            'total_assignments' => TournamentAssignment::count(),
-            'pending_assignments' => TournamentAssignment::where('status', 'pending')->count(),
-            'accepted_assignments' => TournamentAssignment::where('status', 'accepted')->count(),
+            'total_assignments' => Assignment::count(),
+            'pending_assignments' => Assignment::where('is_confirmed', false)->count(),
+            'accepted_assignments' => Assignment::where('is_confirmed', true)->count(),
         ];
     }
 
@@ -92,13 +92,13 @@ class DashboardController extends Controller
         $currentUsers = User::where('created_at', '>=', $startDate)->count();
         $currentTournaments = Tournament::where('created_at', '>=', $startDate)->count();
         $currentClubs = Club::where('created_at', '>=', $startDate)->count();
-        $currentAssignments = TournamentAssignment::where('created_at', '>=', $startDate)->count();
+        $currentAssignments = Assignment::where('created_at', '>=', $startDate)->count();
 
         // Previous period counts
         $previousUsers = User::whereBetween('created_at', [$previousPeriodStart, $startDate])->count();
         $previousTournaments = Tournament::whereBetween('created_at', [$previousPeriodStart, $startDate])->count();
         $previousClubs = Club::whereBetween('created_at', [$previousPeriodStart, $startDate])->count();
-        $previousAssignments = TournamentAssignment::whereBetween('created_at', [$previousPeriodStart, $startDate])->count();
+        $previousAssignments = Assignment::whereBetween('created_at', [$previousPeriodStart, $startDate])->count();
 
         return [
             'users' => [
@@ -151,7 +151,7 @@ class DashboardController extends Controller
             ->keyBy('date')
             ->pluck('count');
 
-        $assignmentTrends = TournamentAssignment::select(
+        $assignmentTrends = Assignment::select(
             DB::raw('DATE(created_at) as date'),
             DB::raw('COUNT(*) as count')
         )
@@ -242,12 +242,12 @@ class DashboardController extends Controller
         }
 
         // Recent tournaments
-        $recentTournaments = Tournament::with(['category', 'zone'])->latest()->limit(5)->get();
+        $recentTournaments = Tournament::with(['tournamentType', 'zone'])->latest()->limit(5)->get();
         foreach ($recentTournaments as $tournament) {
             $activities[] = [
                 'type' => 'tournament_created',
                 'title' => 'Nuovo torneo creato',
-                'description' => $tournament->name . ' (' . ($tournament->tournamentCategory->name ?? 'N/A') . ') - ' . ($tournament->zone->name ?? 'N/A'),
+                'description' => $tournament->name . ' (' . ($tournament->tournamentType->name ?? 'N/A') . ') - ' . ($tournament->zone->name ?? 'N/A'),
                 'created_at' => $tournament->created_at,
                 'icon' => 'calendar',
                 'color' => 'green',
@@ -255,8 +255,8 @@ class DashboardController extends Controller
         }
 
         // Recent assignments
-        $recentAssignments = TournamentAssignment::with(['tournament', 'referee'])
-            ->where('status', 'accepted')
+        $recentAssignments = Assignment::with(['tournament', 'user'])
+            ->where('is_confirmed', true)
             ->latest()
             ->limit(5)
             ->get();
@@ -264,7 +264,7 @@ class DashboardController extends Controller
             $activities[] = [
                 'type' => 'assignment_accepted',
                 'title' => 'Assegnazione accettata',
-                'description' => "{$assignment->referee->name} ha accettato {$assignment->tournament->name}",
+                'description' => "{$assignment->user->name} ha accettato {$assignment->tournament->name}",
                 'created_at' => $assignment->updated_at,
                 'icon' => 'check-circle',
                 'color' => 'green',
@@ -378,8 +378,8 @@ class DashboardController extends Controller
      */
     private function checkAssignmentRate()
     {
-        $totalAssignments = TournamentAssignment::count();
-        $acceptedAssignments = TournamentAssignment::where('status', 'accepted')->count();
+        $totalAssignments = Assignment::count();
+        $acceptedAssignments = Assignment::where('is_confirmed', true)->count();
 
         if ($totalAssignments == 0) {
             $acceptanceRate = 100; // No assignments yet, assume healthy
