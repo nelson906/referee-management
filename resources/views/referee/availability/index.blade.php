@@ -1,288 +1,278 @@
 @extends('layouts.referee')
 
-@section('title', 'Gestione Disponibilità')
+@section('title', 'Le Mie Disponibilità')
 
 @section('content')
-<div class="container mx-auto px-4 py-8">
-    {{-- Header --}}
-    <div class="mb-8">
-        <h1 class="text-3xl font-bold text-gray-900">Gestione Disponibilità</h1>
-        <p class="mt-2 text-gray-600">Seleziona i tornei per cui sei disponibile</p>
-    </div>
-
-    {{-- Alert Messages --}}
-    @if(session('success'))
-        <div class="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 mb-6" role="alert">
-            <p class="font-bold">Successo!</p>
-            <p>{{ session('success') }}</p>
-        </div>
-    @endif
-
-    @if(session('error'))
-        <div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6" role="alert">
-            <p class="font-bold">Errore!</p>
-            <p>{{ session('error') }}</p>
-        </div>
-    @endif
-
-    {{-- Filters (only for national referees) --}}
-    @if($isNationalReferee)
-    <div class="bg-white shadow rounded-lg p-6 mb-6">
-        <form method="GET" action="{{ route('referee.availability.index') }}" class="grid grid-cols-1 md:grid-cols-4 gap-4">
-            {{-- Zone Filter --}}
-            <div>
-                <label for="zone_id" class="block text-sm font-medium text-gray-700 mb-1">Zona</label>
-                <select name="zone_id" id="zone_id" class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
-                    <option value="">Tutte le zone</option>
-                    @foreach($zones as $zone)
-                        <option value="{{ $zone->id }}" {{ $zoneId == $zone->id ? 'selected' : '' }}>
-                            {{ $zone->name }}
-                        </option>
-                    @endforeach
-                </select>
-            </div>
-
-            {{-- Type Filter - FIX: Changed from $categories to $types --}}
-            <div>
-                <label for="category_id" class="block text-sm font-medium text-gray-700 mb-1">Categoria</label>
-                <select name="category_id" id="category_id" class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
-                    <option value="">Tutte le categorie</option>
-                    @foreach($types as $type)
-                        <option value="{{ $type->id }}" {{ $typeId == $type->id ? 'selected' : '' }}>
-                            {{ $type->name }}
-                            @if($type->is_national)
-                                (Nazionale)
-                            @endif
-                        </option>
-                    @endforeach
-                </select>
-            </div>
-
-            {{-- Month Filter --}}
-            <div>
-                <label for="month" class="block text-sm font-medium text-gray-700 mb-1">Mese</label>
-                <input type="month"
-                       name="month"
-                       id="month"
-                       value="{{ $month }}"
-                       class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
-            </div>
-
-            {{-- Submit --}}
-            <div class="flex items-end">
-                <button type="submit" class="w-full bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                    Filtra
-                </button>
-            </div>
-        </form>
-    </div>
-    @endif
-
-    {{-- Quick Actions --}}
-    <div class="bg-white shadow rounded-lg p-6 mb-6">
-        <div class="flex justify-between items-center">
-            <div>
-                <h2 class="text-lg font-semibold text-gray-900">I Miei Tornei</h2>
-                <p class="text-sm text-gray-600">
-                    @if($isNationalReferee)
-                        Come arbitro nazionale, puoi accedere a tornei nazionali e della tua zona.
-                    @else
-                        Puoi accedere ai tornei della tua zona.
-                    @endif
-                </p>
-            </div>
-            <div class="flex space-x-2">
-                <a href="{{ route('referee.availability.calendar') }}"
-                   class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    📅 Vista Calendario
-                </a>
+<div class="py-6">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        {{-- Header --}}
+        <div class="mb-6">
+            <div class="flex justify-between items-center">
+                <div>
+                    <h1 class="text-2xl font-bold text-gray-900">Le Mie Disponibilità</h1>
+                    <p class="mt-1 text-sm text-gray-600">
+                        Seleziona i tornei per cui sei disponibile
+                    </p>
+                </div>
+                <div class="flex space-x-3">
+                    <a href="{{ route('referee.availability.calendar') }}"
+                       class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-md text-sm font-medium">
+                        Vista Calendario
+                    </a>
+                    <a href="{{ route('referee.assignments.index') }}"
+                       class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium">
+                        Le Mie Assegnazioni
+                    </a>
+                </div>
             </div>
         </div>
-    </div>
 
-    {{-- Tournaments by Month --}}
-    @if($tournamentsByMonth->count() > 0)
-        <form method="POST" action="{{ route('referee.availability.save') }}" id="availability-form">
-            @csrf
+        {{-- Filters --}}
+        <div class="mb-6 bg-white rounded-lg shadow p-4">
+            <form method="GET" class="grid grid-cols-1 md:grid-cols-5 gap-4">
+                <div>
+                    <label for="zone_id" class="block text-sm font-medium text-gray-700 mb-1">Zona</label>
+                    <select name="zone_id" id="zone_id" class="w-full rounded-md border-gray-300 shadow-sm text-sm">
+                        <option value="">Tutte le zone</option>
+                        @foreach($zones as $zone)
+                            <option value="{{ $zone->id }}" {{ $zoneId == $zone->id ? 'selected' : '' }}>
+                                {{ $zone->name }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
 
-            @foreach($tournamentsByMonth as $monthKey => $tournaments)
-                @php
-                    $monthDate = \Carbon\Carbon::parse($monthKey . '-01');
-                @endphp
+                <div>
+                    <label for="type_id" class="block text-sm font-medium text-gray-700 mb-1">Tipo Torneo</label>
+                    <select name="type_id" id="type_id" class="w-full rounded-md border-gray-300 shadow-sm text-sm">
+                        <option value="">Tutti i tipi</option>
+                        @foreach($types as $type)
+                            <option value="{{ $type->id }}" {{ $typeId == $type->id ? 'selected' : '' }}>
+                                {{ $type->short_name ?? $type->name }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
 
-                <div class="bg-white shadow rounded-lg mb-6">
-                    <div class="px-6 py-4 border-b border-gray-200">
-                        <h3 class="text-lg font-medium text-gray-900">
-                            {{ $monthDate->format('F Y') }}
-                            <span class="text-sm text-gray-500">({{ $tournaments->count() }} {{ $tournaments->count() == 1 ? 'torneo' : 'tornei' }})</span>
-                        </h3>
+                <div>
+                    <label for="month" class="block text-sm font-medium text-gray-700 mb-1">Mese</label>
+                    <input type="month" name="month" id="month" value="{{ $month }}"
+                           class="w-full rounded-md border-gray-300 shadow-sm text-sm">
+                </div>
+
+                <div class="flex items-end">
+                    <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium">
+                        Filtra
+                    </button>
+                </div>
+
+                <div class="flex items-end">
+                    <a href="{{ route('referee.availability.index') }}"
+                       class="w-full bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-md text-sm font-medium text-center">
+                        Reset
+                    </a>
+                </div>
+            </form>
+        </div>
+
+        {{-- Tournaments Table --}}
+        @if($tournaments->isEmpty())
+            <div class="bg-white rounded-lg shadow p-8 text-center">
+                <h3 class="text-lg font-medium text-gray-900 mb-2">Nessun torneo trovato</h3>
+                <p class="text-gray-600">Non ci sono tornei corrispondenti ai filtri selezionati.</p>
+            </div>
+        @else
+            <div class="bg-white rounded-lg shadow overflow-hidden">
+                <form method="POST" action="{{ route('referee.availability.save') }}">
+                    @csrf
+
+                    {{-- Table Header --}}
+                    <div class="px-6 py-4 border-b border-gray-200 bg-gray-50">
+                        <div class="flex justify-between items-center">
+                            <div class="flex items-center space-x-4">
+                                <h3 class="text-lg font-medium text-gray-900">
+                                    Tornei ({{ $tournaments->total() }})
+                                </h3>
+                                <div class="text-sm text-gray-600">
+                                    Pagina {{ $tournaments->currentPage() }} di {{ $tournaments->lastPage() }}
+                                </div>
+                            </div>
+                            <button type="submit" class="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-md text-sm font-medium">
+                                Salva Disponibilità
+                            </button>
+                        </div>
                     </div>
 
+                    {{-- Table --}}
                     <div class="overflow-x-auto">
                         <table class="min-w-full divide-y divide-gray-200">
                             <thead class="bg-gray-50">
                                 <tr>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Disponibile
+                                    <th scope="col" class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-8">
+                                        ✓
                                     </th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    <th scope="col" class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                         Torneo
                                     </th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    <th scope="col" class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-20">
+                                        Tipo
+                                    </th>
+                                    <th scope="col" class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Circolo / Zona
+                                    </th>
+                                    <th scope="col" class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-24">
                                         Date
                                     </th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Circolo
-                                    </th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Categoria
-                                    </th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Zona
-                                    </th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Note
+                                    <th scope="col" class="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider w-16">
+                                        Giorni
                                     </th>
                                 </tr>
                             </thead>
                             <tbody class="bg-white divide-y divide-gray-200">
                                 @foreach($tournaments as $tournament)
-                                <tr class="hover:bg-gray-50 {{ in_array($tournament->id, $userAvailabilities) ? 'bg-blue-50' : '' }}">
-                                    {{-- Checkbox --}}
-                                    <td class="px-6 py-4 whitespace-nowrap">
-                                        <input type="checkbox"
-                                               name="availabilities[]"
-                                               value="{{ $tournament->id }}"
-                                               {{ in_array($tournament->id, $userAvailabilities) ? 'checked' : '' }}
-                                               class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded">
-                                    </td>
+                                    @php
+                                        $daysUntilDeadline = $tournament->days_until_deadline;
+                                        $deadlineClass = '';
+                                        $deadlineText = '';
 
-                                    {{-- Tournament Name --}}
-                                    <td class="px-6 py-4">
-                                        <div class="text-sm font-medium text-gray-900">
-                                            {{ $tournament->name }}
-                                        </div>
-                                        <div class="text-sm text-gray-500">
-                                            Status:
-                                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-{{ $tournament->status_color }}-100 text-{{ $tournament->status_color }}-800">
-                                                {{ $tournament->status_label }}
-                                            </span>
-                                        </div>
-                                    </td>
+                                        if ($daysUntilDeadline !== null) {
+                                            if ($daysUntilDeadline < 0) {
+                                                // Deadline passata - vuoto
+                                                $deadlineClass = '';
+                                                $deadlineText = '';
+                                            } elseif ($daysUntilDeadline <= 7) {
+                                                // Entro 7 giorni - rosso
+                                                $deadlineClass = 'text-red-600 font-medium';
+                                                $deadlineText = $daysUntilDeadline;
+                                            } else {
+                                                // Oltre 7 giorni - verde
+                                                $deadlineClass = 'text-green-600';
+                                                $deadlineText = $daysUntilDeadline;
+                                            }
+                                        }
+                                    @endphp
 
-                                    {{-- Dates --}}
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                        <div>{{ $tournament->start_date->format('d/m/Y') }}</div>
-                                        @if($tournament->start_date->ne($tournament->end_date))
-                                            <div class="text-gray-500">{{ $tournament->end_date->format('d/m/Y') }}</div>
-                                        @endif
-                                    </td>
+                                    <tr class="hover:bg-gray-50">
+                                        {{-- ✅ SEMPLIFICATO: Checkbox sempre presente --}}
+                                        <td class="px-3 py-4 whitespace-nowrap text-center">
+                                            <input type="checkbox"
+                                                   name="availabilities[]"
+                                                   value="{{ $tournament->id }}"
+                                                   {{ $tournament->user_has_availability ? 'checked' : '' }}
+                                                   class="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded">
+                                        </td>
 
-                                    {{-- Club --}}
-                                    <td class="px-6 py-4">
-                                        <div class="text-sm text-gray-900">{{ $tournament->club->name }}</div>
-                                        <div class="text-sm text-gray-500">{{ $tournament->club->city }}</div>
-                                    </td>
+                                        {{-- Nome Torneo --}}
+                                        <td class="px-3 py-4 text-sm">
+                                            <div class="font-medium text-gray-900">
+                                                {{ $tournament->name }}
+                                            </div>
+                                        </td>
 
-                                    {{-- Category --}}
-                                    <td class="px-6 py-4 whitespace-nowrap">
-                                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium
-                                            {{ $tournament->tournamentType->is_national ? 'bg-purple-100 text-purple-800' : 'bg-green-100 text-green-800' }}">
-                                            {{ $tournament->tournamentType->name }}
-                                            @if($tournament->tournamentType->is_national)
-                                                🏆
+                                        {{-- Tipo Torneo --}}
+                                        <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-500">
+                                            <div>{{ $tournament->tournamentType->short_name ?? $tournament->tournamentType->name ?? 'N/A' }}</div>
+                                            @if($tournament->tournamentType->is_national ?? false)
+                                                <div class="text-xs text-blue-600 font-medium">🌍 Nazionale</div>
                                             @endif
-                                        </span>
-                                    </td>
+                                        </td>
 
-                                    {{-- Zone --}}
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                        {{ $tournament->zone->name }}
-                                    </td>
+                                        {{-- Circolo / Zona --}}
+                                        <td class="px-3 py-4 text-sm text-gray-500">
+                                            <div>{{ $tournament->club->name ?? 'N/A' }}</div>
+                                            <div class="text-xs text-gray-400">
+                                                {{ $tournament->zone->name ?? 'N/A' }}
+                                                @auth
+                                                    @if($tournament->zone_id != auth()->user()->zone_id && ($tournament->tournamentType->is_national ?? false))
+                                                        <span class="text-blue-600 font-medium">(Fuori zona)</span>
+                                                    @endif
+                                                @endauth
+                                            </div>
+                                        </td>
 
-                                    {{-- Notes --}}
-                                    <td class="px-6 py-4">
-                                        <textarea name="notes[{{ $tournament->id }}]"
-                                                  rows="2"
-                                                  placeholder="Note opzionali..."
-                                                  class="w-full text-xs border-gray-300 rounded-md focus:border-indigo-500 focus:ring-indigo-500">{{ old('notes.' . $tournament->id) }}</textarea>
-                                    </td>
-                                </tr>
+                                        {{-- Date --}}
+                                        <td class="px-3 py-4 whitespace-nowrap text-sm text-gray-500">
+                                            <div>{{ $tournament->start_date->format('d/m/Y') }}</div>
+                                            @if($tournament->start_date->format('d/m/Y') !== $tournament->end_date->format('d/m/Y'))
+                                                <div class="text-xs">{{ $tournament->end_date->format('d/m/Y') }}</div>
+                                            @endif
+                                        </td>
+
+                                        {{-- Giorni Deadline --}}
+                                        <td class="px-3 py-4 whitespace-nowrap text-center text-sm {{ $deadlineClass }}">
+                                            {{ $deadlineText }}
+                                        </td>
+                                    </tr>
                                 @endforeach
                             </tbody>
                         </table>
                     </div>
-                </div>
-            @endforeach
 
-            {{-- Submit Button --}}
-            <div class="bg-white shadow rounded-lg p-6">
-                <div class="flex justify-between items-center">
-                    <div class="text-sm text-gray-600">
-                        Seleziona i tornei per cui sei disponibile e aggiungi eventuali note.
+                    {{-- Submit Button & Pagination --}}
+                    <div class="px-6 py-4 bg-gray-50 border-t border-gray-200">
+                        <div class="flex justify-between items-center">
+                            <div class="text-sm text-gray-600">
+                                <span class="font-medium text-green-600">Verde:</span> deadline oltre 7 giorni •
+                                <span class="font-medium text-red-600">Rosso:</span> deadline entro 7 giorni •
+                                <span class="text-gray-500">Vuoto:</span> deadline scaduta
+                            </div>
+                            <button type="submit" class="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-md text-sm font-medium">
+                                Salva Disponibilità
+                            </button>
+                        </div>
+
+                        {{-- Pagination --}}
+                        @if($tournaments->hasPages())
+                            <div class="mt-4 flex items-center justify-between">
+                                <div class="text-sm text-gray-700">
+                                    Risultati {{ $tournaments->firstItem() }}-{{ $tournaments->lastItem() }} di {{ $tournaments->total() }}
+                                </div>
+
+                                <div class="flex items-center space-x-2">
+                                    {{-- Previous Page Link --}}
+                                    @if ($tournaments->onFirstPage())
+                                        <span class="px-3 py-2 text-sm text-gray-400 bg-white border border-gray-300 rounded-md">
+                                            ‹ Prec
+                                        </span>
+                                    @else
+                                        <a href="{{ $tournaments->appends(request()->query())->previousPageUrl() }}"
+                                           class="px-3 py-2 text-sm text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">
+                                            ‹ Prec
+                                        </a>
+                                    @endif
+
+                                    {{-- Page Numbers --}}
+                                    @foreach($tournaments->getUrlRange(max(1, $tournaments->currentPage() - 2), min($tournaments->lastPage(), $tournaments->currentPage() + 2)) as $page => $url)
+                                        @if ($page == $tournaments->currentPage())
+                                            <span class="px-3 py-2 text-sm bg-blue-600 text-white border border-blue-600 rounded-md">
+                                                {{ $page }}
+                                            </span>
+                                        @else
+                                            <a href="{{ $url }}"
+                                               class="px-3 py-2 text-sm text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">
+                                                {{ $page }}
+                                            </a>
+                                        @endif
+                                    @endforeach
+
+                                    {{-- Next Page Link --}}
+                                    @if ($tournaments->hasMorePages())
+                                        <a href="{{ $tournaments->appends(request()->query())->nextPageUrl() }}"
+                                           class="px-3 py-2 text-sm text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">
+                                            Succ ›
+                                        </a>
+                                    @else
+                                        <span class="px-3 py-2 text-sm text-gray-400 bg-white border border-gray-300 rounded-md">
+                                            Succ ›
+                                        </span>
+                                    @endif
+                                </div>
+                            </div>
+                        @endif
                     </div>
-                    <button type="submit" class="bg-indigo-600 text-white px-6 py-3 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium">
-                        💾 Salva Disponibilità
-                    </button>
-                </div>
+                </form>
             </div>
-        </form>
-    @else
-        {{-- No Tournaments --}}
-        <div class="bg-white shadow rounded-lg p-12 text-center">
-            <div class="text-gray-400 text-6xl mb-4">📅</div>
-            <h3 class="text-lg font-medium text-gray-900 mb-2">Nessun torneo disponibile</h3>
-            <p class="text-gray-600 mb-4">
-                @if($isNationalReferee)
-                    Non ci sono tornei aperti per le disponibilità nel periodo selezionato.
-                @else
-                    Non ci sono tornei aperti nella tua zona per il periodo selezionato.
-                @endif
-            </p>
-            @if($isNationalReferee)
-                <a href="{{ route('referee.availability.index') }}" class="text-indigo-600 hover:text-indigo-500">
-                    Rimuovi filtri
-                </a>
-            @endif
-        </div>
-    @endif
+        @endif
+    </div>
 </div>
-
-@push('scripts')
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Auto-save on checkbox change (optional)
-    const checkboxes = document.querySelectorAll('input[name="availabilities[]"]');
-    const form = document.getElementById('availability-form');
-
-    checkboxes.forEach(checkbox => {
-        checkbox.addEventListener('change', function() {
-            // Add visual feedback
-            const row = this.closest('tr');
-            if (this.checked) {
-                row.classList.add('bg-blue-50');
-            } else {
-                row.classList.remove('bg-blue-50');
-            }
-        });
-    });
-
-    // Form validation
-    form.addEventListener('submit', function(e) {
-        const checkedBoxes = document.querySelectorAll('input[name="availabilities[]"]:checked');
-
-        if (checkedBoxes.length === 0) {
-            e.preventDefault();
-            alert('Seleziona almeno un torneo o deseleziona tutti per rimuovere le disponibilità.');
-            return false;
-        }
-
-        // Show loading state
-        const submitBtn = form.querySelector('button[type="submit"]');
-        submitBtn.disabled = true;
-        submitBtn.innerHTML = '⏳ Salvando...';
-    });
-});
-</script>
-@endpush
 @endsection

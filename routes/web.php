@@ -1,5 +1,6 @@
 <?php
 
+use Barryvdh\Debugbar\Facade;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Http\Request;
 use Illuminate\Foundation\Auth\EmailVerificationRequest;
@@ -17,7 +18,8 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\TournamentController;
-
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Cache;
 /*
 |--------------------------------------------------------------------------
 | 🔧 COMPLETE WEB ROUTES - Golf Referee Management System

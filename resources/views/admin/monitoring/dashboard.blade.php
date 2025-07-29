@@ -2,484 +2,402 @@
 
 @section('header')
     <div class="flex justify-between items-center">
-        <h1 class="text-3xl font-bold text-gray-900">🖥️ Monitoraggio Sistema</h1>
-        <div class="flex space-x-3">
-            <button onclick="refreshMetrics()"
-                    class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition duration-200">
+        <div>
+            <h2 class="font-semibold text-xl text-gray-800 leading-tight">
+                🖥️ Monitoraggio Sistema
+            </h2>
+            <p class="text-gray-600 mt-1">Stato in tempo reale del sistema Golf Referee Management</p>
+        </div>
+        <div class="flex space-x-2">
+            <select id="refresh-interval" class="rounded-md border-gray-300 text-sm">
+                <option value="10">Aggiorna ogni 10s</option>
+                <option value="30" selected>Aggiorna ogni 30s</option>
+                <option value="60">Aggiorna ogni 60s</option>
+                <option value="0">Disabilita auto-refresh</option>
+            </select>
+            <button id="refresh-btn" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium">
                 🔄 Aggiorna
             </button>
-            <a href="{{ route('admin.monitoring.logs') }}"
-               class="bg-gray-600 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded-lg transition duration-200">
-                📋 Log Sistema
+            <a href="{{ route('admin.monitoring.health') }}"
+               class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md text-sm font-medium">
+                🏥 Health Check
             </a>
         </div>
     </div>
 @endsection
 
 @section('content')
-<div class="space-y-6" x-data="monitoringDashboard()" x-init="init()">
+<div class="space-y-6">
 
-    {{-- System Health Status --}}
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
-
-        {{-- Overall Health --}}
-        <div class="bg-white rounded-lg shadow p-6">
-            <div class="flex items-center justify-between">
-                <div>
-                    <p class="text-sm font-medium text-gray-600">Stato Sistema</p>
-                    <p class="text-2xl font-bold"
-                       :class="systemHealth.status === 'healthy' ? 'text-green-600' : 'text-red-600'">
-                        <span x-text="systemHealth.status === 'healthy' ? 'SANO' : 'PROBLEMI'"></span>
-                    </p>
-                </div>
-                <div class="p-3 rounded-full"
-                     :class="systemHealth.status === 'healthy' ? 'bg-green-100' : 'bg-red-100'">
-                    <span x-text="systemHealth.status === 'healthy' ? '✅' : '❌'"></span>
-                </div>
-            </div>
-            <div class="mt-2 text-sm text-gray-500">
-                Ultimo check: <span x-text="systemHealth.lastCheck"></span>
-            </div>
+    {{-- Status Generale Sistema --}}
+    <div class="bg-white shadow-sm rounded-lg">
+        <div class="px-6 py-4 border-b border-gray-200">
+            <h3 class="text-lg font-medium text-gray-900">🚦 Stato Generale</h3>
         </div>
-
-        {{-- Database Status --}}
-        <div class="bg-white rounded-lg shadow p-6">
-            <div class="flex items-center justify-between">
-                <div>
-                    <p class="text-sm font-medium text-gray-600">Database</p>
-                    <p class="text-2xl font-bold"
-                       :class="database.status === 'connected' ? 'text-green-600' : 'text-red-600'">
-                        <span x-text="database.responseTime + 'ms'"></span>
-                    </p>
-                </div>
-                <div class="p-3 rounded-full"
-                     :class="database.status === 'connected' ? 'bg-green-100' : 'bg-red-100'">
-                    🗄️
-                </div>
-            </div>
-            <div class="mt-2 text-sm text-gray-500">
-                <span x-text="database.connections"></span> connessioni attive
-            </div>
-        </div>
-
-        {{-- Cache Status --}}
-        <div class="bg-white rounded-lg shadow p-6">
-            <div class="flex items-center justify-between">
-                <div>
-                    <p class="text-sm font-medium text-gray-600">Cache</p>
-                    <p class="text-2xl font-bold text-blue-600">
-                        <span x-text="cache.hitRate + '%'"></span>
-                    </p>
-                </div>
-                <div class="p-3 bg-blue-100 rounded-full">
-                    ⚡
-                </div>
-            </div>
-            <div class="mt-2 text-sm text-gray-500">
-                Hit rate: <span x-text="cache.hits"></span>/<span x-text="cache.misses"></span>
-            </div>
-        </div>
-
-        {{-- Queue Status --}}
-        <div class="bg-white rounded-lg shadow p-6">
-            <div class="flex items-center justify-between">
-                <div>
-                    <p class="text-sm font-medium text-gray-600">Code di Lavoro</p>
-                    <p class="text-2xl font-bold"
-                       :class="queue.pending > 100 ? 'text-orange-600' : 'text-green-600'">
-                        <span x-text="queue.pending"></span>
-                    </p>
-                </div>
-                <div class="p-3 rounded-full"
-                     :class="queue.pending > 100 ? 'bg-orange-100' : 'bg-green-100'">
-                    📤
-                </div>
-            </div>
-            <div class="mt-2 text-sm text-gray-500">
-                <span x-text="queue.failed"></span> falliti oggi
-            </div>
-        </div>
-    </div>
-
-    {{-- Performance Metrics --}}
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-
-        {{-- CPU & Memory --}}
-        <div class="bg-white rounded-lg shadow p-6">
-            <h3 class="text-lg font-semibold text-gray-900 mb-4">
-                🖥️ Risorse Sistema
-            </h3>
-            <div class="space-y-4">
-                <div>
-                    <div class="flex justify-between text-sm">
-                        <span>CPU Usage</span>
-                        <span x-text="performance.cpu + '%'"></span>
+        <div class="p-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+                <div class="flex items-center justify-between p-3 bg-green-50 rounded-lg border border-green-200">
+                    <div>
+                        <div class="text-sm font-medium text-green-800">Sistema</div>
+                        <div class="text-xs text-green-600">{{ $healthStatus['overall'] === 'healthy' ? 'Operativo' : 'Problemi' }}</div>
                     </div>
-                    <div class="w-full bg-gray-200 rounded-full h-2 mt-1">
-                        <div class="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                             :style="'width: ' + performance.cpu + '%'"></div>
-                    </div>
+                    <div class="w-3 h-3 bg-green-500 rounded-full"></div>
                 </div>
-                <div>
-                    <div class="flex justify-between text-sm">
-                        <span>Memoria</span>
-                        <span x-text="performance.memory + '%'"></span>
-                    </div>
-                    <div class="w-full bg-gray-200 rounded-full h-2 mt-1">
-                        <div class="bg-green-600 h-2 rounded-full transition-all duration-300"
-                             :style="'width: ' + performance.memory + '%'"></div>
-                    </div>
-                </div>
-                <div>
-                    <div class="flex justify-between text-sm">
-                        <span>Disco</span>
-                        <span x-text="performance.disk + '%'"></span>
-                    </div>
-                    <div class="w-full bg-gray-200 rounded-full h-2 mt-1">
-                        <div class="bg-yellow-600 h-2 rounded-full transition-all duration-300"
-                             :style="'width: ' + performance.disk + '%'"></div>
-                    </div>
-                </div>
-            </div>
-        </div>
 
-        {{-- Response Times --}}
-        <div class="bg-white rounded-lg shadow p-6">
-            <h3 class="text-lg font-semibold text-gray-900 mb-4">
-                ⏱️ Tempi di Risposta
-            </h3>
-            <div class="space-y-4">
-                <div class="flex justify-between items-center">
-                    <span class="text-sm text-gray-600">Pagine Web</span>
-                    <span class="font-semibold" x-text="responseTimes.web + 'ms'"></span>
+                <div class="flex items-center justify-between p-3 {{ $healthStatus['database'] === 'healthy' ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200' }} rounded-lg border">
+                    <div>
+                        <div class="text-sm font-medium {{ $healthStatus['database'] === 'healthy' ? 'text-green-800' : 'text-red-800' }}">Database</div>
+                        <div class="text-xs {{ $healthStatus['database'] === 'healthy' ? 'text-green-600' : 'text-red-600' }}">{{ $healthStatus['database'] === 'healthy' ? 'Connesso' : 'Errore' }}</div>
+                    </div>
+                    <div class="w-3 h-3 {{ $healthStatus['database'] === 'healthy' ? 'bg-green-500' : 'bg-red-500' }} rounded-full"></div>
                 </div>
-                <div class="flex justify-between items-center">
-                    <span class="text-sm text-gray-600">API</span>
-                    <span class="font-semibold" x-text="responseTimes.api + 'ms'"></span>
-                </div>
-                <div class="flex justify-between items-center">
-                    <span class="text-sm text-gray-600">Database</span>
-                    <span class="font-semibold" x-text="responseTimes.database + 'ms'"></span>
-                </div>
-                <div class="flex justify-between items-center">
-                    <span class="text-sm text-gray-600">Email</span>
-                    <span class="font-semibold" x-text="responseTimes.email + 'ms'"></span>
-                </div>
-            </div>
-        </div>
 
-        {{-- Error Rates --}}
-        <div class="bg-white rounded-lg shadow p-6">
-            <h3 class="text-lg font-semibold text-gray-900 mb-4">
-                🚨 Errori e Alerts
-            </h3>
-            <div class="space-y-4">
-                <div class="flex justify-between items-center">
-                    <span class="text-sm text-gray-600">Errori HTTP (24h)</span>
-                    <span class="font-semibold text-red-600" x-text="errors.http"></span>
+                <div class="flex items-center justify-between p-3 {{ $healthStatus['cache'] === 'healthy' ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200' }} rounded-lg border">
+                    <div>
+                        <div class="text-sm font-medium {{ $healthStatus['cache'] === 'healthy' ? 'text-green-800' : 'text-red-800' }}">Cache</div>
+                        <div class="text-xs {{ $healthStatus['cache'] === 'healthy' ? 'text-green-600' : 'text-red-600' }}">{{ $healthStatus['cache'] === 'healthy' ? 'Attiva' : 'Errore' }}</div>
+                    </div>
+                    <div class="w-3 h-3 {{ $healthStatus['cache'] === 'healthy' ? 'bg-green-500' : 'bg-red-500' }} rounded-full"></div>
                 </div>
-                <div class="flex justify-between items-center">
-                    <span class="text-sm text-gray-600">Errori Database</span>
-                    <span class="font-semibold text-orange-600" x-text="errors.database"></span>
+
+                <div class="flex items-center justify-between p-3 {{ $healthStatus['storage'] === 'healthy' ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200' }} rounded-lg border">
+                    <div>
+                        <div class="text-sm font-medium {{ $healthStatus['storage'] === 'healthy' ? 'text-green-800' : 'text-red-800' }}">Storage</div>
+                        <div class="text-xs {{ $healthStatus['storage'] === 'healthy' ? 'text-green-600' : 'text-red-600' }}">{{ $healthStatus['storage'] === 'healthy' ? 'Disponibile' : 'Errore' }}</div>
+                    </div>
+                    <div class="w-3 h-3 {{ $healthStatus['storage'] === 'healthy' ? 'bg-green-500' : 'bg-red-500' }} rounded-full"></div>
                 </div>
-                <div class="flex justify-between items-center">
-                    <span class="text-sm text-gray-600">Email Fallite</span>
-                    <span class="font-semibold text-red-600" x-text="errors.email"></span>
-                </div>
-                <div class="flex justify-between items-center">
-                    <span class="text-sm text-gray-600">Job Falliti</span>
-                    <span class="font-semibold text-orange-600" x-text="errors.jobs"></span>
+
+                <div class="flex items-center justify-between p-3 bg-green-50 rounded-lg border border-green-200">
+                    <div>
+                        <div class="text-sm font-medium text-green-800">Servizi</div>
+                        <div class="text-xs text-green-600">Attivi</div>
+                    </div>
+                    <div class="w-3 h-3 bg-green-500 rounded-full"></div>
                 </div>
             </div>
         </div>
     </div>
 
-    {{-- Real-time Charts --}}
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-
-        {{-- Performance Chart --}}
-        <div class="bg-white rounded-lg shadow p-6">
-            <h3 class="text-lg font-semibold text-gray-900 mb-4">
-                📈 Performance Trend (Ultima Ora)
-            </h3>
-            <div class="h-64">
-                <canvas id="performanceChart" width="400" height="200"></canvas>
-            </div>
-        </div>
-
-        {{-- Traffic Chart --}}
-        <div class="bg-white rounded-lg shadow p-6">
-            <h3 class="text-lg font-semibold text-gray-900 mb-4">
-                🌐 Traffico Web (Ultima Ora)
-            </h3>
-            <div class="h-64">
-                <canvas id="trafficChart" width="400" height="200"></canvas>
-            </div>
-        </div>
-    </div>
-
-    {{-- Recent Alerts --}}
-    <div class="bg-white rounded-lg shadow p-6">
-        <h3 class="text-lg font-semibold text-gray-900 mb-4">
-            🚨 Alert Recenti
-        </h3>
-        <div class="space-y-3">
-            <template x-for="alert in recentAlerts" :key="alert.id">
-                <div class="flex items-center justify-between p-3 rounded-lg"
-                     :class="alert.level === 'critical' ? 'bg-red-50 border border-red-200' :
-                             alert.level === 'warning' ? 'bg-yellow-50 border border-yellow-200' :
-                             'bg-blue-50 border border-blue-200'">
-                    <div class="flex items-center space-x-3">
-                        <span :class="alert.level === 'critical' ? 'text-red-600' :
-                                     alert.level === 'warning' ? 'text-yellow-600' :
-                                     'text-blue-600'"
-                              x-text="alert.level === 'critical' ? '🔴' :
-                                     alert.level === 'warning' ? '🟡' : '🔵'"></span>
-                        <div>
-                            <p class="font-medium text-gray-900" x-text="alert.message"></p>
-                            <p class="text-sm text-gray-500" x-text="alert.timestamp"></p>
+    {{-- Metriche Real-time --}}
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div class="bg-white overflow-hidden shadow-sm rounded-lg">
+            <div class="p-6">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <div class="w-8 h-8 bg-blue-500 rounded-md flex items-center justify-center">
+                            <span class="text-white text-lg">⏱️</span>
                         </div>
                     </div>
-                    <span class="px-2 py-1 text-xs font-semibold rounded-full"
-                          :class="alert.level === 'critical' ? 'bg-red-100 text-red-800' :
-                                 alert.level === 'warning' ? 'bg-yellow-100 text-yellow-800' :
-                                 'bg-blue-100 text-blue-800'"
-                          x-text="alert.level.toUpperCase()"></span>
+                    <div class="ml-5 w-0 flex-1">
+                        <dl>
+                            <dt class="text-sm font-medium text-gray-500 truncate">Uptime</dt>
+                            <dd class="text-lg font-medium text-gray-900">{{ $metrics['uptime'] }}</dd>
+                        </dl>
+                    </div>
                 </div>
-            </template>
+            </div>
+        </div>
+
+        <div class="bg-white overflow-hidden shadow-sm rounded-lg">
+            <div class="p-6">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <div class="w-8 h-8 bg-green-500 rounded-md flex items-center justify-center">
+                            <span class="text-white text-lg">🧠</span>
+                        </div>
+                    </div>
+                    <div class="ml-5 w-0 flex-1">
+                        <dl>
+                            <dt class="text-sm font-medium text-gray-500 truncate">Memoria</dt>
+                            <dd class="text-lg font-medium text-gray-900">{{ $metrics['memory_usage']['percentage'] }}%</dd>
+                        </dl>
+                    </div>
+                </div>
+                <div class="mt-2">
+                    <div class="text-sm text-gray-600">
+                        {{ $metrics['memory_usage']['used'] }} / {{ $metrics['memory_usage']['limit'] }}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white overflow-hidden shadow-sm rounded-lg">
+            <div class="p-6">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <div class="w-8 h-8 bg-purple-500 rounded-md flex items-center justify-center">
+                            <span class="text-white text-lg">💾</span>
+                        </div>
+                    </div>
+                    <div class="ml-5 w-0 flex-1">
+                        <dl>
+                            <dt class="text-sm font-medium text-gray-500 truncate">Disco</dt>
+                            <dd class="text-lg font-medium text-gray-900">{{ $metrics['disk_usage']['percentage'] }}%</dd>
+                        </dl>
+                    </div>
+                </div>
+                <div class="mt-2">
+                    <div class="text-sm text-gray-600">
+                        {{ $metrics['disk_usage']['used'] }} / {{ $metrics['disk_usage']['total'] }}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white overflow-hidden shadow-sm rounded-lg">
+            <div class="p-6">
+                <div class="flex items-center">
+                    <div class="flex-shrink-0">
+                        <div class="w-8 h-8 bg-yellow-500 rounded-md flex items-center justify-center">
+                            <span class="text-white text-lg">⚡</span>
+                        </div>
+                    </div>
+                    <div class="ml-5 w-0 flex-1">
+                        <dl>
+                            <dt class="text-sm font-medium text-gray-500 truncate">CPU Load</dt>
+                            <dd class="text-lg font-medium text-gray-900">{{ $metrics['cpu_load'] }}%</dd>
+                        </dl>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
-    {{-- System Actions --}}
-    <div class="bg-white rounded-lg shadow p-6">
-        <h3 class="text-lg font-semibold text-gray-900 mb-4">
-            🔧 Azioni Sistema
-        </h3>
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <button onclick="clearCache()"
-                    class="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition duration-200">
+    {{-- Statistiche Real-time --}}
+    <div class="bg-white shadow-sm rounded-lg">
+        <div class="px-6 py-4 border-b border-gray-200">
+            <h3 class="text-lg font-medium text-gray-900">📊 Statistiche in Tempo Reale</h3>
+        </div>
+        <div class="p-6">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
                 <div class="text-center">
-                    <div class="text-2xl mb-2">🧹</div>
-                    <h4 class="font-medium text-gray-900">Clear Cache</h4>
-                    <p class="text-sm text-gray-600">Svuota cache applicazione</p>
+                    <div class="text-2xl font-bold text-blue-600">{{ $realtimeStats['requests_per_minute'] }}</div>
+                    <div class="text-sm text-gray-500">Richieste/minuto</div>
                 </div>
-            </button>
-            <button onclick="optimizeSystem()"
-                    class="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition duration-200">
                 <div class="text-center">
-                    <div class="text-2xl mb-2">⚡</div>
-                    <h4 class="font-medium text-gray-900">Optimize</h4>
-                    <p class="text-sm text-gray-600">Ottimizza prestazioni</p>
+                    <div class="text-2xl font-bold text-green-600">{{ $realtimeStats['active_sessions'] }}</div>
+                    <div class="text-sm text-gray-500">Sessioni Attive</div>
                 </div>
-            </button>
-            <a href="{{ route('admin.monitoring.logs') }}"
-               class="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition duration-200">
                 <div class="text-center">
-                    <div class="text-2xl mb-2">📋</div>
-                    <h4 class="font-medium text-gray-900">View Logs</h4>
-                    <p class="text-sm text-gray-600">Visualizza log sistema</p>
+                    <div class="text-2xl font-bold text-purple-600">{{ $realtimeStats['queue_size'] }}</div>
+                    <div class="text-sm text-gray-500">Code di Lavoro</div>
                 </div>
-            </a>
-            <a href="{{ route('admin.monitoring.history') }}"
-               class="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition duration-200">
                 <div class="text-center">
-                    <div class="text-2xl mb-2">📊</div>
-                    <h4 class="font-medium text-gray-900">History</h4>
-                    <p class="text-sm text-gray-600">Storico performance</p>
+                    <div class="text-2xl font-bold {{ $realtimeStats['error_rate'] > 5 ? 'text-red-600' : 'text-green-600' }}">{{ $realtimeStats['error_rate'] }}%</div>
+                    <div class="text-sm text-gray-500">Tasso Errori</div>
                 </div>
-            </a>
+            </div>
         </div>
     </div>
+
+    {{-- Avvisi Sistema --}}
+    @if(!empty($alerts))
+    <div class="bg-white shadow-sm rounded-lg">
+        <div class="px-6 py-4 border-b border-gray-200">
+            <h3 class="text-lg font-medium text-gray-900">⚠️ Avvisi Sistema</h3>
+        </div>
+        <div class="p-6">
+            <div class="space-y-3">
+                @foreach($alerts as $alert)
+                <div class="flex items-center p-3 rounded-lg border {{ $alert['type'] === 'critical' ? 'bg-red-50 border-red-200' : ($alert['type'] === 'warning' ? 'bg-yellow-50 border-yellow-200' : 'bg-blue-50 border-blue-200') }}">
+                    <div class="flex-shrink-0">
+                        @if($alert['type'] === 'critical')
+                            <span class="text-red-500 text-xl">🚨</span>
+                        @elseif($alert['type'] === 'warning')
+                            <span class="text-yellow-500 text-xl">⚠️</span>
+                        @else
+                            <span class="text-blue-500 text-xl">ℹ️</span>
+                        @endif
+                    </div>
+                    <div class="ml-3 flex-1">
+                        <div class="text-sm font-medium {{ $alert['type'] === 'critical' ? 'text-red-800' : ($alert['type'] === 'warning' ? 'text-yellow-800' : 'text-blue-800') }}">
+                            {{ $alert['message'] }}
+                        </div>
+                        <div class="text-xs {{ $alert['type'] === 'critical' ? 'text-red-600' : ($alert['type'] === 'warning' ? 'text-yellow-600' : 'text-blue-600') }}">
+                            {{ $alert['timestamp']->diffForHumans() }}
+                        </div>
+                    </div>
+                </div>
+                @endforeach
+            </div>
+        </div>
+    </div>
+    @endif
+
+    {{-- Azioni Rapide --}}
+    <div class="bg-white shadow-sm rounded-lg">
+        <div class="px-6 py-4 border-b border-gray-200">
+            <h3 class="text-lg font-medium text-gray-900">🔧 Azioni Sistema</h3>
+        </div>
+        <div class="p-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <button onclick="clearCache()"
+                        class="bg-blue-50 hover:bg-blue-100 p-4 rounded-lg border border-blue-200 transition-colors text-left">
+                    <div class="flex items-center">
+                        <span class="text-2xl mr-3">🗑️</span>
+                        <div>
+                            <div class="font-medium text-blue-900">Pulisci Cache</div>
+                            <div class="text-sm text-blue-600">Svuota cache sistema</div>
+                        </div>
+                    </div>
+                </button>
+
+                <button onclick="optimizeSystem()"
+                        class="bg-green-50 hover:bg-green-100 p-4 rounded-lg border border-green-200 transition-colors text-left">
+                    <div class="flex items-center">
+                        <span class="text-2xl mr-3">⚡</span>
+                        <div>
+                            <div class="font-medium text-green-900">Ottimizza</div>
+                            <div class="text-sm text-green-600">Ottimizza sistema</div>
+                        </div>
+                    </div>
+                </button>
+
+                <a href="{{ route('admin.monitoring.logs') }}"
+                   class="bg-purple-50 hover:bg-purple-100 p-4 rounded-lg border border-purple-200 transition-colors">
+                    <div class="flex items-center">
+                        <span class="text-2xl mr-3">📋</span>
+                        <div>
+                            <div class="font-medium text-purple-900">Log Sistema</div>
+                            <div class="text-sm text-purple-600">Visualizza log</div>
+                        </div>
+                    </div>
+                </a>
+
+                <a href="{{ route('admin.monitoring.performance') }}"
+                   class="bg-yellow-50 hover:bg-yellow-100 p-4 rounded-lg border border-yellow-200 transition-colors">
+                    <div class="flex items-center">
+                        <span class="text-2xl mr-3">📈</span>
+                        <div>
+                            <div class="font-medium text-yellow-900">Performance</div>
+                            <div class="text-sm text-yellow-600">Metriche dettagliate</div>
+                        </div>
+                    </div>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    {{-- Performance Overview --}}
+    <div class="bg-white shadow-sm rounded-lg">
+        <div class="px-6 py-4 border-b border-gray-200">
+            <h3 class="text-lg font-medium text-gray-900">📈 Performance Overview</h3>
+        </div>
+        <div class="p-6">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+                <div class="text-center">
+                    <div class="text-2xl font-bold text-green-600">{{ $performance['response_time_avg'] }}ms</div>
+                    <div class="text-sm text-gray-500">Tempo Risposta Medio</div>
+                </div>
+                <div class="text-center">
+                    <div class="text-2xl font-bold text-blue-600">{{ $performance['throughput'] }}</div>
+                    <div class="text-sm text-gray-500">Throughput (req/sec)</div>
+                </div>
+                <div class="text-center">
+                    <div class="text-2xl font-bold {{ $performance['error_rate'] > 5 ? 'text-red-600' : 'text-green-600' }}">{{ $performance['error_rate'] }}%</div>
+                    <div class="text-sm text-gray-500">Tasso Errori</div>
+                </div>
+                <div class="text-center">
+                    <div class="text-2xl font-bold text-green-600">{{ $performance['uptime_percentage'] }}%</div>
+                    <div class="text-sm text-gray-500">Uptime</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
 </div>
 @endsection
 
 @push('scripts')
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-function monitoringDashboard() {
-    return {
-        systemHealth: {
-            status: 'healthy',
-            lastCheck: '12:34:56'
-        },
-        database: {
-            status: 'connected',
-            responseTime: 45,
-            connections: 12
-        },
-        cache: {
-            hitRate: 94,
-            hits: 1847,
-            misses: 98
-        },
-        queue: {
-            pending: 23,
-            failed: 2
-        },
-        performance: {
-            cpu: 35,
-            memory: 68,
-            disk: 42
-        },
-        responseTimes: {
-            web: 125,
-            api: 89,
-            database: 45,
-            email: 342
-        },
-        errors: {
-            http: 12,
-            database: 0,
-            email: 3,
-            jobs: 1
-        },
-        recentAlerts: [
-            {
-                id: 1,
-                level: 'warning',
-                message: 'High memory usage detected',
-                timestamp: '2 minutes ago'
-            },
-            {
-                id: 2,
-                level: 'info',
-                message: 'Scheduled backup completed successfully',
-                timestamp: '15 minutes ago'
-            },
-            {
-                id: 3,
-                level: 'critical',
-                message: 'Database connection timeout',
-                timestamp: '1 hour ago'
-            }
-        ],
+let refreshInterval;
+let currentInterval = 30; // secondi
 
-        init() {
-            this.initCharts();
-            this.startRealTimeUpdates();
-        },
+// Gestione auto-refresh dinamico
+function setupAutoRefresh() {
+    if (refreshInterval) {
+        clearInterval(refreshInterval);
+    }
 
-        initCharts() {
-            // Performance Chart
-            const perfCtx = document.getElementById('performanceChart').getContext('2d');
-            new Chart(perfCtx, {
-                type: 'line',
-                data: {
-                    labels: Array.from({length: 12}, (_, i) => `${11-i}min`),
-                    datasets: [{
-                        label: 'CPU %',
-                        data: [30, 35, 32, 40, 38, 35, 33, 37, 34, 36, 35, 35],
-                        borderColor: 'rgb(59, 130, 246)',
-                        tension: 0.1
-                    }, {
-                        label: 'Memory %',
-                        data: [65, 68, 70, 69, 67, 68, 66, 65, 67, 68, 68, 68],
-                        borderColor: 'rgb(16, 185, 129)',
-                        tension: 0.1
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            max: 100
-                        }
-                    }
-                }
-            });
-
-            // Traffic Chart
-            const trafficCtx = document.getElementById('trafficChart').getContext('2d');
-            new Chart(trafficCtx, {
-                type: 'bar',
-                data: {
-                    labels: Array.from({length: 12}, (_, i) => `${11-i}min`),
-                    datasets: [{
-                        label: 'Requests/min',
-                        data: [45, 52, 48, 61, 55, 49, 58, 63, 51, 56, 59, 54],
-                        backgroundColor: 'rgba(139, 92, 246, 0.8)'
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        y: {
-                            beginAtZero: true
-                        }
-                    }
-                }
-            });
-        },
-
-        startRealTimeUpdates() {
-            setInterval(() => {
-                this.fetchMetrics();
-            }, 30000); // Aggiorna ogni 30 secondi
-        },
-
-        async fetchMetrics() {
-            try {
-                const response = await fetch('{{ route("admin.monitoring.metrics") }}');
-                const data = await response.json();
-
-                // Aggiorna i dati
-                Object.assign(this.systemHealth, data.systemHealth);
-                Object.assign(this.database, data.database);
-                Object.assign(this.cache, data.cache);
-                Object.assign(this.queue, data.queue);
-                Object.assign(this.performance, data.performance);
-                Object.assign(this.responseTimes, data.responseTimes);
-                Object.assign(this.errors, data.errors);
-
-            } catch (error) {
-                console.error('Error fetching metrics:', error);
-            }
-        }
+    if (currentInterval > 0) {
+        refreshInterval = setInterval(function() {
+            window.location.reload();
+        }, currentInterval * 1000);
     }
 }
 
-function refreshMetrics() {
+// Inizializza auto-refresh
+setupAutoRefresh();
+
+// Event listener per cambio intervallo
+document.getElementById('refresh-interval').addEventListener('change', function(e) {
+    currentInterval = parseInt(e.target.value);
+    setupAutoRefresh();
+
+    if (currentInterval > 0) {
+        console.log(`Auto-refresh impostato a ${currentInterval} secondi`);
+    } else {
+        console.log('Auto-refresh disabilitato');
+    }
+});
+
+// Refresh manuale
+document.getElementById('refresh-btn').addEventListener('click', function() {
     window.location.reload();
-}
+});
 
-async function clearCache() {
-    if (confirm('Sei sicuro di voler svuotare la cache?')) {
-        try {
-            const response = await fetch('{{ route("admin.monitoring.clear-cache") }}', {
-                method: 'POST',
-                headers: {
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-                }
-            });
-            if (response.ok) {
-                alert('Cache svuotata con successo');
-                location.reload();
+function clearCache() {
+    if (confirm('Sei sicuro di voler pulire la cache del sistema?')) {
+        fetch('{{ route("admin.monitoring.clear-cache") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+            },
+            body: JSON.stringify({
+                types: ['application', 'config', 'route', 'view']
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                alert('Cache pulita con successo!');
+                window.location.reload();
+            } else {
+                alert('Errore durante la pulizia della cache: ' + data.message);
             }
-        } catch (error) {
-            alert('Errore nello svuotamento cache');
-        }
+        })
+        .catch(error => {
+            alert('Errore di rete: ' + error);
+        });
     }
 }
 
-async function optimizeSystem() {
-    if (confirm('Ottimizzare il sistema? Potrebbe richiedere alcuni minuti.')) {
-        try {
-            const response = await fetch('{{ route("admin.monitoring.optimize") }}', {
-                method: 'POST',
-                headers: {
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-                }
-            });
-            if (response.ok) {
-                alert('Sistema ottimizzato con successo');
-                location.reload();
+function optimizeSystem() {
+    if (confirm('Sei sicuro di voler ottimizzare il sistema?')) {
+        fetch('{{ route("admin.monitoring.optimize") }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+            },
+            body: JSON.stringify({
+                operations: ['config', 'route', 'view']
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                alert('Sistema ottimizzato con successo!');
+                window.location.reload();
+            } else {
+                alert('Errore durante l\'ottimizzazione: ' + data.message);
             }
-        } catch (error) {
-            alert('Errore nell\'ottimizzazione sistema');
-        }
+        })
+        .catch(error => {
+            alert('Errore di rete: ' + error);
+        });
     }
 }
 </script>
