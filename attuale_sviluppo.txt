@@ -1,0 +1,384 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+
+class TournamentNotification extends Model
+{
+    protected $fillable = [
+        'tournament_id',
+        'status',
+        'total_recipients',
+        'sent_at',
+        'sent_by',
+        'details',
+        'templates_used',
+        'error_message'
+    ];
+
+    protected $casts = [
+        'sent_at' => 'datetime',
+        'details' => 'array',
+        'templates_used' => 'array',
+    ];
+
+    /**
+     * 🏆 Relazione con torneo
+     */
+    public function tournament(): BelongsTo
+    {
+        return $this->belongsTo(Tournament::class);
+    }
+
+    /**
+     * 👤 Relazione con utente che ha inviato
+     */
+    public function sentBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'sent_by');
+    }
+
+    /**
+     * ✅ Accessor: Stato formattato
+     */
+    public function getStatusFormattedAttribute(): string
+    {
+        $statuses = [
+            'sent' => '✅ Inviato',
+            'partial' => '⚠️ Parziale',
+            'failed' => '❌ Fallito',
+            'pending' => '⏳ In attesa'
+        ];
+
+        return $statuses[$this->status] ?? $this->status;
+    }
+
+    /**
+     * ⏰ Accessor: Tempo trascorso
+     */
+    public function getTimeAgoAttribute(): string
+    {
+        if (!$this->sent_at) return 'Mai inviato';
+        
+        return $this->sent_at->diffForHumans();
+    }
+}
+<?php
+
+namespace App\Services;
+
+use App\Models\Tournament;
+use App\Models\TournamentNotification;
+
+class TournamentNotificationService
+{
+    /**
+     * 🎯 Invia tutte le notifiche di un torneo (versione base)
+     */
+    public function sendTournamentNotifications(Tournament $tournament, array $options): array
+    {
+        // Implementazione futura completa
+        // Per ora return dati simulati
+        
+        $assignmentsCount = $tournament->assignments ? $tournament->assignments->count() : 3;
+        $totalRecipients = 1 + $assignmentsCount + 2;
+
+        $result = [
+            'tournament_id' => $tournament->id,
+            'total_sent' => $totalRecipients,
+            'details' => [
+                'club' => ['sent' => 1, 'failed' => 0],
+                'referees' => ['sent' => $assignmentsCount, 'failed' => 0],
+                'institutional' => ['sent' => 2, 'failed' => 0]
+            ]
+        ];
+
+        // Crea record notifica
+        TournamentNotification::create([
+            'tournament_id' => $tournament->id,
+            'status' => 'sent',
+            'total_recipients' => $totalRecipients,
+            'sent_at' => now(),
+            'sent_by' => $options['sent_by'] ?? 1,
+            'details' => $result['details'],
+            'templates_used' => [
+                'club' => $options['club_template'] ?? 'club_assignment_standard',
+                'referee' => $options['referee_template'] ?? 'referee_assignment_formal',
+                'institutional' => $options['institutional_template'] ?? 'institutional_report_standard'
+            ]
+        ]);
+
+        return $result;
+    }
+}
+<?php
+
+namespace App\Console\Commands;
+
+use Illuminate\Console\Command;
+use App\Models\Tournament;
+use App\Models\TournamentNotification;
+
+class TournamentNotificationsCommand extends Command
+{
+    protected $signature = 'tournaments:notifications 
+                           {action : list|send|stats}
+                           {--tournament= : ID torneo specifico}
+                           {--dry-run : Simula senza modifiche}';
+
+    protected $description = 'Gestione notifiche tornei';
+
+    public function handle(): int
+    {
+        $action = $this->argument('action');
+
+        return match($action) {
+            'list' => $this->listTournaments(),
+            'send' => $this->sendNotifications(), 
+            'stats' => $this->showStats(),
+            default => $this->showHelp()
+        };
+    }
+
+    private function listTournaments(): int
+    {
+        $this->info('📋 LISTA TORNEI E NOTIFICHE');
+        $this->line('');
+
+        try {
+            // Query sicura con controllo esistenza tabelle
+            if (!class_exists('App\Models\Tournament')) {
+                $this->error('❌ Modello Tournament non trovato');
+                return 1;
+            }
+
+            $tournaments = Tournament::query()
+                                   ->when(method_exists(Tournament::class, 'club'), function($q) {
+                                       return $q->with(['club', 'zone']);
+                                   })
+                                   ->orderBy('start_date', 'desc')
+                                   ->limit(20)
+                                   ->get();
+
+            if ($tournaments->isEmpty()) {
+                $this->warn('❌ Nessun torneo trovato');
+                return 1;
+            }
+
+            $headers = ['ID', 'Nome', 'Date', 'Zona', 'Stato Notifiche'];
+            $rows = [];
+
+            foreach ($tournaments as $tournament) {
+                $hasNotifications = class_exists('App\Models\TournamentNotification') && 
+                                  TournamentNotification::where('tournament_id', $tournament->id)->exists();
+                $notificationStatus = $hasNotifications ? '✅ Notificato' : '⏳ Non inviato';
+
+                $rows[] = [
+                    $tournament->id,
+                    strlen($tournament->name) > 30 ? substr($tournament->name, 0, 27) . '...' : $tournament->name,
+                    $tournament->start_date->format('d/m/Y'),
+                    isset($tournament->zone) ? $tournament->zone->code : 'N/A',
+                    $notificationStatus
+                ];
+            }
+
+            $this->table($headers, $rows);
+
+            // Statistiche rapide
+            $total = $tournaments->count();
+            $notified = class_exists('App\Models\TournamentNotification') ? 
+                       TournamentNotification::whereIn('tournament_id', $tournaments->pluck('id'))->count() : 0;
+
+            $this->line('');
+            $this->info("📊 Riepilogo: {$total} tornei | {$notified} notificati");
+
+            return 0;
+
+        } catch (\Exception $e) {
+            $this->error("❌ Errore: {$e->getMessage()}");
+            return 1;
+        }
+    }
+
+    private function sendNotifications(): int
+    {
+        $this->info('📧 INVIO NOTIFICHE TORNEI');
+        $this->warn('⚠️ Funzionalità completa in sviluppo');
+        $this->line('Per ora usa l\'interfaccia web: /admin/tournament-notifications');
+        return 0;
+    }
+
+    private function showStats(): int
+    {
+        $this->info('📊 STATISTICHE NOTIFICHE');
+        $this->line('');
+
+        try {
+            $stats = [
+                'Tornei totali' => Tournament::count(),
+                'Tabella notifiche' => \Schema::hasTable('tournament_notifications') ? 'Presente' : 'Mancante'
+            ];
+
+            if (class_exists('App\Models\TournamentNotification')) {
+                $stats['Notifiche inviate'] = TournamentNotification::count();
+                $stats['Notifiche oggi'] = TournamentNotification::whereDate('sent_at', today())->count();
+            }
+
+            foreach ($stats as $label => $value) {
+                $this->line("• {$label}: {$value}");
+            }
+
+            return 0;
+
+        } catch (\Exception $e) {
+            $this->error("❌ Errore statistiche: {$e->getMessage()}");
+            return 1;
+        }
+    }
+
+    private function showHelp(): int
+    {
+        $this->error('❌ Azione non riconosciuta');
+        $this->line('');
+        $this->info('🎯 AZIONI DISPONIBILI:');
+        $this->line('  list  - Lista tornei e stato notifiche');
+        $this->line('  send  - Invia notifiche (in sviluppo)');
+        $this->line('  stats - Statistiche sistema');
+        return 1;
+    }
+}
+<?php
+
+namespace App\Http\Controllers\Admin;
+
+use App\Http\Controllers\Controller;
+use App\Models\Tournament;
+use App\Models\TournamentNotification;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
+
+class TournamentNotificationController extends Controller
+{
+    /**
+     * 📋 Lista notifiche raggruppate per torneo
+     */
+    public function index(Request $request)
+    {
+        $notifications = TournamentNotification::with(['tournament.club', 'tournament.zone'])
+                                             ->orderBy('sent_at', 'desc')
+                                             ->paginate(20);
+
+        $stats = [
+            'total_sent' => TournamentNotification::where('status', 'sent')->sum('total_recipients'),
+            'total_failed' => TournamentNotification::where('status', 'failed')->sum('total_recipients'),
+            'this_month' => TournamentNotification::whereMonth('sent_at', now()->month)->sum('total_recipients'),
+            'pending_tournaments' => Tournament::whereDoesntHave('notifications')->count()
+        ];
+
+        return view('admin.tournament-notifications.index', compact('notifications', 'stats'));
+    }
+
+    /**
+     * 🎯 Form invio notifiche per torneo specifico
+     */
+    public function create(Tournament $tournament)
+    {
+        // Verifica che il torneo abbia assegnazioni
+        if (!$tournament->assignments || $tournament->assignments->isEmpty()) {
+            return redirect()->back()
+                ->with('error', 'Il torneo non ha arbitri assegnati. Completare prima le assegnazioni.');
+        }
+
+        // Verifica che non sia già stato notificato
+        if (method_exists($tournament, 'notifications') && $tournament->notifications()->exists()) {
+            return redirect()->back()
+                ->with('warning', 'Il torneo è già stato notificato. Usare la funzione "Reinvia" se necessario.');
+        }
+
+        return view('admin.tournament-notifications.create', compact('tournament'));
+    }
+
+    /**
+     * 📧 Invio unificato di tutte le notifiche del torneo
+     */
+  public function store(Request $request, Tournament $tournament)
+{
+    $request->validate([
+        'message' => 'nullable|string|max:1000'
+    ]);
+
+    Log::info('🚀 TENTATIVO SALVATAGGIO NOTIFICA', [
+        'tournament_id' => $tournament->id,
+        'tournament_name' => $tournament->name,
+        'user_id' => auth()->id()
+    ]);
+
+    try {
+        // 📧 INVIO DIRETTO EMAIL (copiato dal vecchio sistema)
+        $assignments = $tournament->assignments()->with(['referee', 'tournament.club'])->get();
+        $emailsSent = 0;
+
+        // Invia email agli arbitri
+        foreach ($assignments as $assignment) {
+            if ($assignment->referee && $assignment->referee->email) {
+                Mail::raw("Gentile {$assignment->referee->name},\n\nÈ stato assegnato al torneo: {$tournament->name}\n\n" . ($request->message ?: ''), function ($mail) use ($assignment, $tournament) {
+                    $mail->to($assignment->referee->email, $assignment->referee->name)
+                         ->subject('Assegnazione Arbitri - ' . $tournament->name);
+                });
+                $emailsSent++;
+                Log::info('Email sent to referee', ['email' => $assignment->referee->email]);
+            }
+        }
+
+        // Invia email al circolo
+        if ($tournament->club && $tournament->club->email) {
+            Mail::raw("Gentile {$tournament->club->name},\n\nArbitri assegnati per: {$tournament->name}\n\n" . ($request->message ?: ''), function ($mail) use ($tournament) {
+                $mail->to($tournament->club->email, $tournament->club->name)
+                     ->subject('Assegnazione Arbitri - ' . $tournament->name);
+            });
+            $emailsSent++;
+            Log::info('Email sent to club', ['email' => $tournament->club->email]);
+        }
+
+        // Salva record
+        $notification = TournamentNotification::create([
+            'tournament_id' => $tournament->id,
+            'status' => 'sent',
+            'total_recipients' => $emailsSent,
+            'sent_at' => now(),
+            'sent_by' => auth()->id(),
+            'details' => ['emails_sent' => $emailsSent],
+            'templates_used' => ['basic' => 'direct_email']
+        ]);
+
+        Log::info('✅ NOTIFICA SALVATA + EMAIL INVIATE', [
+            'notification_id' => $notification->id,
+            'emails_sent' => $emailsSent
+        ]);
+
+        return redirect()->route('admin.tournament-notifications.index')
+            ->with('success', "✅ Notifiche inviate a {$emailsSent} destinatari");
+
+    } catch (\Exception $e) {
+        Log::error('❌ ERRORE', ['error' => $e->getMessage()]);
+        return redirect()->back()->with('error', 'Errore: ' . $e->getMessage());
+    }
+}
+
+    /**
+     * 👁️ Dettagli notifiche torneo
+     */
+    public function show(TournamentNotification $tournamentNotification)
+    {
+        $tournamentNotification->load([
+            'tournament.club',
+            'tournament.zone',
+            'sentBy'
+        ]);
+
+        return view('admin.tournament-notifications.show', compact('tournamentNotification'));
+    }
+}

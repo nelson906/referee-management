@@ -45,7 +45,7 @@ class NotificationSystemTest extends TestCase
             ->get(route('notifications.index'));
 
         $response->assertStatus(200);
-        $response->assertViewIs('admin.notifications.index');
+        $response->assertViewIs('admin.tournament-notifications.index');
     }
 
     /** @test */

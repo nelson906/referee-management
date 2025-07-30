@@ -24,7 +24,7 @@
                     📥 Esporta CSV
                 </a>
 
-                <a href="{{ route('admin.notifications.index') }}"
+                <a href="{{ route('admin.tournament-notifications.index') }}"
                    class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
                     📧 Tutte le Notifiche
                 </a>
@@ -290,7 +290,7 @@
                                     </div>
                                 </div>
                                 <div class="mt-4">
-                                    <a href="{{ route('admin.notifications.index') }}?status=failed"
+                                    <a href="{{ route('admin.tournament-notifications.index') }}?status=failed"
                                        class="text-sm text-red-600 hover:text-red-500 underline">
                                         Visualizza tutte le notifiche fallite →
                                     </a>

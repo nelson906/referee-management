@@ -93,7 +93,7 @@
         </x-nav-link>
 
         {{-- Notifications --}}
-        <x-nav-link :href="route('admin.notifications.index')" :active="request()->routeIs('admin.notifications.*')">
+        <x-nav-link :href="route('admin.tournament-notifications.index')" :active="request()->routeIs('admin.notifications.*')">
             🔔 Notifiche
         </x-nav-link>
 
@@ -246,7 +246,7 @@
                 <x-responsive-nav-link :href="route('admin.letter-templates.index')" :active="request()->routeIs('admin.letter-templates.*')">
                     📝 Template Lettere
                 </x-responsive-nav-link>
-                <x-responsive-nav-link :href="route('admin.notifications.index')" :active="request()->routeIs('admin.notifications.*')">
+                <x-responsive-nav-link :href="route('admin.tournament-notifications.index')" :active="request()->routeIs('admin.notifications.*')">
                     🔔 Notifiche
                 </x-responsive-nav-link>
 

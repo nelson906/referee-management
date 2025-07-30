@@ -326,4 +326,84 @@ class Tournament extends Model
             ->withPivot('role', 'is_confirmed', 'assigned_at', 'assigned_by_id', 'notes')
             ->withTimestamps();
     }
+
+
+
+/**
+     * 📧 Relazione con notifiche torneo (nuovo sistema)
+     */
+    public function notifications()
+    {
+        return $this->hasMany(\App\Models\TournamentNotification::class);
+    }
+
+    /**
+     * 📧 Verifica se ha notifiche inviate
+     */
+    public function hasNotifications(): bool
+    {
+        return $this->notifications()->exists();
+    }
+
+    /**
+     * 📧 Ultima notifica inviata
+     */
+    public function lastNotification()
+    {
+        return $this->notifications()->latest('sent_at')->first();
+    }
+
+    /**
+     * 📊 Stato notifiche per dashboard
+     */
+    public function getNotificationStatusAttribute(): array
+    {
+        $lastNotification = $this->lastNotification();
+
+        if (!$lastNotification) {
+            return [
+                'status' => 'not_sent',
+                'status_text' => '⏳ Non inviato',
+                'class' => 'badge-warning',
+                'can_send' => $this->assignments->isNotEmpty(),
+                'can_resend' => false
+            ];
+        }
+
+        $statusConfig = [
+            'sent' => ['✅ Inviato', 'badge-success'],
+            'partial' => ['⚠️ Parziale', 'badge-warning'],
+            'failed' => ['❌ Fallito', 'badge-danger'],
+            'pending' => ['⏳ In attesa', 'badge-info']
+        ];
+
+        [$text, $class] = $statusConfig[$lastNotification->status] ?? ['❓ Sconosciuto', 'badge-secondary'];
+
+        return [
+            'status' => $lastNotification->status,
+            'status_text' => $text,
+            'class' => $class,
+            'last_sent' => $lastNotification->sent_at,
+            'recipients_count' => $lastNotification->total_recipients,
+            'can_send' => false,
+            'can_resend' => $lastNotification->canBeResent()
+        ];
+    }
+
+    /**
+     * 📊 Scope: Tornei con notifiche inviate
+     */
+    public function scopeNotified($query)
+    {
+        return $query->whereHas('notifications');
+    }
+
+    /**
+     * 📊 Scope: Tornei senza notifiche ma con assegnazioni (pronti per notifica)
+     */
+    public function scopeReadyForNotification($query)
+    {
+        return $query->whereDoesntHave('notifications')
+                    ->whereHas('assignments');
+    }
 }

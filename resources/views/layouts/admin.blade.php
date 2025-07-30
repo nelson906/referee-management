@@ -75,7 +75,7 @@
                                 <a href="{{ route('admin.letter-templates.index') }}"
                                     class="px-2 py-1 rounded text-xs hover:bg-blue-800 hover:text-white font-medium whitespace-nowrap {{ request()->routeIs('admin.letter-templates.*') ? 'bg-blue-800 text-white' : 'text-blue-100 hover:bg-blue-800 hover:text-white' }}">📝
                                     Template</a>
-                                <a href="{{ route('admin.notifications.index') }}"
+                                <a href="{{ route('admin.tournament-notifications.index') }}"
                                     class="px-2 py-1 rounded text-xs hover:bg-blue-800 hover:text-white font-medium whitespace-nowrap {{ request()->routeIs('admin.notifications.*') ? 'bg-blue-800 text-white' : 'text-blue-100 hover:bg-blue-800 hover:text-white' }}">🔔
                                     Notifiche</a>
                                 <a href="{{ route('admin.monitoring.dashboard') }}"
@@ -247,7 +247,7 @@
                 </a>
 
                 {{-- Notifications --}}
-                <a href="{{ route('admin.notifications.index') }}"
+                <a href="{{ route('admin.tournament-notifications.index') }}"
                     class="flex items-center px-4 py-3 rounded-lg text-base font-medium transition duration-200 ease-in-out
                     {{ request()->routeIs('admin.notifications.*') ? 'bg-blue-900 text-white shadow-lg' : 'text-blue-100 hover:bg-blue-700 hover:text-white' }}">
                     <span class="mr-4 text-xl">🔔</span>

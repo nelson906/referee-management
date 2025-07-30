@@ -10,7 +10,6 @@ use App\Http\Controllers\Admin\LetterTemplateController;
 use App\Http\Controllers\Admin\LetterheadController; // ← AGGIUNTO
 use App\Http\Controllers\Admin\StatisticsDashboardController; // ← AGGIUNTO
 use App\Http\Controllers\Admin\MonitoringController; // ← AGGIUNTO
-use App\Http\Controllers\Admin\TournamentNotificationController;
 use App\Http\Controllers\Referee;
 use App\Http\Controllers\Reports;
 use App\Http\Controllers\DocumentController;
@@ -272,13 +271,7 @@ Route::middleware(['auth'])->group(function () {
             Route::get('/{document}/download', [DocumentController::class, 'download'])->name('download');
             Route::delete('/{document}', [DocumentController::class, 'destroy'])->name('destroy');
         });
-// 🏆 TOURNAMENT NOTIFICATIONS SYSTEM (Nuovo)
-        Route::prefix('tournament-notifications')->name('tournament-notifications.')->group(function () {
-            Route::get('/', [Admin\TournamentNotificationController::class, 'index'])->name('index');
-            Route::get('/create/{tournament}', [Admin\TournamentNotificationController::class, 'create'])->name('create');
-            Route::post('/store/{tournament}', [Admin\TournamentNotificationController::class, 'store'])->name('store');
-            Route::get('/{tournamentNotification}', [Admin\TournamentNotificationController::class, 'show'])->name('show');
-        });
+
         // Settings
         Route::get('/settings', [Admin\SettingsController::class, 'index'])->name('settings');
         Route::post('/settings', [Admin\SettingsController::class, 'update'])->name('settings.update');
@@ -462,4 +455,3 @@ Route::get('/status', function () {
 Route::fallback(function () {
     return response()->view('errors.404', [], 404);
 });
-

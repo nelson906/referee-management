@@ -61,7 +61,7 @@ class NotificationController extends Controller
 
         $notifications = $query->paginate(20);
 
-        return view('admin.notifications.index', compact('notifications'));
+        return view('admin.tournament-notifications.index', compact('notifications'));
     }
 
     /**
@@ -242,7 +242,7 @@ class NotificationController extends Controller
     public function destroy(Notification $notification)
     {
         $notification->delete();
-        return redirect()->route('admin.notifications.index')
+        return redirect()->route('admin.tournament-notifications.index')
             ->with('success', 'Notifica eliminata con successo.');
     }
 
