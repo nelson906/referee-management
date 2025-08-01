@@ -113,7 +113,20 @@ class DocumentGenerationService
 
             // Save document
             $filename = $this->generateFilename('club_letter', $tournament);
-            $path = $this->saveDocument($phpWord, $filename);
+    // INVECE DI saveDocument, usa direttamente:
+    $filename = "club_letter" . date('Ymd') . "_" . Str::slug($tournament->name, '_') . ".docx";
+    $zone = $this->getZoneName($tournament);
+    $relativePath = "convocationi/{$zone}/generated/{$filename}";
+
+    // Crea directory se non esiste
+    Storage::disk('public')->makeDirectory("convocationi/{$zone}/generated");
+
+    // Salva il file
+    $fullPath = storage_path('app/public/' . $relativePath);
+    $objWriter = IOFactory::createWriter($phpWord, 'Word2007');
+    $objWriter->save($fullPath);
+
+    return $relativePath;
 
             // Update tournament
             $tournament->update([
@@ -486,6 +499,7 @@ class DocumentGenerationService
         // PER ORA ritorna solo il filename
         return $filename;
     }
+
     public function generateConvocationForTournament(Tournament $tournament)
     {
         try {
@@ -545,5 +559,24 @@ class DocumentGenerationService
             Log::error('Errore generazione convocazione torneo: ' . $e->getMessage());
             throw $e;
         }
+    }
+    /**
+     * Recupera nome zona normalizzato
+     */
+    private function getZoneName(Tournament $tournament): string
+    {
+        $zoneId = $tournament->club->zone_id;
+
+        return match($zoneId) {
+            1 => 'SZR1',
+            2 => 'SZR2',
+            3 => 'SZR3',
+            4 => 'SZR4',
+            5 => 'SZR5',
+            6 => 'SZR6',
+            7 => 'SZR7',
+            8 => 'CRC',
+            default => 'SZR' . $zoneId
+        };
     }
 }

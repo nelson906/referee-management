@@ -16,6 +16,8 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use App\Mail\RefereeAssignmentMail;
 use App\Mail\ClubNotificationMail;
+use Carbon\Carbon;
+
 
 class TournamentNotificationController extends Controller
 {
@@ -518,7 +520,7 @@ public function documentsStatus(TournamentNotification $notification)
 }
 
 // Aggiungi questo metodo helper
-private function getZoneName($tournament): string
+public function getZoneName($tournament): string
 {
     $zoneId = $tournament->club->zone_id ?? $tournament->zone_id;
 
@@ -610,7 +612,7 @@ public function regenerateDocument(Request $request, TournamentNotification $not
 public function downloadDocument(TournamentNotification $notification, $type)
 {
     $tournament = $notification->tournament;
-    $zone = $this->fileStorage->getZoneName($tournament);
+    $zone = $this->getZoneName($tournament);
 
     if ($type === 'convocation') {
         $filename = $notification->attachments['convocation'] ?? null;
@@ -682,4 +684,6 @@ public function deleteDocument(TournamentNotification $notification, $type)
         return redirect()->back()->with('error', 'Errore nell\'eliminazione: ' . $e->getMessage());
     }
 }
+
+
 }
