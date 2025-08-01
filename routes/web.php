@@ -273,18 +273,18 @@ Route::middleware(['auth'])->group(function () {
             Route::delete('/{document}', [DocumentController::class, 'destroy'])->name('destroy');
         });
         // 🏆 TOURNAMENT NOTIFICATIONS SYSTEM (Nuovo)
-    Route::prefix('tournament-notifications')->name('tournament-notifications.')->group(function () {
-        Route::get('/', [Admin\TournamentNotificationController::class, 'index'])->name('index');
-        Route::post('/{tournament}/prepare', [Admin\TournamentNotificationController::class, 'prepare'])->name('prepare');
-        Route::post('/{notification}/send', [Admin\TournamentNotificationController::class, 'send'])->name('send');
-        Route::post('/{notification}/resend', [Admin\TournamentNotificationController::class, 'resend'])->name('resend');
-        Route::get('/{notification}/edit', [Admin\TournamentNotificationController::class, 'edit'])->name('edit');
-        Route::put('/{notification}', [Admin\TournamentNotificationController::class, 'update'])->name('update');
-        Route::get('/{notification}', [Admin\TournamentNotificationController::class, 'show'])->name('show');
-        Route::delete('/{notification}', [Admin\TournamentNotificationController::class, 'destroy'])->name('destroy');
-    });
+        Route::prefix('tournament-notifications')->name('tournament-notifications.')->group(function () {
+            Route::get('/', [Admin\TournamentNotificationController::class, 'index'])->name('index');
+            Route::post('/{tournament}/prepare', [Admin\TournamentNotificationController::class, 'prepare'])->name('prepare');
+            Route::post('/{notification}/send', [Admin\TournamentNotificationController::class, 'send'])->name('send');
+            Route::post('/{notification}/resend', [Admin\TournamentNotificationController::class, 'resend'])->name('resend');
+            Route::get('/{notification}/edit', [Admin\TournamentNotificationController::class, 'edit'])->name('edit');
+            Route::put('/{notification}', [Admin\TournamentNotificationController::class, 'update'])->name('update');
+            Route::get('/{notification}', [Admin\TournamentNotificationController::class, 'show'])->name('show');
+            Route::delete('/{notification}', [Admin\TournamentNotificationController::class, 'destroy'])->name('destroy');
+        });
 
-    // Settings
+        // Settings
         Route::get('/settings', [Admin\SettingsController::class, 'index'])->name('settings');
         Route::post('/settings', [Admin\SettingsController::class, 'update'])->name('settings.update');
     });
@@ -329,6 +329,12 @@ Route::middleware(['referee_or_admin'])->prefix('referee')->name('referee.')->gr
         Route::post('/upload', [Referee\DocumentController::class, 'upload'])->name('upload');
         Route::delete('/{document}', [Referee\DocumentController::class, 'destroy'])->name('destroy');
     });
+    Route::prefix('tournament-documents')->name('tournament-documents.')->group(function () {
+        Route::get('/{notification}/{type}/{filename}', [DocumentController::class, 'download'])->name('download');
+        Route::post('/{notification}/upload', [DocumentController::class, 'upload'])->name('upload');
+        Route::get('/{notification}/regenerate', [DocumentController::class, 'regenerate'])->name('regenerate');
+    });
+
 });
 
 // =================================================================
@@ -440,7 +446,7 @@ Route::prefix('notifications')->name('notifications.')->group(function () {
 // =================================================================
 // 🔐 AUTH ROUTES
 // =================================================================
-require __DIR__.'/auth.php';
+require __DIR__ . '/auth.php';
 
 // =================================================================
 // 🚀 HEALTH CHECK (no auth required)
