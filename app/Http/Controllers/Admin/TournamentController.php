@@ -100,19 +100,19 @@ class TournamentController extends Controller
                 $q->where('zone_id', $user->zone_id);
             })
             ->get();
-// === DEBUG START ===
-\Log::info('=== DEBUG TOURNAMENT TYPES ===');
-$allTypes = \App\Models\TournamentType::all();
-foreach ($allTypes as $type) {
-    \Log::info("ID: {$type->id} | Name: '{$type->name}' | Short: {$type->short_name}");
-}
+        // === DEBUG START ===
+        \Log::info('=== DEBUG TOURNAMENT TYPES ===');
+        $allTypes = \App\Models\TournamentType::all();
+        foreach ($allTypes as $type) {
+            \Log::info("ID: {$type->id} | Name: '{$type->name}' | Short: {$type->short_name}");
+        }
 
-\Log::info('=== DEBUG TOURNAMENTS WITH TYPES ===');
-foreach ($tournaments->take(5) as $tournament) {
-    $typeName = $tournament->tournamentType->name ?? 'NULL';
-    \Log::info("Tournament: {$tournament->name} | Type: '{$typeName}'");
-}
-// === DEBUG END ===
+        \Log::info('=== DEBUG TOURNAMENTS WITH TYPES ===');
+        foreach ($tournaments->take(5) as $tournament) {
+            $typeName = $tournament->tournamentType->name ?? 'NULL';
+            \Log::info("Tournament: {$tournament->name} | Type: '{$typeName}'");
+        }
+        // === DEBUG END ===
 
         // Get zones for filter
         $zones = $isNationalAdmin
@@ -145,8 +145,8 @@ foreach ($tournaments->take(5) as $tournament) {
                 'title' => $tournament->name,
                 'start' => $tournament->start_date->format('Y-m-d'),
                 'end' => $tournament->end_date->addDay()->format('Y-m-d'),
-'color' => $this->getAdminEventColor($tournament),
-'borderColor' => $this->getAdminBorderColor($tournament),
+                'color' => $this->getAdminEventColor($tournament),
+                'borderColor' => $this->getAdminBorderColor($tournament),
                 'extendedProps' => [
                     'club' => $tournament->club->name ?? 'N/A',
                     'zone' => $tournament->zone->name ?? 'N/A',
@@ -479,9 +479,11 @@ foreach ($tournaments->take(5) as $tournament) {
 
         // Get available referees with their level and zone
         $availabilities = $tournament->availabilities()
-            ->with(['user' => function ($query) {
-                $query->with('zone');
-            }])
+            ->with([
+                'user' => function ($query) {
+                    $query->with('zone');
+                }
+            ])
             ->get()
             ->sortBy('user.name');
 
@@ -605,7 +607,7 @@ foreach ($tournaments->take(5) as $tournament) {
         };
     }
 
-// ============================================
+    // ============================================
 // 🔍 METODO DEBUG (aggiungere temporaneamente)
 // ============================================
 

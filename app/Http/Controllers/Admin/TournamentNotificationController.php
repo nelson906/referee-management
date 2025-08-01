@@ -11,14 +11,19 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Log;
 
 class TournamentNotificationController extends Controller
 {
-    protected $notificationService;
+    protected $fileStorage;
+    protected $documentService;
 
-    public function __construct(TournamentNotificationService $notificationService)
-    {
-        $this->notificationService = $notificationService;
+    public function __construct(
+        FileStorageService $fileStorage,
+        DocumentGenerationService $documentService
+    ) {
+        $this->fileStorage = $fileStorage;
+        $this->documentService = $documentService;
     }
 
     /**
@@ -166,9 +171,16 @@ class TournamentNotificationController extends Controller
     /**
      * 👁️ Dettagli notifiche torneo con espansione
      */
-    public function show(TournamentNotification $notification)
+    public function show($notification)
     {
-        $tournamentNotification = $notification;  // RINOMINA
+        // Gestisce sia model binding che ID
+        if (!$notification instanceof TournamentNotification) {
+            $notification = TournamentNotification::findOrFail($notification);
+        }
+
+        $tournamentNotification = $notification;
+
+        // Carica tutte le relazioni necessarie
         $tournamentNotification->load([
             'tournament.club',
             'tournament.assignments.referee',
@@ -194,85 +206,45 @@ class TournamentNotificationController extends Controller
         return view('admin.tournament-notifications.edit', compact('tournamentNotification'));
     }
 
+    /**
+     * SEND - Invia email con allegati
+     */
     public function send(TournamentNotification $notification)
     {
-        $tournament = Tournament::with('club')->find($notification->tournament_id);
+        $tournament = Tournament::with(['club.zone', 'assignments.user'])->find($notification->tournament_id);
         $sent = 0;
 
-        // Nel metodo send(), prima di tutto recupera i nomi:
-        $refereeNames = DB::table('assignments')
-            ->join('users', 'assignments.user_id', '=', 'users.id')
-            ->where('assignments.tournament_id', $tournament->id)
-            ->pluck('users.name')
-            ->implode(', ');
-
-            // Aggiorna il record con i nomi
-        $notification->update(['referee_list' => $refereeNames]);
-
-        // 1. INVIA AGLI ARBITRI (codice esistente)
-        $assignments = DB::table('assignments')
-            ->join('users', 'assignments.user_id', '=', 'users.id')
-            ->where('assignments.tournament_id', $tournament->id)
-            ->select('assignments.*', 'users.email', 'users.name as user_name')
-            ->get();
-
-        foreach ($assignments as $assignment) {
-            try {
-                Mail::raw(
-                    "Gentile {$assignment->user_name},\n\nSei convocato come {$assignment->role} per il torneo:\n{$tournament->name}\n\nDate: {$tournament->start_date->format('d/m/Y')}\nCircolo: {$tournament->club->name}",
-                    function ($message) use ($assignment, $tournament) {
-                        $message->to($assignment->email)
-                            ->subject("Convocazione Torneo: {$tournament->name}")
-                            ->from(config('mail.from.address'), 'Federazione Golf');
-                    }
-                );
-                $sent++;
-            } catch (\Exception $e) {
-                \Log::error("Failed to send: " . $e->getMessage());
-            }
+        // 1. Invia agli arbitri (con PDF se disponibile)
+        foreach ($tournament->assignments as $assignment) {
+            Mail::send(new RefereeAssignmentMail($assignment, $tournament));
+            $sent++;
         }
 
-        // 2. INVIA AL CIRCOLO (NUOVO!)
-        if ($tournament->club && $tournament->club->email) {
-            try {
-                $arbitriList = $assignments->map(function ($a) {
-                    return "- {$a->user_name} ({$a->role})";
-                })->implode("\n");
+        // 2. Invia al circolo (con DOCX facsimile)
+        if ($tournament->club->email) {
+            $attachments = [];
 
-                Mail::raw(
-                    "Gentile {$tournament->club->name},\n\nVi comunichiamo gli arbitri assegnati per il torneo:\n{$tournament->name}\n\nData: {$tournament->start_date->format('d/m/Y')}\n\nArbitri assegnati:\n{$arbitriList}\n\nCordiali saluti",
-                    function ($message) use ($tournament) {
-                        $message->to($tournament->club->email)
-                            ->subject("Arbitri Assegnati - {$tournament->name}")
-                            ->from(config('mail.from.address'), 'Federazione Golf');
-                    }
-                );
-                $sent++;
-                \Log::info("Email sent to club: {$tournament->club->email}");
-            } catch (\Exception $e) {
-                \Log::error("Failed to send to club: " . $e->getMessage());
+            // Allega facsimile Word
+            $clubDocPath = $this->fileStorage->getZoneFilePath($tournament, 'docx');
+            if (Storage::exists($clubDocPath)) {
+                $attachments[] = storage_path('app/public/' . $clubDocPath);
             }
+
+            Mail::send(new ClubNotificationMail($tournament, $attachments));
+            $sent++;
         }
 
-        // Recupera i nomi per aggiornare referee_list
-        $refereeNames = $assignments->pluck('user_name')->implode(', ');
-
-        // Aggiorna tutto
+        // 3. Aggiorna stato
         $notification->update([
             'status' => 'sent',
             'sent_at' => now(),
-            'total_recipients' => $sent,
-            'referee_list' => $refereeNames,
-            'details' => json_encode([
-                'sent' => $sent,
-                'arbitri' => $assignments->count(),
-                'club' => $tournament->club->email ? 1 : 0
-            ])
+            'total_recipients' => $sent
         ]);
 
         return redirect()->route('admin.tournament-notifications.index')
-            ->with('success', "Inviate {$sent} email ({$assignments->count()} arbitri + circolo)");
+            ->with('success', "Inviate {$sent} notifiche");
     }
+
 
     public function update(Request $request, TournamentNotification $notification)
     {
@@ -422,35 +394,38 @@ class TournamentNotificationController extends Controller
         return $total > 0 ? round((($total - $failed) / $total) * 100, 1) : 0;
     }
 
+    /**
+     * PREPARE - Crea record e genera documenti
+     */
     public function prepare(Tournament $tournament)
     {
-        // IMPORTANTE: carica tutto prima
-        $tournament->load('assignments.user');
+        // 1. Carica relazioni necessarie
+        $tournament->load(['assignments.user', 'club.zone']);
 
-        // Log per debug
-        \Log::info('Tournament assignments count: ' . $tournament->assignments->count());
+        // 2. Recupera nomi arbitri
+        $refereeNames = $tournament->assignments
+            ->map(fn($a) => $a->user->name)
+            ->filter()
+            ->implode(', ');
 
-        // Recupera i nomi
-        $refereeNames = $tournament->assignments->map(function ($assignment) {
-            $name = $assignment->user ? $assignment->user->name : 'N/A';
-            \Log::info('Assignment user: ' . $name);
-            return $name;
-        })->filter()->implode(', ');
+        // 3. Genera documenti Word per circolo
+        $clubDoc = $this->documentService->generateClubDocument($tournament);
+        $this->fileStorage->storeInZone($clubDoc, $tournament, 'docx');
 
-        \Log::info('Final referee names: ' . $refereeNames);
-
-        // CREA NUOVO RECORD
+        // 4. Crea record notifica
         $notification = TournamentNotification::create([
             'tournament_id' => $tournament->id,
             'status' => 'pending',
-            'sent_at' => null,
-            'referee_list' => $refereeNames ?: 'Nessun arbitro',
+            'referee_list' => $refereeNames,
             'total_recipients' => $tournament->assignments->count() + 1,
-            'sent_by' => auth()->id()
+            'sent_by' => auth()->id(),
+            'attachments' => json_encode([
+                'club' => $clubDoc['filename'],
+                'szr' => null // Verrà popolato quando SZR genera PDF
+            ])
         ]);
-
-        \Log::info('Created notification ID: ' . $notification->id . ' with referee_list: ' . $notification->referee_list);
 
         return redirect()->route('admin.tournament-notifications.index');
     }
+
 }

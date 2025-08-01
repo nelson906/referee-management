@@ -20,14 +20,16 @@ class TournamentNotification extends Model
         'details',
         'templates_used',
         'error_message',
+        'attachments',
         'referee_list',  // ← AGGIUNGI QUESTA RIGA
-    'prepared_at',   // ← E ANCHE QUESTA SE MANCA
-];
+        'prepared_at',   // ← E ANCHE QUESTA SE MANCA
+    ];
 
     protected $casts = [
         'sent_at' => 'datetime',
         'details' => 'array',
         'templates_used' => 'array',
+        'attachments' => 'json'
     ];
 
     /**
@@ -113,6 +115,28 @@ class TournamentNotification extends Model
     {
         $details = $this->details ?? [];
 
+        // Se details è una stringa, decodificala
+        if (is_string($details)) {
+            $details = json_decode($details, true) ?? [];
+        }
+
+        // Gestisce sia il formato semplice che quello complesso
+        if (isset($details['sent'])) {
+            // Formato semplice: {"sent":4,"arbitri":3,"club":1}
+            return [
+                'club_sent' => $details['club'] ?? 0,
+                'club_failed' => 0,
+                'referees_sent' => $details['arbitri'] ?? 0,
+                'referees_failed' => 0,
+                'institutional_sent' => 0,
+                'institutional_failed' => 0,
+                'total_sent' => $details['sent'] ?? $this->total_recipients ?? 0,
+                'total_failed' => 0,
+                'success_rate' => 100.0
+            ];
+        }
+
+        // Formato complesso originale
         return [
             'club_sent' => $details['club']['sent'] ?? 0,
             'club_failed' => $details['club']['failed'] ?? 0,
@@ -183,15 +207,16 @@ class TournamentNotification extends Model
     /**
      * 🔄 Metodo: Può essere reinviato?
      */
-public function canBeResent(): bool
-{
-    // Permetti sempre reinvio dopo 1 ora per testing
-    if ($this->sent_at && $this->sent_at->lt(now()->subHour())) {
+    public function canBeResent(): bool
+    {
+        // Permetti sempre reinvio dopo 1 ora per testing
+        if ($this->sent_at && $this->sent_at->lt(now()->subHour())) {
+            return true;
+        }
+
         return true;
     }
-
-    return true;
-}    /**
+    /**
      * ❌ Metodo: Ha errori?
      */
     public function hasErrors(): bool
