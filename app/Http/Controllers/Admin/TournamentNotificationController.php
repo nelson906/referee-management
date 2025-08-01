@@ -6,12 +6,16 @@ use App\Http\Controllers\Controller;
 use App\Models\Notification;
 use App\Models\Tournament;
 use App\Models\TournamentNotification;
-use App\Services\TournamentNotificationService;
+use App\Services\FileStorageService;
+use App\Services\DocumentGenerationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
+use App\Mail\RefereeAssignmentMail;
+use App\Mail\ClubNotificationMail;
 
 class TournamentNotificationController extends Controller
 {
@@ -216,21 +220,21 @@ class TournamentNotificationController extends Controller
 
         // 1. Invia agli arbitri (con PDF se disponibile)
         foreach ($tournament->assignments as $assignment) {
-            Mail::send(new RefereeAssignmentMail($assignment, $tournament));
+            Mail::to($assignment->user->email)
+                ->send(new RefereeAssignmentMail($assignment, $tournament));
             $sent++;
         }
-
         // 2. Invia al circolo (con DOCX facsimile)
         if ($tournament->club->email) {
             $attachments = [];
 
             // Allega facsimile Word
-            $clubDocPath = $this->fileStorage->getZoneFilePath($tournament, 'docx');
+            $clubDocPath = $this->fileStorage->getClubLetterPath($tournament);
             if (Storage::exists($clubDocPath)) {
                 $attachments[] = storage_path('app/public/' . $clubDocPath);
             }
 
-            Mail::send(new ClubNotificationMail($tournament, $attachments));
+            Mail::to($tournament->club->email)->send(new ClubNotificationMail($tournament, $attachments));
             $sent++;
         }
 
@@ -238,8 +242,14 @@ class TournamentNotificationController extends Controller
         $notification->update([
             'status' => 'sent',
             'sent_at' => now(),
-            'total_recipients' => $sent
+            'total_recipients' => $sent,
+            'templates_used' => [
+                'club' => 'facsimile_convocazione_v1',
+                'referee' => 'convocazione_arbitro_v1',
+                'institutional' => null // Non ancora usato
+            ]
         ]);
+
 
         return redirect()->route('admin.tournament-notifications.index')
             ->with('success', "Inviate {$sent} notifiche");
@@ -427,5 +437,4 @@ class TournamentNotificationController extends Controller
 
         return redirect()->route('admin.tournament-notifications.index');
     }
-
 }

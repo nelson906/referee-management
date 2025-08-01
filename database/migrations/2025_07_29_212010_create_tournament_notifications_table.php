@@ -14,11 +14,13 @@ return new class extends Migration
             $table->foreignId('tournament_id')->constrained()->onDelete('cascade');
             $table->enum('status', ['sent', 'partial', 'failed', 'pending'])->default('pending');
             $table->integer('total_recipients')->default(0);
+            $table->text('referee_list')->nullable();
             $table->timestamp('sent_at')->nullable();
             $table->foreignId('sent_by')->nullable()->constrained('users')->onDelete('set null');
             $table->json('details')->nullable();
             $table->json('templates_used')->nullable();
             $table->text('error_message')->nullable();
+            $table->json('attachments')->nullable();
             $table->timestamps();
 
             $table->index(['tournament_id', 'status']);
@@ -31,7 +33,7 @@ return new class extends Migration
             Schema::table('notifications', function (Blueprint $table) {
                 if (!Schema::hasColumn('notifications', 'tournament_id')) {
                     $table->foreignId('tournament_id')->nullable()->after('assignment_id')
-                          ->constrained()->onDelete('cascade');
+                        ->constrained()->onDelete('cascade');
                 }
                 if (!Schema::hasColumn('notifications', 'recipient_name')) {
                     $table->string('recipient_name')->nullable()->after('recipient_email');

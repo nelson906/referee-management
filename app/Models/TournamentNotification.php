@@ -286,4 +286,6 @@ class TournamentNotification extends Model
 
         return $total > 0 ? round(($sent / $total) * 100, 1) : 0;
     }
+
+
 }
