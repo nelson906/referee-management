@@ -65,7 +65,6 @@ class DocumentGenerationService
             ]);
 
             return $path;
-
         } catch (\Exception $e) {
             Log::error('Error generating convocation letter', [
                 'assignment_id' => $assignment->id,
@@ -127,7 +126,6 @@ class DocumentGenerationService
             $tournament->incrementDocumentVersion();
 
             return $path;
-
         } catch (\Exception $e) {
             Log::error('Error generating club letter', [
                 'tournament_id' => $tournament->id,
@@ -146,7 +144,7 @@ class DocumentGenerationService
         $template = new TemplateProcessor($templatePath);
 
         // Prepara dati arbitri
-        $arbitri = $tournament->assignments->map(function($assignment) {
+        $arbitri = $tournament->assignments->map(function ($assignment) {
             return $assignment->user->name . ' ' . $assignment->role;
         })->implode("\n");
 
@@ -159,7 +157,7 @@ class DocumentGenerationService
 
         // Nome file secondo convenzione
         $filename = Str::upper(Str::slug($tournament->club->name)) . '-' .
-                   Str::slug($tournament->name, '-') . '.docx';
+            Str::slug($tournament->name, '-') . '.docx';
 
         // Salva temporaneamente
         $tempPath = storage_path('app/temp/' . $filename);
@@ -180,8 +178,8 @@ class DocumentGenerationService
         return LetterTemplate::active()
             ->ofType($type)
             ->forZone($tournament->zone_id)
-            ->forCategory($tournament->tournament_category_id)
-            ->orderBy('tournament_category_id', 'desc') // Prefer category-specific
+            ->where('tournament_type_id', $tournament->tournament_type_id)
+            ->orderBy('tournament_type_id', 'desc') // Prefer category-specific
             ->orderBy('zone_id', 'desc') // Then zone-specific
             ->first();
     }
@@ -223,7 +221,7 @@ class DocumentGenerationService
         return [
             'tournament_name' => $tournament->name,
             'tournament_dates' => $tournament->date_range,
-            'tournament_category' => $tournament->tournamentCategory->name,
+            'tournament_type' => $tournament->tournamentType->name ?? 'N/A',  // NON tournamentCategory
             'club_name' => $tournament->club->name,
             'contact_person' => $tournament->club->contact_person,
             'zone_name' => $tournament->zone->name,
@@ -249,66 +247,65 @@ class DocumentGenerationService
         $properties->setSubject('Arbitraggio Tornei Golf');
     }
 
-/**
- * Add letterhead to section - VERSIONE CORRETTA
- */
-protected function addLetterhead($section, $zoneId): void
-{
-    // Get active letterhead for zone
-    $letterhead = \App\Models\Letterhead::where('zone_id', $zoneId)
-        ->where('is_active', true)
-        ->orderBy('is_default', 'desc')
-        ->first();
-
-    if (!$letterhead) {
-        // Use default letterhead
-        $letterhead = \App\Models\Letterhead::whereNull('zone_id')
-            ->where('is_default', true)
+    /**
+     * Add letterhead to section - VERSIONE CORRETTA
+     */
+    protected function addLetterhead($section, $zoneId): void
+    {
+        // Get active letterhead for zone
+        $letterhead = \App\Models\Letterhead::where('zone_id', $zoneId)
+            ->where('is_active', true)
+            ->orderBy('is_default', 'desc')
             ->first();
-    }
 
-    if ($letterhead && $letterhead->logo_path) {
-        // Debug - aggiungi temporaneamente per verificare
-        \Log::info('Letterhead processing', [
-            'letterhead_id' => $letterhead->id,
-            'logo_path' => $letterhead->logo_path,
-            'full_path' => storage_path('app/public/' . $letterhead->logo_path),
-            'file_exists' => file_exists(storage_path('app/public/' . $letterhead->logo_path)),
-        ]);
+        if (!$letterhead) {
+            // Use default letterhead
+            $letterhead = \App\Models\Letterhead::whereNull('zone_id')
+                ->where('is_default', true)
+                ->first();
+        }
 
-        $logoPath = storage_path('app/public/' . $letterhead->logo_path);
-
-        if (file_exists($logoPath)) {
-            // ✅ INTESTAZIONE A INIZIO DOCUMENTO (non header)
-            $section->addImage($logoPath, [
-                'width' => 550,           // Larghezza quasi completa
-                'height' => 80,           // Altezza intestazione
-                'alignment' => \PhpOffice\PhpWord\SimpleType\Jc::CENTER,
-                'marginTop' => 0,
-                'marginBottom' => 300,    // Spazio dopo l'intestazione
+        if ($letterhead && $letterhead->logo_path) {
+            // Debug - aggiungi temporaneamente per verificare
+            \Log::info('Letterhead processing', [
+                'letterhead_id' => $letterhead->id,
+                'logo_path' => $letterhead->logo_path,
+                'full_path' => storage_path('app/public/' . $letterhead->logo_path),
+                'file_exists' => file_exists(storage_path('app/public/' . $letterhead->logo_path)),
             ]);
 
-            // Aggiungi uno spazio dopo l'intestazione
-            $section->addTextBreak(1);
+            $logoPath = storage_path('app/public/' . $letterhead->logo_path);
 
-        } else {
-            \Log::warning('Logo file not found: ' . $logoPath);
+            if (file_exists($logoPath)) {
+                // ✅ INTESTAZIONE A INIZIO DOCUMENTO (non header)
+                $section->addImage($logoPath, [
+                    'width' => 550,           // Larghezza quasi completa
+                    'height' => 80,           // Altezza intestazione
+                    'alignment' => \PhpOffice\PhpWord\SimpleType\Jc::CENTER,
+                    'marginTop' => 0,
+                    'marginBottom' => 300,    // Spazio dopo l'intestazione
+                ]);
+
+                // Aggiungi uno spazio dopo l'intestazione
+                $section->addTextBreak(1);
+            } else {
+                \Log::warning('Logo file not found: ' . $logoPath);
+            }
+        }
+
+        // Fallback testuale se non c'è logo
+        if (!$letterhead || !$letterhead->logo_path) {
+            if ($letterhead && $letterhead->header_content) {
+                $section->addText($letterhead->header_content, [
+                    'bold' => true,
+                    'size' => 14,
+                ], [
+                    'alignment' => \PhpOffice\PhpWord\SimpleType\Jc::CENTER,
+                ]);
+                $section->addTextBreak(2);
+            }
         }
     }
-
-    // Fallback testuale se non c'è logo
-    if (!$letterhead || !$letterhead->logo_path) {
-        if ($letterhead && $letterhead->header_content) {
-            $section->addText($letterhead->header_content, [
-                'bold' => true,
-                'size' => 14,
-            ], [
-                'alignment' => \PhpOffice\PhpWord\SimpleType\Jc::CENTER,
-            ]);
-            $section->addTextBreak(2);
-        }
-    }
-}
 
 
     /**
@@ -317,18 +314,20 @@ protected function addLetterhead($section, $zoneId): void
     protected function addDocumentContent($section, ?LetterTemplate $template, array $variables): void
     {
         if (!$template) {
-            // Use default content
             $this->addDefaultContent($section, $variables);
             return;
         }
 
-        // Replace variables in template
+        // Sostituisci variabili nel template
         $content = $template->body;
         foreach ($variables as $key => $value) {
-            $content = str_replace('{{' . $key . '}}', $value, $content);
+            $content = str_replace('{{' . $key . '}}', $value ?? '', $content);
         }
 
-        // Add content to document
+        // Rimuovi variabili non sostituite (per evitare errori)
+        $content = preg_replace('/\{\{[^}]+\}\}/', '', $content);
+
+        // Aggiungi contenuto
         Html::addHtml($section, nl2br($content));
     }
 
@@ -337,6 +336,22 @@ protected function addLetterhead($section, $zoneId): void
      */
     protected function addDefaultContent($section, array $variables): void
     {
+
+        if (!isset($variables['referee_name'])) {
+            $section->addText('COMUNICAZIONE ARBITRI ASSEGNATI', ['bold' => true, 'size' => 14], ['alignment' => \PhpOffice\PhpWord\SimpleType\Jc::CENTER]);
+            $section->addTextBreak(2);
+
+            $section->addText("Gentile {$variables['club_name']},");
+            $section->addTextBreak();
+
+            $section->addText("Vi comunichiamo gli arbitri assegnati per il torneo:");
+            $section->addText("{$variables['tournament_name']}", ['bold' => true]);
+            $section->addText("Date: {$variables['tournament_dates']}");
+
+            // NON USARE referee_name qui!
+            return;
+        }
+
         $section->addText('CONVOCAZIONE ARBITRO', ['bold' => true, 'size' => 14], ['alignment' => \PhpOffice\PhpWord\SimpleType\Jc::CENTER]);
         $section->addTextBreak(2);
 
@@ -425,15 +440,17 @@ protected function addLetterhead($section, $zoneId): void
     {
         $date = Carbon::now()->format('Ymd');
 
-        if ($model instanceof Assignment) {
-            $referee = str_replace(' ', '_', $model->user->name);
-            $tournament = str_replace(' ', '_', $model->tournament->name);
-            return "{$type}_{$date}_{$referee}_{$tournament}.docx";
+        if ($model instanceof Tournament) {
+            // SANITIZZA IL NOME RIMUOVENDO CARATTERI PROBLEMATICI
+            $tournament = preg_replace('/[^a-zA-Z0-9_-]/', '_', $model->name);
+            $tournament = trim($tournament, '_');
+            return "{$type}_{$date}_{$tournament}.docx";
         }
 
-        if ($model instanceof Tournament) {
-            $tournament = str_replace(' ', '_', $model->name);
-            return "{$type}_{$date}_{$tournament}.docx";
+        if ($model instanceof Assignment) {
+            $referee = preg_replace('/[^a-zA-Z0-9_-]/', '_', $model->user->name);
+            $tournament = preg_replace('/[^a-zA-Z0-9_-]/', '_', $model->tournament->name);
+            return "{$type}_{$date}_{$referee}_{$tournament}.docx";
         }
 
         return "{$type}_{$date}.docx";
@@ -444,15 +461,89 @@ protected function addLetterhead($section, $zoneId): void
      */
     protected function saveDocument(PhpWord $phpWord, string $filename): string
     {
-        $path = 'documents/' . Carbon::now()->format('Y/m') . '/' . $filename;
+        // ELIMINA TUTTO E USA:
+        $tempPath = storage_path('app/temp/' . $filename);
 
-        // Create directory if not exists
-        Storage::makeDirectory('public/documents/' . Carbon::now()->format('Y/m'));
+        // Crea directory temp se non esiste
+        if (!is_dir(dirname($tempPath))) {
+            mkdir(dirname($tempPath), 0777, true);
+        }
 
-        // Save document
+        // Salva temporaneamente
         $objWriter = IOFactory::createWriter($phpWord, 'Word2007');
-        $objWriter->save(storage_path('app/public/' . $path));
+        $objWriter->save($tempPath);
 
-        return $path;
+        // Ora usa FileStorageService per salvare nella posizione corretta
+        $fileData = [
+            'path' => $tempPath,
+            'filename' => $filename,
+            'type' => 'generated'
+        ];
+
+        // Ottieni il tournament dal context (passa come parametro se necessario)
+        // return $this->fileStorage->storeInZone($fileData, $tournament, 'docx');
+
+        // PER ORA ritorna solo il filename
+        return $filename;
+    }
+    public function generateConvocationForTournament(Tournament $tournament)
+    {
+        try {
+            // Carica relazioni necessarie
+            $tournament->load([
+                'club',
+                'zone',
+                'tournamentType',  // NON tournamentCategory!
+                'assignments.user'
+            ]);
+
+            // Usa template generico se non trova quello specifico
+            $template = $this->getTemplate('convocation', $tournament);
+
+            // Crea documento
+            $phpWord = new PhpWord();
+            $this->configureDocument($phpWord);
+
+            // Aggiungi sezione
+            $section = $phpWord->addSection();
+            $this->addLetterhead($section, $tournament->zone_id);
+
+            // Aggiungi contenuto base
+            $section->addText('CONVOCAZIONE ARBITRI', ['bold' => true, 'size' => 14], ['alignment' => \PhpOffice\PhpWord\SimpleType\Jc::CENTER]);
+            $section->addTextBreak(2);
+
+            $section->addText("Torneo: {$tournament->name}", ['bold' => true]);
+            $section->addText("Date: {$tournament->date_range}");
+            $section->addText("Circolo: {$tournament->club->name}");
+            $section->addTextBreak();
+
+            // Lista arbitri
+            $section->addText("Arbitri convocati:", ['bold' => true]);
+            foreach ($tournament->assignments as $assignment) {
+                $section->addText("- {$assignment->user->name} ({$assignment->role})");
+            }
+
+            // Salva
+            $filename = $this->generateFilename('convocation_tournament', $tournament);
+            // INVECE DI saveDocument, usa direttamente:
+            $filename = "convocation_tournament_" . date('Ymd') . "_" . Str::slug($tournament->name, '_') . ".docx";
+            $zone = $this->getZoneName($tournament);
+            $relativePath = "convocationi/{$zone}/generated/{$filename}";
+
+            // Crea directory se non esiste
+            Storage::disk('public')->makeDirectory("convocationi/{$zone}/generated");
+
+            // Salva il file
+            $fullPath = storage_path('app/public/' . $relativePath);
+            $objWriter = IOFactory::createWriter($phpWord, 'Word2007');
+            $objWriter->save($fullPath);
+
+            return $relativePath;
+
+            return $path;
+        } catch (\Exception $e) {
+            Log::error('Errore generazione convocazione torneo: ' . $e->getMessage());
+            throw $e;
+        }
     }
 }

@@ -63,21 +63,29 @@
                     </div>
                     <div class="p-6">
                         @php $stats = $tournamentNotification->stats @endphp
-                        <div class="grid grid-cols-2 gap-4 text-center mb-4">
-                            <div>
-                                <h3 class="text-2xl font-bold">{{ $stats['total_sent'] }}</h3>
-                                <p class="text-sm">Inviati</p>
+                        @if ($tournamentNotification->status === 'sent')
+                            <div class="grid grid-cols-2 gap-4 text-center mb-4">
+                                <div>
+                                    <h3 class="text-2xl font-bold">{{ $stats['total_sent'] }}</h3>
+
+                                    <p class="text-sm">Inviati</p>
+                                </div>
+                                <div>
+                                    <h3 class="text-2xl font-bold">{{ $stats['total_failed'] }}</h3>
+                                    <p class="text-sm">Falliti</p>
+                                </div>
                             </div>
-                            <div>
-                                <h3 class="text-2xl font-bold">{{ $stats['total_failed'] }}</h3>
-                                <p class="text-sm">Falliti</p>
+                            <hr class="border-blue-400 mb-4">
+                            <div class="text-center">
+                                <h4 class="text-xl font-bold">{{ $stats['success_rate'] }}%</h4>
+                                <p class="text-sm">Tasso di Successo</p>
                             </div>
-                        </div>
-                        <hr class="border-blue-400 mb-4">
-                        <div class="text-center">
-                            <h4 class="text-xl font-bold">{{ $stats['success_rate'] }}%</h4>
-                            <p class="text-sm">Tasso di Successo</p>
-                        </div>
+                        @else
+                            <div <h3 class="text-2xl font-bold">{{ $stats['total_sent'] }}</h3>
+                                <p class="text-sm">Da Inviare</p>
+                            </div>
+                        @endif
+
                     </div>
                 </div>
             </div>

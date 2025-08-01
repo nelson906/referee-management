@@ -282,6 +282,12 @@ Route::middleware(['auth'])->group(function () {
             Route::put('/{notification}', [Admin\TournamentNotificationController::class, 'update'])->name('update');
             Route::get('/{notification}', [Admin\TournamentNotificationController::class, 'show'])->name('show');
             Route::delete('/{notification}', [Admin\TournamentNotificationController::class, 'destroy'])->name('destroy');
+            Route::get('/{notification}/documents-status', [Admin\TournamentNotificationController::class, 'documentsStatus'])->name('documents-status');
+            Route::get('/{notification}/download/{type}', [Admin\TournamentNotificationController::class, 'downloadDocument'])->name('download-document');
+            Route::post('/{notification}/upload/{type}', [Admin\TournamentNotificationController::class, 'uploadDocument'])->name('upload-document');
+            Route::post('/{notification}/generate/{type}', [Admin\TournamentNotificationController::class, 'generateDocument'])->name('generate-document');
+            Route::post('/{notification}/regenerate/{type}', [Admin\TournamentNotificationController::class, 'regenerateDocument'])->name('regenerate-document');
+            Route::delete('/{notification}/document/{type}', [Admin\TournamentNotificationController::class, 'deleteDocument'])->name('delete-document');
         });
 
         // Settings
@@ -334,7 +340,6 @@ Route::middleware(['referee_or_admin'])->prefix('referee')->name('referee.')->gr
         Route::post('/{notification}/upload', [DocumentController::class, 'upload'])->name('upload');
         Route::get('/{notification}/regenerate', [DocumentController::class, 'regenerate'])->name('regenerate');
     });
-
 });
 
 // =================================================================

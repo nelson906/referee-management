@@ -286,6 +286,17 @@ class TournamentNotification extends Model
 
         return $total > 0 ? round(($sent / $total) * 100, 1) : 0;
     }
+public function getAttachmentsAttribute($value)
+{
+    if (is_string($value)) {
+        return json_decode($value, true) ?? [];
+    }
+    return $value ?? [];
+}
 
+public function setAttachmentsAttribute($value)
+{
+    $this->attributes['attachments'] = is_array($value) ? json_encode($value) : $value;
+}
 
 }

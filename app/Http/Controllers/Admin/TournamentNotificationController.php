@@ -239,21 +239,21 @@ class TournamentNotificationController extends Controller
         }
 
         // 3. Aggiorna stato
-$notification->update([
-    'status' => 'sent',
-    'sent_at' => now(),
-    'total_recipients' => $sent,
-    'details' => [                    // QUESTO per i conteggi
-        'sent' => $sent,
-        'arbitri' => $tournament->assignments->count(),
-        'club' => 1
-    ],
-    'templates_used' => [             // QUESTO per i template
-        'club' => 'facsimile_convocazione_v1',
-        'referee' => 'convocazione_arbitro_v1',
-        'institutional' => null
-    ]
-]);
+        $notification->update([
+            'status' => 'sent',
+            'sent_at' => now(),
+            'total_recipients' => $sent,
+            'details' => [                    // QUESTO per i conteggi
+                'sent' => $sent,
+                'arbitri' => $tournament->assignments->count(),
+                'club' => 1
+            ],
+            'templates_used' => [             // QUESTO per i template
+                'club' => 'facsimile_convocazione_v1',
+                'referee' => 'convocazione_arbitro_v1',
+                'institutional' => null
+            ]
+        ]);
 
         return redirect()->route('admin.tournament-notifications.index')
             ->with('success', "Inviate {$sent} notifiche");
@@ -413,32 +413,273 @@ $notification->update([
      */
     public function prepare(Tournament $tournament)
     {
-        // 1. Carica relazioni necessarie
-        $tournament->load(['assignments.user', 'club.zone']);
+        if (!config('app.tournament_notifications.allow_duplicates')) {
+            // 1. Carica relazioni necessarie
+            $tournament->load(['assignments.user', 'club.zone']);
 
-        // 2. Recupera nomi arbitri
-        $refereeNames = $tournament->assignments
-            ->map(fn($a) => $a->user->name)
-            ->filter()
-            ->implode(', ');
+            // 2. Recupera nomi arbitri
+            $refereeNames = $tournament->assignments
+                ->map(fn($a) => $a->user->name)
+                ->filter()
+                ->implode(', ');
 
-        // 3. Genera documenti Word per circolo
-        $clubDoc = $this->documentService->generateClubDocument($tournament);
-        $this->fileStorage->storeInZone($clubDoc, $tournament, 'docx');
+            // 3. Genera documenti Word per circolo
+            $clubDoc = $this->documentService->generateClubDocument($tournament);
+            $this->fileStorage->storeInZone($clubDoc, $tournament, 'docx');
 
-        // 4. Crea record notifica
-        $notification = TournamentNotification::create([
-            'tournament_id' => $tournament->id,
-            'status' => 'pending',
-            'referee_list' => $refereeNames,
-            'total_recipients' => $tournament->assignments->count() + 1,
-            'sent_by' => auth()->id(),
-            'attachments' => json_encode([
-                'club' => $clubDoc['filename'],
-                'szr' => null // Verrà popolato quando SZR genera PDF
-            ])
-        ]);
+            // 🔄 CONTROLLO NOTIFICA ESISTENTE (commenta per permettere duplicati)
+            $existingNotification = TournamentNotification::where('tournament_id', $tournament->id)
+                ->whereIn('status', ['pending', 'sent'])
+                ->first();
 
-        return redirect()->route('admin.tournament-notifications.index');
+            if ($existingNotification) {
+                // OPZIONE 1: Aggiorna quella esistente
+                $existingNotification->update([
+                    'status' => 'pending',
+                    // 'referee_list' => $this->getRefereeNames($tournament),
+                    'referee_list' => $refereeNames,
+                    'total_recipients' => $tournament->assignments->count() + 1,
+                    // 'prepared_at' => now(),
+                    'sent_by' => auth()->id()
+                ]);
+
+                return redirect()->route('admin.tournament-notifications.index')
+                    ->with('info', 'Notifica esistente aggiornata');
+
+                // OPZIONE 2: Blocca la creazione
+                // return redirect()->back()
+                //     ->with('error', 'Esiste già una notifica per questo torneo');
+            }
+            // FINE CONTROLLO NOTIFICA ESISTENTE
+
+            // 4. Crea record notifica
+            $notification = TournamentNotification::create([
+                'tournament_id' => $tournament->id,
+                'status' => 'pending',
+                'referee_list' => $refereeNames,
+                'total_recipients' => $tournament->assignments->count() + 1,
+                'sent_by' => auth()->id(),
+                'attachments' => json_encode([
+                    'club' => $clubDoc['filename'],
+                    'szr' => null // Verrà popolato quando SZR genera PDF
+                ])
+            ]);
+
+            return redirect()->route('admin.tournament-notifications.index');
+        }
     }
+
+public function documentsStatus(TournamentNotification $notification)
+{
+    $tournament = $notification->tournament;
+    $attachments = is_string($notification->attachments) ?
+        json_decode($notification->attachments, true) : $notification->attachments;
+
+    $convocation = null;
+    $clubLetter = null;
+
+    // Ottieni zona per costruire il path
+    $zone = $this->getZoneName($tournament);
+
+    // Controlla convocazione
+    if (isset($attachments['convocation'])) {
+        $path = "convocationi/{$zone}/generated/{$attachments['convocation']}";
+
+        if (Storage::disk('public')->exists($path)) {
+            $convocation = [
+                'filename' => $attachments['convocation'],
+                'generated_at' => Storage::disk('public')->lastModified($path) ?
+                    Carbon::createFromTimestamp(Storage::disk('public')->lastModified($path))->format('d/m/Y H:i') : 'N/A',
+                'size' => $this->formatBytes(Storage::disk('public')->size($path))
+            ];
+        }
+    }
+
+    // Controlla lettera circolo
+    if (isset($attachments['club_letter'])) {
+        $path = "convocationi/{$zone}/generated/{$attachments['club_letter']}";
+
+        if (Storage::disk('public')->exists($path)) {
+            $clubLetter = [
+                'filename' => $attachments['club_letter'],
+                'generated_at' => Storage::disk('public')->lastModified($path) ?
+                    Carbon::createFromTimestamp(Storage::disk('public')->lastModified($path))->format('d/m/Y H:i') : 'N/A',
+                'size' => $this->formatBytes(Storage::disk('public')->size($path))
+            ];
+        }
+    }
+
+    return response()->json([
+        'notification_id' => $notification->id,
+        'tournament_id' => $tournament->id,
+        'convocation' => $convocation,
+        'club_letter' => $clubLetter
+    ]);
+}
+
+// Aggiungi questo metodo helper
+private function getZoneName($tournament): string
+{
+    $zoneId = $tournament->club->zone_id ?? $tournament->zone_id;
+
+    return match($zoneId) {
+        1 => 'SZR1',
+        2 => 'SZR2',
+        3 => 'SZR3',
+        4 => 'SZR4',
+        5 => 'SZR5',
+        6 => 'SZR6',
+        7 => 'SZR7',
+        8 => 'CRC',
+        default => 'SZR' . $zoneId
+    };
+}
+
+private function formatBytes($bytes, $precision = 2)
+{
+    $units = ['B', 'KB', 'MB', 'GB'];
+
+    for ($i = 0; $bytes > 1024 && $i < count($units) - 1; $i++) {
+        $bytes /= 1024;
+    }
+
+    return round($bytes, $precision) . ' ' . $units[$i];
+}
+/**
+ * Genera un documento
+ */
+public function generateDocument(Request $request, TournamentNotification $notification, $type)
+{
+    $tournament = $notification->tournament;
+
+    try {
+        if ($type === 'convocation') {
+            // Genera convocazione usando il DocumentGenerationService
+    $path = $this->documentService->generateConvocationForTournament($tournament);
+
+            // Aggiorna attachments
+// Aggiorna attachments
+$attachments = $notification->attachments;
+
+// DECODIFICA SE È STRINGA
+if (is_string($attachments)) {
+    $attachments = json_decode($attachments, true) ?? [];
+}
+
+// Se ancora non è array, inizializza
+if (!is_array($attachments)) {
+    $attachments = [];
+}
+
+$attachments['convocation'] = basename($path);
+$notification->update(['attachments' => json_encode($attachments)]);
+
+            return redirect()->back()->with('success', 'Convocazione generata con successo');
+        }
+
+        if ($type === 'club_letter') {
+            // Genera lettera circolo
+            $path = $this->documentService->generateClubLetter($tournament);
+
+            // Aggiorna attachments
+            $attachments = $notification->attachments ?? [];
+            $attachments['club_letter'] = basename($path);
+            $notification->update(['attachments' => $attachments]);
+
+            return redirect()->back()->with('success', 'Lettera circolo generata con successo');
+        }
+
+    } catch (\Exception $e) {
+        return redirect()->back()->with('error', 'Errore nella generazione: ' . $e->getMessage());
+    }
+}
+
+/**
+ * Rigenera un documento
+ */
+public function regenerateDocument(Request $request, TournamentNotification $notification, $type)
+{
+    // Usa lo stesso metodo di generate
+    return $this->generateDocument($request, $notification, $type);
+}
+
+/**
+ * Scarica un documento
+ */
+// Per scaricare
+public function downloadDocument(TournamentNotification $notification, $type)
+{
+    $tournament = $notification->tournament;
+    $zone = $this->fileStorage->getZoneName($tournament);
+
+    if ($type === 'convocation') {
+        $filename = $notification->attachments['convocation'] ?? null;
+        if ($filename) {
+            $path = "convocationi/{$zone}/generated/{$filename}";
+            $fullPath = storage_path('app/public/' . $path);
+
+            if (file_exists($fullPath)) {
+                return response()->download($fullPath);
+            }
+        }
+    }
+
+    // Stesso per club_letter
+}
+
+// Per caricare file modificato
+public function uploadDocument(Request $request, TournamentNotification $notification, $type)
+{
+    $file = $request->file('document');
+    $tournament = $notification->tournament;
+
+    // Salva usando la struttura corretta
+    $fileData = [
+        'path' => $file->getRealPath(),
+        'filename' => $notification->attachments[$type] ?? $this->generateFilename($type, $tournament),
+        'type' => $type
+    ];
+
+    $path = $this->fileStorage->storeInZone($fileData, $tournament, 'docx');
+
+    // Aggiorna attachments
+    $attachments = is_string($notification->attachments) ?
+        json_decode($notification->attachments, true) : $notification->attachments;
+    $attachments[$type] = basename($path);
+    $notification->update(['attachments' => $attachments]);
+
+    return redirect()->back()->with('success', 'Documento caricato');
+}
+
+
+/**
+ * Elimina un documento
+ */
+public function deleteDocument(TournamentNotification $notification, $type)
+{
+    $tournament = $notification->tournament;
+
+    try {
+        if ($type === 'convocation') {
+            $this->fileStorage->deleteConvocation($tournament);
+
+            $attachments = $notification->attachments ?? [];
+            unset($attachments['convocation']);
+            $notification->update(['attachments' => $attachments]);
+        }
+
+        if ($type === 'club_letter') {
+            $this->fileStorage->deleteClubLetter($tournament);
+
+            $attachments = $notification->attachments ?? [];
+            unset($attachments['club_letter']);
+            $notification->update(['attachments' => $attachments]);
+        }
+
+        return redirect()->back()->with('success', 'Documento eliminato');
+
+    } catch (\Exception $e) {
+        return redirect()->back()->with('error', 'Errore nell\'eliminazione: ' . $e->getMessage());
+    }
+}
 }

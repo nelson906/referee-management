@@ -122,5 +122,8 @@ return [
         'driver' => env('APP_MAINTENANCE_DRIVER', 'file'),
         'store' => env('APP_MAINTENANCE_STORE', 'database'),
     ],
+    'tournament_notifications' => [
+        'allow_duplicates' => env('ALLOW_DUPLICATE_NOTIFICATIONS', false),
+    ],
 
 ];
