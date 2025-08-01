@@ -380,7 +380,16 @@ class AssignmentController extends Controller
         $tournament->load(['club', 'zone', 'tournamentType']);
 
         // Get currently assigned referees - CORRETTO ✅
-        $assignedReferees = $tournament->assignedReferees;
+$assignedReferees = $tournament->assignments()
+    ->with('user')
+    ->get()
+    ->map(function($assignment) {
+        // Aggiungi i dati user all'assignment per retrocompatibilità
+        $assignment->name = $assignment->user->name;
+        $assignment->referee_code = $assignment->user->referee_code;
+        $assignment->level = $assignment->user->level;
+        return $assignment;
+    });
         $assignedRefereeIds = $assignedReferees->pluck('user_id')->toArray();
 
         // Get available referees - CORRETTO ✅

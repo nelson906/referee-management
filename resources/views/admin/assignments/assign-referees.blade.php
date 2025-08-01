@@ -58,7 +58,8 @@
                             <p class="text-xs text-gray-500 mt-1">{{ $assignment->notes }}</p>
                         @endif
                     </div>
-                    <form method="POST" action="{{ route('admin.assignments.destroy', $assignment) }}" class="inline">
+
+                    <form method="POST" action="{{ route('admin.assignments.destroy', parameters: $assignment) }}" class="inline">
                         @csrf
                         @method('DELETE')
                         <button type="submit"
