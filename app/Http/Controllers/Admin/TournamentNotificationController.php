@@ -239,17 +239,21 @@ class TournamentNotificationController extends Controller
         }
 
         // 3. Aggiorna stato
-        $notification->update([
-            'status' => 'sent',
-            'sent_at' => now(),
-            'total_recipients' => $sent,
-            'templates_used' => [
-                'club' => 'facsimile_convocazione_v1',
-                'referee' => 'convocazione_arbitro_v1',
-                'institutional' => null // Non ancora usato
-            ]
-        ]);
-
+$notification->update([
+    'status' => 'sent',
+    'sent_at' => now(),
+    'total_recipients' => $sent,
+    'details' => [                    // QUESTO per i conteggi
+        'sent' => $sent,
+        'arbitri' => $tournament->assignments->count(),
+        'club' => 1
+    ],
+    'templates_used' => [             // QUESTO per i template
+        'club' => 'facsimile_convocazione_v1',
+        'referee' => 'convocazione_arbitro_v1',
+        'institutional' => null
+    ]
+]);
 
         return redirect()->route('admin.tournament-notifications.index')
             ->with('success', "Inviate {$sent} notifiche");
