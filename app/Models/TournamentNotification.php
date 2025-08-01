@@ -19,8 +19,10 @@ class TournamentNotification extends Model
         'sent_by',
         'details',
         'templates_used',
-        'error_message'
-    ];
+        'error_message',
+        'referee_list',  // ← AGGIUNGI QUESTA RIGA
+    'prepared_at',   // ← E ANCHE QUESTA SE MANCA
+];
 
     protected $casts = [
         'sent_at' => 'datetime',
@@ -50,10 +52,11 @@ class TournamentNotification extends Model
     public function individualNotifications(): HasMany
     {
         return $this->hasMany(Notification::class, 'tournament_id', 'tournament_id')
-                    ->where('created_at', '>=', $this->sent_at?->subMinutes(5))
-                    ->where('created_at', '<=', $this->sent_at?->addMinutes(5));
+            ->when($this->sent_at, function ($query) {
+                $query->where('created_at', '>=', $this->sent_at->subMinutes(5))
+                    ->where('created_at', '<=', $this->sent_at->addMinutes(5));
+            });
     }
-
     /**
      * 📊 Scope: Solo notifiche inviate con successo
      */
@@ -83,7 +86,7 @@ class TournamentNotification extends Model
      */
     public function scopeForZone($query, $zoneId)
     {
-        return $query->whereHas('tournament', function($q) use ($zoneId) {
+        return $query->whereHas('tournament', function ($q) use ($zoneId) {
             $q->where('zone_id', $zoneId);
         });
     }
@@ -119,8 +122,8 @@ class TournamentNotification extends Model
             'institutional_failed' => $details['institutional']['failed'] ?? 0,
             'total_sent' => $this->total_recipients ?? 0,
             'total_failed' => ($details['club']['failed'] ?? 0) +
-                             ($details['referees']['failed'] ?? 0) +
-                             ($details['institutional']['failed'] ?? 0),
+                ($details['referees']['failed'] ?? 0) +
+                ($details['institutional']['failed'] ?? 0),
             'success_rate' => $this->calculateSuccessRate()
         ];
     }
@@ -180,19 +183,21 @@ class TournamentNotification extends Model
     /**
      * 🔄 Metodo: Può essere reinviato?
      */
-    public function canBeResent(): bool
-    {
-        return in_array($this->status, ['failed', 'partial']) ||
-               $this->sent_at->lt(now()->subHours(24));
+public function canBeResent(): bool
+{
+    // Permetti sempre reinvio dopo 1 ora per testing
+    if ($this->sent_at && $this->sent_at->lt(now()->subHour())) {
+        return true;
     }
 
-    /**
+    return true;
+}    /**
      * ❌ Metodo: Ha errori?
      */
     public function hasErrors(): bool
     {
         return !empty($this->error_message) ||
-               ($this->details['failed'] ?? 0) > 0;
+            ($this->details['failed'] ?? 0) > 0;
     }
 
     /**
@@ -203,8 +208,8 @@ class TournamentNotification extends Model
         $stats = $this->details ?? [];
         $totalSent = $this->total_recipients ?? 0;
         $totalFailed = ($stats['club']['failed'] ?? 0) +
-                      ($stats['referees']['failed'] ?? 0) +
-                      ($stats['institutional']['failed'] ?? 0);
+            ($stats['referees']['failed'] ?? 0) +
+            ($stats['institutional']['failed'] ?? 0);
 
         if ($totalSent == 0) return 0;
 

@@ -1,201 +1,123 @@
 @extends('layouts.admin')
 
+@section('title', 'Gestione Notifiche Tornei')
+
 @section('content')
-<div class="p-6">
-    <div class="max-w-7xl mx-auto">
-        {{-- Header --}}
-        <div class="flex justify-between items-center mb-6">
-            <h1 class="text-2xl font-bold text-gray-900">🏆 Sistema Notifiche Torneo</h1>
-            <span class="inline-flex px-3 py-1 text-sm font-semibold rounded-full bg-green-100 text-green-800">
-                NUOVO SISTEMA
-            </span>
-        </div>
+<div class="container mx-auto px-4 py-6">
+    <h1 class="text-2xl font-bold mb-6">📧 Notifiche Tornei</h1>
 
-        {{-- Success Alert --}}
-        @if(session('success'))
-            <div class="mb-4 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative" role="alert">
-                <span class="block sm:inline">{{ session('success') }}</span>
-                <button type="button" class="absolute top-0 bottom-0 right-0 px-4 py-3" onclick="this.parentElement.style.display='none'">
-                    <svg class="fill-current h-6 w-6 text-green-500" role="button" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
-                        <title>Close</title>
-                        <path d="M14.348 14.849a1.2 1.2 0 0 1-1.697 0L10 11.819l-2.651 3.029a1.2 1.2 0 1 1-1.697-1.697l2.758-3.15-2.759-3.152a1.2 1.2 0 1 1 1.697-1.697L10 8.183l2.651-3.031a1.2 1.2 0 1 1 1.697 1.697l-2.758 3.152 2.758 3.15a1.2 1.2 0 0 1 0 1.698z"/>
-                    </svg>
-                </button>
-            </div>
-        @endif
+    <div class="bg-white shadow overflow-hidden sm:rounded-lg">
+        <table class="min-w-full">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Torneo</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Data Preparazione</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Destinatari</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Stato</th>
+                    <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Azioni</th>
+                </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200">
+                @foreach($tournamentNotifications as $notification)
+                <tr>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="text-sm font-medium text-gray-900">
+                            {{ $notification->tournament->name }}
+                        </div>
+                        <div class="text-sm text-gray-500">
+                            {{ $notification->tournament->start_date->format('d/m/Y') }}
+                        </div>
+                    </td>
 
-        {{-- Error Alert --}}
-        @if(session('error'))
-            <div class="mb-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
-                <span class="block sm:inline">{{ session('error') }}</span>
-                <button type="button" class="absolute top-0 bottom-0 right-0 px-4 py-3" onclick="this.parentElement.style.display='none'">
-                    <svg class="fill-current h-6 w-6 text-red-500" role="button" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
-                        <title>Close</title>
-                        <path d="M14.348 14.849a1.2 1.2 0 0 1-1.697 0L10 11.819l-2.651 3.029a1.2 1.2 0 1 1-1.697-1.697l2.758-3.15-2.759-3.152a1.2 1.2 0 1 1 1.697-1.697L10 8.183l2.651-3.031a1.2 1.2 0 1 1 1.697 1.697l-2.758 3.152 2.758 3.15a1.2 1.2 0 0 1 0 1.698z"/>
-                    </svg>
-                </button>
-            </div>
-        @endif
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+{{ $notification->created_at->format('d/m/Y H:i') }}
+                    </td>
 
-        {{-- 📊 Statistiche Dashboard --}}
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-            <div class="bg-green-500 text-white rounded-lg shadow p-6">
-                <div class="text-center">
-                    <h3 class="text-3xl font-bold">{{ number_format($stats['total_sent'] ?? 0) }}</h3>
-                    <p class="text-green-100 text-sm">Notifiche Inviate</p>
-                </div>
-            </div>
+                    <td class="px-6 py-4">
+                        <div class="text-sm text-gray-900 max-w-xs">
+                            {{-- Box con wrap per nomi arbitri --}}
+                            <div class="bg-gray-100 p-2 rounded text-xs break-words">
+                                {{ $notification->referee_list ?? 'Nessun arbitro' }}
+                            </div>
+                            <div class="text-xs text-gray-500 mt-1">
+                                Totale: {{ $notification->total_recipients }} destinatari
+                            </div>
+                        </div>
+                    </td>
 
-            <div class="bg-red-500 text-white rounded-lg shadow p-6">
-                <div class="text-center">
-                    <h3 class="text-3xl font-bold">{{ number_format($stats['total_failed'] ?? 0) }}</h3>
-                    <p class="text-red-100 text-sm">Invii Falliti</p>
-                </div>
-            </div>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full
+                            {{ $notification->status === 'sent' ? 'bg-green-100 text-green-800' : '' }}
+                            {{ $notification->status === 'draft' ? 'bg-gray-100 text-gray-800' : '' }}
+                            {{ $notification->status === 'failed' ? 'bg-red-100 text-red-800' : '' }}">
+                            {{ $notification->status === 'draft' ? 'Bozza' : ucfirst($notification->status) }}
+                        </span>
+                    </td>
 
-            <div class="bg-blue-500 text-white rounded-lg shadow p-6">
-                <div class="text-center">
-                    <h3 class="text-3xl font-bold">{{ number_format($stats['this_month'] ?? 0) }}</h3>
-                    <p class="text-blue-100 text-sm">Questo Mese</p>
-                </div>
-            </div>
+                    <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
+                        <div class="flex justify-center space-x-2">
+                            {{-- Invio (solo per draft) --}}
+                            @if($notification->status === 'pending')
+                                <form action="{{ route('admin.tournament-notifications.send', $notification) }}" method="POST" class="inline">
+                                    @csrf
+                                    <button type="submit" class="text-blue-600 hover:text-blue-900"
+                                            onclick="return confirm('Inviare le notifiche?')">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
+                                        </svg>
+                                    </button>
+                                </form>
+                            @endif
 
-            <div class="bg-yellow-500 text-white rounded-lg shadow p-6">
-                <div class="text-center">
-                    <h3 class="text-3xl font-bold">{{ number_format($stats['pending_tournaments'] ?? 0) }}</h3>
-                    <p class="text-yellow-100 text-sm">Tornei da Notificare</p>
-                </div>
-            </div>
-        </div>
+                            {{-- Reinvio (per sent/failed) --}}
+@if($notification->status === 'sent' || $notification->status === 'failed')
+    <form action="{{ route('admin.tournament-notifications.resend', $notification->id) }}" method="POST" class="inline">
+                                    @csrf
+                                    <button type="submit" class="text-amber-600 hover:text-amber-900"
+                                            onclick="return confirm('Reinviare le notifiche?')">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                                        </svg>
+                                    </button>
+                                </form>
+                            @endif
 
-        {{-- 📋 Lista Notifiche Raggruppate --}}
-        <div class="bg-white rounded-lg shadow overflow-hidden">
-            <div class="px-6 py-4 border-b border-gray-200 bg-gray-50">
-                <h3 class="text-lg font-medium text-gray-900">
-                    📋 Notifiche Tornei ({{ $tournamentNotifications->total() ?? 0 }} totali)
-                </h3>
-            </div>
+                            {{-- Edit --}}
+                            <a href="{{ route('admin.tournament-notifications.edit', $notification->id) }}"
+                               class="text-indigo-600 hover:text-indigo-900">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                                </svg>
+                            </a>
 
-            <div class="p-6">
-                @if($tournamentNotifications->count() > 0)
-                    <div class="overflow-x-auto">
-                        <table class="min-w-full divide-y divide-gray-200">
-                            <thead class="bg-gray-50">
-                                <tr>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        🏆 Torneo
-                                    </th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        📧 Destinatari
-                                    </th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        📅 Inviato
-                                    </th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        📊 Stato
-                                    </th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        👤 Inviato da
-                                    </th>
-                                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        ⚡ Azioni
-                                    </th>
-                                </tr>
-                            </thead>
-                            <tbody class="bg-white divide-y divide-gray-200">
-                                @foreach($tournamentNotifications as $notification)
-                                    <tr class="hover:bg-gray-50">
-                                        <td class="px-6 py-4 whitespace-nowrap">
-                                            <div>
-                                                <div class="text-sm font-medium text-gray-900">
-                                                    {{ $notification->tournament->name }}
-                                                </div>
-                                                <div class="text-sm text-gray-500">
-                                                    {{ $notification->tournament->club->name ?? 'N/A' }} •
-                                                    {{ $notification->tournament->zone->name ?? 'N/A' }}
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td class="px-6 py-4 whitespace-nowrap">
-                                            <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
-                                                {{ $notification->total_recipients }} totali
-                                            </span>
-                                        </td>
-                                        <td class="px-6 py-4 whitespace-nowrap">
-                                            <div class="text-sm text-gray-900">
-                                                {{ $notification->sent_at ? $notification->sent_at->format('d/m/Y H:i') : 'Mai inviato' }}
-                                            </div>
-                                            <div class="text-sm text-gray-500">
-                                                {{ $notification->time_ago }}
-                                            </div>
-                                        </td>
-                                        <td class="px-6 py-4 whitespace-nowrap">
-                                            @php
-                                                $statusClasses = [
-                                                    'sent' => 'bg-green-100 text-green-800',
-                                                    'partial' => 'bg-yellow-100 text-yellow-800',
-                                                    'failed' => 'bg-red-100 text-red-800'
-                                                ];
-                                                $statusClass = $statusClasses[$notification->status] ?? 'bg-gray-100 text-gray-800';
-                                            @endphp
-                                            <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full {{ $statusClass }}">
-                                                {{ $notification->status_formatted }}
-                                            </span>
-                                        </td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                            {{ $notification->sentBy->name ?? 'Sistema' }}
-                                        </td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                            <a href="{{ route('admin.tournament-notifications.show', $notification) }}"
-                                               class="inline-flex items-center px-3 py-1 border border-blue-600 text-blue-600 text-sm rounded-md hover:bg-blue-600 hover:text-white transition-colors">
-                                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
-                                                </svg>
-                                                Dettagli
-                                            </a>
-                                        </td>
-                                    </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
-                    </div>
+                            {{-- Show --}}
+                            <a href="{{ route('admin.tournament-notifications.show', $notification) }}"
+                               class="text-gray-600 hover:text-gray-900">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                                </svg>
+                            </a>
 
-                    {{-- Paginazione --}}
-                    <div class="mt-6">
-                        {{ $tournamentNotifications->links() }}
-                    </div>
-                @else
-                    <div class="text-center py-12">
-                        <svg class="mx-auto h-12 w-12 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"/>
-                        </svg>
-                        <h3 class="text-lg font-medium text-gray-900 mb-2">Nessuna notifica trovata</h3>
-                        <p class="text-gray-600 max-w-md mx-auto">
-                            Il nuovo sistema raggruppa le notifiche per torneo.<br>
-                            Una volta inviate, vedrai <strong>1 riga per torneo</strong> invece di N righe separate.
-                        </p>
-                    </div>
-                @endif
-            </div>
-        </div>
+                            {{-- Delete --}}
+                            <form action="{{ route('admin.tournament-notifications.destroy', $notification) }}" method="POST" class="inline">
+                                @csrf
+                                @method('DELETE')
+                                <button type="submit" class="text-red-600 hover:text-red-900"
+                                        onclick="return confirm('Eliminare questa notifica?')">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                    </svg>
+                                </button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                @endforeach
+            </tbody>
+        </table>
+
+        {{ $tournamentNotifications->links() }}
     </div>
 </div>
 @endsection
-
-@push('scripts')
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Auto-hide alerts after 5 seconds
-    setTimeout(function() {
-        const alerts = document.querySelectorAll('[role="alert"]');
-        alerts.forEach(function(alert) {
-            alert.style.opacity = '0';
-            setTimeout(function() {
-                alert.style.display = 'none';
-            }, 300);
-        });
-    }, 5000);
-});
-</script>
-@endpush

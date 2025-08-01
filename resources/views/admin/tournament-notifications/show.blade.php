@@ -3,6 +3,10 @@
 @section('title', 'Dettagli Notifiche - ' . $tournamentNotification->tournament->name)
 
 @section('content')
+@php
+    dump($tournamentNotification->toArray());
+@endphp
+
 <div class="container mx-auto px-4">
     <!-- 🏆 Header Torneo e Statistiche -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
@@ -16,7 +20,7 @@
                         <div>
                             <ul class="space-y-2">
                                 <li><strong>📅 Date Torneo:</strong> {{ $tournamentNotification->tournament->start_date->format('d/m/Y') }} - {{ $tournamentNotification->tournament->end_date->format('d/m/Y') }}</li>
-                                <li><strong>🏌️ Circolo:</strong> {{ $tournamentNotification->tournament->club->name }}</li>
+                                <li><strong>🏌️ Circolo:</strong> {{ $tournamentNotification->tournament->club->name ?? 'N/A'}}</li>
                                 <li><strong>🌍 Zona:</strong> {{ $tournamentNotification->tournament->zone->name }}</li>
                                 <li><strong>📊 Stato Torneo:</strong>
                                     <span class="inline-flex px-2 py-1 text-xs font-semibold bg-blue-100 text-blue-800 rounded-full">{{ $tournamentNotification->tournament->status }}</span>
@@ -242,8 +246,8 @@
 
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full {{ $notification->status === 'sent' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800' }}">
-                                            {{ $notification->status === 'sent' ? '✅ Inviato' : '❌ Fallito' }}
-                                        </span>
+   {{ $tournamentNotification->status === 'sent' ? '✅ Inviato' : '❌ In attesa' }}
+                                     </span>
 
                                         @if($notification->status === 'failed' && $notification->error_message)
                                             <div class="text-xs text-red-600 mt-1" title="{{ $notification->error_message }}">
@@ -254,7 +258,7 @@
                                     </td>
 
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                        {{ $notification->sent_at ? $notification->sent_at->format('d/m/Y H:i') : 'Mai inviato' }}
+{{ $tournamentNotification->sent_at ? $tournamentNotification->sent_at->format('d/m/Y H:i') : 'Non ancora inviate' }}
                                         @if($notification->sent_at)
                                             <div class="text-xs text-gray-500">{{ $notification->sent_at->diffForHumans() }}</div>
                                         @endif

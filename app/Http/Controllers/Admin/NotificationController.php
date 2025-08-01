@@ -615,8 +615,7 @@ private function getTournamentAssignments(Tournament $tournament)
                         'tournament_id' => $tournament->id,
                         'user_id' => $referee->id,
                         'role' => $referee->pivot->role ?? 'Arbitro',
-                        'user' => $referee,
-                        'referee' => null, // For new structure compatibility
+                        'user' => $referee,  // ✅ CORRETTO: referee è l'user
                         'assigned_at' => $referee->pivot->assigned_at ?? now(),
                         'tournament' => $tournament
                     ];
@@ -634,8 +633,9 @@ private function getTournamentAssignments(Tournament $tournament)
             return collect();
         }
 
-        // ✅ 4. Load relations for existing assignments
-        $assignments->load(['referee', 'referee.user', 'user']);
+        // ✅ 4. CORREZIONE CRITICA: Load relations corrette
+        $assignments->load(['user', 'assignedBy', 'tournament']);
+        // ❌ ELIMINATA: ['referee', 'referee.user', 'user'] - CAUSAVA L'ERRORE!
 
         Log::info('Assignments loaded successfully', [
             'count' => $assignments->count(),

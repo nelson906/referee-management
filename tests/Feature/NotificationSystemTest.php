@@ -38,7 +38,7 @@ class NotificationSystemTest extends TestCase
         $this->setupTestData();
     }
 
-    /** @test */
+    #[Test]
     public function admin_can_access_notification_index()
     {
         $response = $this->actingAs($this->admin)
@@ -48,7 +48,7 @@ class NotificationSystemTest extends TestCase
         $response->assertViewIs('admin.tournament-notifications.index');
     }
 
-    /** @test */
+    #[Test]
     public function referee_cannot_access_notification_index()
     {
         $response = $this->actingAs($this->referee)
@@ -57,7 +57,7 @@ class NotificationSystemTest extends TestCase
         $response->assertStatus(403);
     }
 
-    /** @test */
+    #[Test]
     public function admin_can_view_assignment_form()
     {
         $response = $this->actingAs($this->admin)
@@ -69,7 +69,7 @@ class NotificationSystemTest extends TestCase
         $response->assertViewHas('assignments');
     }
 
-    /** @test */
+    #[Test]
     public function admin_can_send_assignment_notification()
     {
         Mail::fake();
@@ -98,7 +98,7 @@ class NotificationSystemTest extends TestCase
         ]);
     }
 
-    /** @test */
+    #[Test]
     public function notification_service_can_send_bulk_notifications()
     {
         Mail::fake();
@@ -122,7 +122,7 @@ class NotificationSystemTest extends TestCase
         $this->assertEquals(0, $results['failed']);
     }
 
-    /** @test */
+    #[Test]
     public function notification_job_processes_correctly()
     {
         Mail::fake();
@@ -148,7 +148,7 @@ class NotificationSystemTest extends TestCase
         Mail::assertSent(AssignmentNotification::class);
     }
 
-    /** @test */
+    #[Test]
     public function letter_template_can_be_created()
     {
         $templateData = [
@@ -172,7 +172,7 @@ class NotificationSystemTest extends TestCase
         ]);
     }
 
-    /** @test */
+    #[Test]
     public function institutional_email_can_be_created()
     {
         $emailData = [
@@ -196,7 +196,7 @@ class NotificationSystemTest extends TestCase
         ]);
     }
 
-    /** @test */
+    #[Test]
     public function notification_statistics_are_calculated_correctly()
     {
         // Create some test notifications
@@ -229,7 +229,7 @@ class NotificationSystemTest extends TestCase
         $this->assertArrayHasKey('by_type', $stats);
     }
 
-    /** @test */
+    #[Test]
     public function zone_admin_can_only_access_own_zone_notifications()
     {
         // Create another zone and admin
@@ -248,7 +248,7 @@ class NotificationSystemTest extends TestCase
         $response->assertStatus(403);
     }
 
-    /** @test */
+    #[Test]
     public function template_variables_are_replaced_correctly()
     {
         $template = LetterTemplate::create([

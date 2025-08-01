@@ -3,12 +3,14 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Notification;
 use App\Models\Tournament;
 use App\Models\TournamentNotification;
 use App\Services\TournamentNotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Mail;
 
 class TournamentNotificationController extends Controller
 {
@@ -29,7 +31,7 @@ class TournamentNotificationController extends Controller
 
         // Filtri
         if ($request->filled('zone_id')) {
-            $query->whereHas('tournament', function($q) use ($request) {
+            $query->whereHas('tournament', function ($q) use ($request) {
                 $q->where('zone_id', $request->zone_id);
             });
         }
@@ -92,6 +94,13 @@ class TournamentNotificationController extends Controller
      */
     public function store(Request $request, Tournament $tournament)
     {
+        // 🔥 DEBUG: Log inizio
+        Log::info('=== INIZIO STORE CONTROLLER ===', [
+            'tournament_id' => $tournament->id,
+            'request_data' => $request->all(),
+            'user_id' => auth()->id()
+        ]);
+
         $validator = Validator::make($request->all(), [
             'email_template' => 'required|string',
             'include_attachments' => 'boolean',
@@ -102,14 +111,24 @@ class TournamentNotificationController extends Controller
         ]);
 
         if ($validator->fails()) {
-            return redirect()->back()
-                ->withErrors($validator)
-                ->withInput();
+            Log::error('Validation failed', ['errors' => $validator->errors()]);
+            return redirect()->back()->withErrors($validator)->withInput();
         }
+
+        // 🔥 DEBUG: Log prima del service
+        Log::info('=== CHIAMATA SERVICE ===', [
+            'options' => [
+                'email_template' => $request->email_template,
+                'include_attachments' => $request->boolean('include_attachments', true),
+                'send_to_club' => $request->boolean('send_to_club', true),
+                'send_to_referees' => $request->boolean('send_to_referees', true),
+                'send_to_institutional' => $request->boolean('send_to_institutional', true),
+                'sent_by' => auth()->id()
+            ]
+        ]);
 
         DB::beginTransaction();
         try {
-            // 🎯 Chiamata service con template email selezionato
             $result = $this->notificationService->sendTournamentNotifications($tournament, [
                 'email_template' => $request->email_template,
                 'include_attachments' => $request->boolean('include_attachments', true),
@@ -120,38 +139,36 @@ class TournamentNotificationController extends Controller
                 'sent_by' => auth()->id()
             ]);
 
+            // 🔥 DEBUG: Log risultato service
+            Log::info('=== RISULTATO SERVICE ===', ['result' => $result]);
+
             DB::commit();
 
-            $totalFailed = $result['details']['club']['failed'] + $result['details']['referees']['failed'] + $result['details']['institutional']['failed'];
-            $message = "✅ Notifiche torneo '{$tournament->name}' inviate con successo a {$result['total_sent']} destinatari";
-
-            if ($totalFailed > 0) {
-                $message .= " ({$totalFailed} falliti)";
-            }
+            Log::info('=== COMMIT SUCCESSFUL ===');
 
             return redirect()->route('admin.tournament-notifications.index')
-                ->with('success', $message);
-
+                ->with('success', "✅ Test completato");
         } catch (\Exception $e) {
             DB::rollBack();
 
-            Log::error('Tournament notification store error', [
-                'tournament_id' => $tournament->id,
+            Log::error('=== ERRORE CONTROLLER ===', [
                 'error' => $e->getMessage(),
-                'user_id' => auth()->id()
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
             ]);
 
-            return redirect()->back()
-                ->withInput()
-                ->with('error', 'Errore nell\'invio delle notifiche: ' . $e->getMessage());
+            return redirect()->back()->withInput()
+                ->with('error', 'Errore: ' . $e->getMessage());
         }
     }
 
     /**
      * 👁️ Dettagli notifiche torneo con espansione
      */
-    public function show(TournamentNotification $tournamentNotification)
+    public function show(TournamentNotification $notification)
     {
+        $tournamentNotification = $notification;  // RINOMINA
         $tournamentNotification->load([
             'tournament.club',
             'tournament.assignments.referee',
@@ -169,63 +186,121 @@ class TournamentNotificationController extends Controller
 
         return view('admin.tournament-notifications.show', compact('tournamentNotification', 'individualNotifications'));
     }
+    // In app/Http/Controllers/Admin/TournamentNotificationController.php
 
+    public function edit(TournamentNotification $notification)
+    {
+        $tournamentNotification = $notification;
+        return view('admin.tournament-notifications.edit', compact('tournamentNotification'));
+    }
+
+    public function send(TournamentNotification $notification)
+    {
+        $tournament = Tournament::with('club')->find($notification->tournament_id);
+        $sent = 0;
+
+        // Nel metodo send(), prima di tutto recupera i nomi:
+        $refereeNames = DB::table('assignments')
+            ->join('users', 'assignments.user_id', '=', 'users.id')
+            ->where('assignments.tournament_id', $tournament->id)
+            ->pluck('users.name')
+            ->implode(', ');
+
+            // Aggiorna il record con i nomi
+        $notification->update(['referee_list' => $refereeNames]);
+
+        // 1. INVIA AGLI ARBITRI (codice esistente)
+        $assignments = DB::table('assignments')
+            ->join('users', 'assignments.user_id', '=', 'users.id')
+            ->where('assignments.tournament_id', $tournament->id)
+            ->select('assignments.*', 'users.email', 'users.name as user_name')
+            ->get();
+
+        foreach ($assignments as $assignment) {
+            try {
+                Mail::raw(
+                    "Gentile {$assignment->user_name},\n\nSei convocato come {$assignment->role} per il torneo:\n{$tournament->name}\n\nDate: {$tournament->start_date->format('d/m/Y')}\nCircolo: {$tournament->club->name}",
+                    function ($message) use ($assignment, $tournament) {
+                        $message->to($assignment->email)
+                            ->subject("Convocazione Torneo: {$tournament->name}")
+                            ->from(config('mail.from.address'), 'Federazione Golf');
+                    }
+                );
+                $sent++;
+            } catch (\Exception $e) {
+                \Log::error("Failed to send: " . $e->getMessage());
+            }
+        }
+
+        // 2. INVIA AL CIRCOLO (NUOVO!)
+        if ($tournament->club && $tournament->club->email) {
+            try {
+                $arbitriList = $assignments->map(function ($a) {
+                    return "- {$a->user_name} ({$a->role})";
+                })->implode("\n");
+
+                Mail::raw(
+                    "Gentile {$tournament->club->name},\n\nVi comunichiamo gli arbitri assegnati per il torneo:\n{$tournament->name}\n\nData: {$tournament->start_date->format('d/m/Y')}\n\nArbitri assegnati:\n{$arbitriList}\n\nCordiali saluti",
+                    function ($message) use ($tournament) {
+                        $message->to($tournament->club->email)
+                            ->subject("Arbitri Assegnati - {$tournament->name}")
+                            ->from(config('mail.from.address'), 'Federazione Golf');
+                    }
+                );
+                $sent++;
+                \Log::info("Email sent to club: {$tournament->club->email}");
+            } catch (\Exception $e) {
+                \Log::error("Failed to send to club: " . $e->getMessage());
+            }
+        }
+
+        // Recupera i nomi per aggiornare referee_list
+        $refereeNames = $assignments->pluck('user_name')->implode(', ');
+
+        // Aggiorna tutto
+        $notification->update([
+            'status' => 'sent',
+            'sent_at' => now(),
+            'total_recipients' => $sent,
+            'referee_list' => $refereeNames,
+            'details' => json_encode([
+                'sent' => $sent,
+                'arbitri' => $assignments->count(),
+                'club' => $tournament->club->email ? 1 : 0
+            ])
+        ]);
+
+        return redirect()->route('admin.tournament-notifications.index')
+            ->with('success', "Inviate {$sent} email ({$assignments->count()} arbitri + circolo)");
+    }
+
+    public function update(Request $request, TournamentNotification $notification)
+    {
+        $notification->update([
+            'referee_list' => $request->referee_list
+        ]);
+
+        return redirect()->route('admin.tournament-notifications.index')
+            ->with('success', 'Notifica aggiornata');
+    }
     /**
      * 🔄 Reinvio notifiche torneo
      */
-    public function resend(TournamentNotification $tournamentNotification)
+    public function resend(TournamentNotification $notification)
     {
-        if (!$tournamentNotification->canBeResent()) {
-            return redirect()->back()
-                ->with('error', 'Questo torneo non può essere reinviato al momento.');
-        }
-
-        DB::beginTransaction();
-        try {
-            $result = $this->notificationService->resendTournamentNotifications($tournamentNotification);
-
-            DB::commit();
-
-            $totalFailed = $result['details']['club']['failed'] + $result['details']['referees']['failed'] + $result['details']['institutional']['failed'];
-            $message = "Notifiche reinviate: {$result['total_sent']} successi";
-
-            if ($totalFailed > 0) {
-                $message .= ", {$totalFailed} fallimenti";
-            }
-
-            return redirect()->back()
-                ->with('success', $message);
-
-        } catch (\Exception $e) {
-            DB::rollBack();
-
-            return redirect()->back()
-                ->with('error', 'Errore nel reinvio: ' . $e->getMessage());
-        }
+        $tournamentNotification = $notification;
+        return $this->send($notification);
     }
 
     /**
      * 🗑️ Eliminazione notifica torneo
      */
-    public function destroy(TournamentNotification $tournamentNotification)
+    public function destroy(TournamentNotification $notification)
     {
-        DB::beginTransaction();
-        try {
-            // Elimina anche le notifiche individuali correlate
-            $tournamentNotification->individualNotifications()->delete();
-            $tournamentNotification->delete();
+        $notification->delete();
 
-            DB::commit();
-
-            return redirect()->route('admin.tournament-notifications.index')
-                ->with('success', 'Notifiche torneo eliminate con successo.');
-
-        } catch (\Exception $e) {
-            DB::rollBack();
-
-            return redirect()->back()
-                ->with('error', 'Errore nell\'eliminazione: ' . $e->getMessage());
-        }
+        return redirect()->route('admin.tournament-notifications.index')
+            ->with('success', 'Notifica eliminata');
     }
 
     /**
@@ -284,7 +359,7 @@ class TournamentNotificationController extends Controller
             'Content-Disposition' => "attachment; filename=\"{$filename}\"",
         ];
 
-        $callback = function() use ($notifications) {
+        $callback = function () use ($notifications) {
             $file = fopen('php://output', 'w');
 
             // Header CSV
@@ -345,5 +420,37 @@ class TournamentNotificationController extends Controller
         $failed = TournamentNotification::where('status', 'failed')->sum('total_recipients');
 
         return $total > 0 ? round((($total - $failed) / $total) * 100, 1) : 0;
+    }
+
+    public function prepare(Tournament $tournament)
+    {
+        // IMPORTANTE: carica tutto prima
+        $tournament->load('assignments.user');
+
+        // Log per debug
+        \Log::info('Tournament assignments count: ' . $tournament->assignments->count());
+
+        // Recupera i nomi
+        $refereeNames = $tournament->assignments->map(function ($assignment) {
+            $name = $assignment->user ? $assignment->user->name : 'N/A';
+            \Log::info('Assignment user: ' . $name);
+            return $name;
+        })->filter()->implode(', ');
+
+        \Log::info('Final referee names: ' . $refereeNames);
+
+        // CREA NUOVO RECORD
+        $notification = TournamentNotification::create([
+            'tournament_id' => $tournament->id,
+            'status' => 'pending',
+            'sent_at' => null,
+            'referee_list' => $refereeNames ?: 'Nessun arbitro',
+            'total_recipients' => $tournament->assignments->count() + 1,
+            'sent_by' => auth()->id()
+        ]);
+
+        \Log::info('Created notification ID: ' . $notification->id . ' with referee_list: ' . $notification->referee_list);
+
+        return redirect()->route('admin.tournament-notifications.index');
     }
 }

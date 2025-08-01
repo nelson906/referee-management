@@ -56,7 +56,8 @@ class ApiEndpointsTest extends TestCase
      * @test
      * Test API statistiche disponibilità
      */
-    public function test_statistics_disponibilita_api_endpoint()
+    #[Test]
+public function test_statistics_disponibilita_api_endpoint()
     {
         // Create test data
         $zone = Zone::factory()->create();
@@ -83,7 +84,8 @@ class ApiEndpointsTest extends TestCase
      * @test
      * Test API health check
      */
-    public function test_health_check_endpoint()
+    #[Test]
+public function test_health_check_endpoint()
     {
         $response = $this->get('/health');
 
@@ -104,7 +106,8 @@ class ApiEndpointsTest extends TestCase
      * @test
      * Test API template selection per zona
      */
-    public function test_template_api_endpoints()
+    #[Test]
+public function test_template_api_endpoints()
     {
         $zone = Zone::factory()->create();
 
@@ -135,7 +138,8 @@ class ApiEndpointsTest extends TestCase
      * @test
      * Test API institutional emails per zona
      */
-    public function test_institutional_emails_api_endpoint()
+    #[Test]
+public function test_institutional_emails_api_endpoint()
     {
         $zone = Zone::factory()->create();
 
@@ -152,7 +156,8 @@ class ApiEndpointsTest extends TestCase
      * @test
      * Test API notification stats
      */
-    public function test_notification_stats_api_endpoint()
+    #[Test]
+public function test_notification_stats_api_endpoint()
     {
         $response = $this->withHeaders([
             'Authorization' => 'Bearer ' . $this->token,
@@ -173,7 +178,8 @@ class ApiEndpointsTest extends TestCase
      * @test
      * Test API monitoring metrics
      */
-    public function test_monitoring_metrics_api_endpoint()
+    #[Test]
+public function test_monitoring_metrics_api_endpoint()
     {
         $response = $this->withHeaders([
             'Authorization' => 'Bearer ' . $this->token,
@@ -192,7 +198,8 @@ class ApiEndpointsTest extends TestCase
      * @test
      * Test API tournaments calendar
      */
-    public function test_tournaments_calendar_api_endpoint()
+    #[Test]
+public function test_tournaments_calendar_api_endpoint()
     {
         $zone = Zone::factory()->create();
         $tournament = Tournament::factory()->create([
@@ -222,7 +229,8 @@ class ApiEndpointsTest extends TestCase
      * @test
      * Test API status endpoint
      */
-    public function test_status_api_endpoint()
+    #[Test]
+public function test_status_api_endpoint()
     {
         $response = $this->withHeaders([
             'Authorization' => 'Bearer ' . $this->token,
@@ -243,7 +251,8 @@ class ApiEndpointsTest extends TestCase
      * @test
      * Test protezione CSRF su API POST
      */
-    public function test_api_csrf_protection()
+    #[Test]
+public function test_api_csrf_protection()
     {
         $response = $this->postJson('/api/test-endpoint', [
             'test' => 'data'
@@ -257,7 +266,8 @@ class ApiEndpointsTest extends TestCase
      * @test
      * Test rate limiting su API
      */
-    public function test_api_rate_limiting()
+    #[Test]
+public function test_api_rate_limiting()
     {
         // Questo test andrebbe adattato in base alla configurazione specifica
         $this->assertTrue(true); // Placeholder - implementare logica specifica
@@ -267,7 +277,8 @@ class ApiEndpointsTest extends TestCase
      * @test
      * Test API error handling
      */
-    public function test_api_error_handling()
+    #[Test]
+public function test_api_error_handling()
     {
         $response = $this->withHeaders([
             'Authorization' => 'Bearer invalid-token',

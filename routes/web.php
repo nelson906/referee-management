@@ -272,14 +272,19 @@ Route::middleware(['auth'])->group(function () {
             Route::get('/{document}/download', [DocumentController::class, 'download'])->name('download');
             Route::delete('/{document}', [DocumentController::class, 'destroy'])->name('destroy');
         });
-// 🏆 TOURNAMENT NOTIFICATIONS SYSTEM (Nuovo)
-        Route::prefix('tournament-notifications')->name('tournament-notifications.')->group(function () {
-            Route::get('/', [Admin\TournamentNotificationController::class, 'index'])->name('index');
-            Route::get('/create/{tournament}', [Admin\TournamentNotificationController::class, 'create'])->name('create');
-            Route::post('/store/{tournament}', [Admin\TournamentNotificationController::class, 'store'])->name('store');
-            Route::get('/{tournamentNotification}', [Admin\TournamentNotificationController::class, 'show'])->name('show');
-        });
-        // Settings
+        // 🏆 TOURNAMENT NOTIFICATIONS SYSTEM (Nuovo)
+    Route::prefix('tournament-notifications')->name('tournament-notifications.')->group(function () {
+        Route::get('/', [Admin\TournamentNotificationController::class, 'index'])->name('index');
+        Route::post('/{tournament}/prepare', [Admin\TournamentNotificationController::class, 'prepare'])->name('prepare');
+        Route::post('/{notification}/send', [Admin\TournamentNotificationController::class, 'send'])->name('send');
+        Route::post('/{notification}/resend', [Admin\TournamentNotificationController::class, 'resend'])->name('resend');
+        Route::get('/{notification}/edit', [Admin\TournamentNotificationController::class, 'edit'])->name('edit');
+        Route::put('/{notification}', [Admin\TournamentNotificationController::class, 'update'])->name('update');
+        Route::get('/{notification}', [Admin\TournamentNotificationController::class, 'show'])->name('show');
+        Route::delete('/{notification}', [Admin\TournamentNotificationController::class, 'destroy'])->name('destroy');
+    });
+
+    // Settings
         Route::get('/settings', [Admin\SettingsController::class, 'index'])->name('settings');
         Route::post('/settings', [Admin\SettingsController::class, 'update'])->name('settings.update');
     });
@@ -462,4 +467,3 @@ Route::get('/status', function () {
 Route::fallback(function () {
     return response()->view('errors.404', [], 404);
 });
-

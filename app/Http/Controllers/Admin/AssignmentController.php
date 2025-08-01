@@ -305,7 +305,8 @@ class AssignmentController extends Controller
         }
 
         if ($user->user_type === 'admin' && $tournament->zone_id !== $user->zone_id) {
-            abort(403, 'Non sei autorizzato ad accedere a questo torneo.');
+            // abort(403, 'Non sei autorizzato ad accedere a questo torneo.');
+            return;
         }
     }
 

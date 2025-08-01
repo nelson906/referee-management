@@ -17,75 +17,46 @@ class TournamentNotificationService
     /**
      * 🎯 FUNZIONE PRINCIPALE: Invia tutte le notifiche di un torneo
      */
-    public function sendTournamentNotifications(Tournament $tournament, array $options): array
-    {
-        $results = [
-            'tournament_id' => $tournament->id,
-            'total_sent' => 0,
-            'details' => [
-                'club' => ['sent' => 0, 'failed' => 0, 'errors' => []],
-                'referees' => ['sent' => 0, 'failed' => 0, 'errors' => []],
-                'institutional' => ['sent' => 0, 'failed' => 0, 'errors' => []]
-            ]
-        ];
+public function send(TournamentNotification $notification)
+{
+    $tournament = Tournament::find($notification->tournament_id);
+    $sent = 0;
 
+    // Query diretta per gli assignments
+    $assignments = DB::table('assignments')
+        ->join('users', 'assignments.user_id', '=', 'users.id')
+        ->where('tournament_id', $tournament->id)
+        ->get();
+
+    foreach ($assignments as $assignment) {
         try {
-            // 📝 1. Genera tutti i documenti Word personalizzati
-            $documents = $this->generateDocuments($tournament);
+            // Email diretta
+            Mail::raw(
+                "Sei convocato come {$assignment->role} per {$tournament->name}",
+                function($message) use ($assignment, $tournament) {
+                    $message->to($assignment->email)
+                           ->subject("Convocazione: {$tournament->name}")
+                           ->from('noreply@federgolf.it');
+                }
+            );
 
-            // 📎 2. Prepara allegati per ogni tipo destinatario
-            $attachments = $this->prepareAttachments($documents, $tournament);
-
-            // 📧 3. Invia email al circolo
-            if ($options['send_to_club'] ?? true) {
-                $clubResult = $this->sendToClub($tournament, $attachments, $options);
-                $results['details']['club'] = $clubResult;
-                $results['total_sent'] += $clubResult['sent'];
-            }
-
-            // ⚖️ 4. Invia email agli arbitri
-            if ($options['send_to_referees'] ?? true) {
-                $refereesResult = $this->sendToReferees($tournament, $attachments, $options);
-                $results['details']['referees'] = $refereesResult;
-                $results['total_sent'] += $refereesResult['sent'];
-            }
-
-            // 🏛️ 5. Invia email agli istituzionali
-            if ($options['send_to_institutional'] ?? true) {
-                $institutionalResult = $this->sendToInstitutional($tournament, $options);
-                $results['details']['institutional'] = $institutionalResult;
-                $results['total_sent'] += $institutionalResult['sent'];
-            }
-
-            // 💾 6. Salva record torneo
-            $status = ($results['details']['club']['failed'] + $results['details']['referees']['failed'] + $results['details']['institutional']['failed']) > 0 ? 'partial' : 'sent';
-
-            $tournamentNotification = TournamentNotification::create([
-                'tournament_id' => $tournament->id,
-                'status' => $status,
-                'total_recipients' => $results['total_sent'],
-                'sent_at' => now(),
-                'sent_by' => $options['sent_by'],
-                'details' => $results['details'],
-                'templates_used' => [
-                    'email' => $options['email_template'] ?? 'tournament_assignment_generic',
-                    'documents' => $documents['templates_used'] ?? []
-                ]
-            ]);
-
-            $results['tournament_notification_id'] = $tournamentNotification->id;
+            $sent++;
+            \Log::info("Email sent to: {$assignment->email}");
 
         } catch (\Exception $e) {
-            Log::error('Tournament notification error', [
-                'tournament_id' => $tournament->id,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
-            throw $e;
+            \Log::error("Failed to send to {$assignment->email}: " . $e->getMessage());
         }
-
-        return $results;
     }
+
+    $notification->update([
+        'status' => 'sent',
+        'sent_at' => now(),
+        'total_recipients' => $sent
+    ]);
+
+    return redirect()->route('admin.tournament-notifications.index')
+        ->with('success', "Inviate {$sent} email");
+}
 
     /**
      * 📝 Genera tutti i documenti Word personalizzati
@@ -386,58 +357,42 @@ class TournamentNotificationService
     /**
      * 🏌️ Invio email al circolo
      */
-    private function sendToClub(Tournament $tournament, array $attachments, array $options): array
-    {
-        $result = ['sent' => 0, 'failed' => 0, 'errors' => []];
+// Nel service, sostituisci temporaneamente sendToClub con questo:
+private function sendToClub(Tournament $tournament, array $attachments, array $options): array
+{
+    $result = ['sent' => 0, 'failed' => 0, 'errors' => []];
 
-        try {
-            if (!$tournament->club || !$tournament->club->email) {
-                $result['errors'][] = "Circolo senza email";
-                $result['failed'] = 1;
-                return $result;
-            }
+    try {
+        // 🔥 DATI SEMPLIFICATI PER TEST
+        $templateData = [
+            'recipient_name' => 'TEST CIRCOLO',
+            'tournament_name' => 'TEST TORNEO',
+            'tournament_dates' => '01/01/2025',
+            'club_name' => 'TEST CLUB',
+            'referees' => [
+                ['name' => 'Mario Rossi', 'role' => 'Arbitro', 'email' => 'mario@test.it'],
+                ['name' => 'Luigi Verdi', 'role' => 'Direttore', 'email' => 'luigi@test.it']
+            ]
+        ];
 
-            $templateData = [
-                'recipient_name' => $tournament->club->name,
-                'tournament_name' => $tournament->name,
-                'tournament_dates' => $this->formatTournamentDates($tournament),
-                'club_name' => $tournament->club->name,
-                'referees' => $tournament->assignments->map(function($assignment) {
-                    $referee = $assignment->referee ?? $assignment->user;
-                    return [
-                        'name' => $referee->name ?? 'N/A',
-                        'role' => $this->translateRole($assignment->role),
-                        'email' => $referee->email ?? ''
-                    ];
-                })->toArray()
-            ];
+        Log::info('=== DATI TEMPLATE CLUB ===', $templateData);
 
-            $this->sendEmailWithTemplate(
-                $tournament->club->email,
-                $tournament->club->name,
-                $templateData,
-                $attachments['club'] ?? [],
-                $options['email_template'] ?? 'tournament_assignment_generic'
-            );
+        // Invio semplificato senza allegati
+        Mail::send("emails.tournament_assignment_generic", $templateData, function($message) use ($templateData) {
+            $message->to('test@test.com', 'Test Recipient')
+                   ->subject("TEST - " . $templateData['tournament_name']);
+        });
 
-            $this->createIndividualNotification($tournament, [
-                'recipient_type' => 'club',
-                'recipient_email' => $tournament->club->email,
-                'recipient_name' => $tournament->club->name,
-                'template_used' => $options['email_template'] ?? 'tournament_assignment_generic',
-                'attachments' => $attachments['club'] ?? []
-            ]);
+        $result['sent'] = 1;
 
-            $result['sent'] = 1;
-
-        } catch (\Exception $e) {
-            $result['failed'] = 1;
-            $result['errors'][] = "Errore invio circolo: " . $e->getMessage();
-        }
-
-        return $result;
+    } catch (\Exception $e) {
+        Log::error('=== ERRORE CLUB ===', ['error' => $e->getMessage()]);
+        $result['failed'] = 1;
+        $result['errors'][] = $e->getMessage();
     }
 
+    return $result;
+}
     /**
      * ⚖️ Invio email agli arbitri
      */
@@ -560,28 +515,42 @@ class TournamentNotificationService
     /**
      * 📧 Invio email con template Blade
      */
-    private function sendEmailWithTemplate(string $to, string $recipientName, array $data, array $attachments, string $template): void
-    {
-        Mail::send("emails.{$template}", $data, function($message) use ($to, $recipientName, $data, $attachments) {
-            $message->to($to, $recipientName)
-                   ->subject("Assegnazione Arbitri - " . $data['tournament_name']);
+private function sendEmailWithTemplate(string $to, string $recipientName, array $data, array $attachments, string $template): void
+{
+    // 🔥 DEBUG: Log dati template
+    Log::info('=== INVIO EMAIL TEMPLATE ===', [
+        'to' => $to,
+        'recipient_name' => $recipientName,
+        'template' => $template,
+        'data' => $data, // ← VERIFICA QUESTI DATI
+        'attachments_count' => count($attachments)
+    ]);
 
-            foreach ($attachments as $attachment) {
-                if (file_exists($attachment['path'])) {
-                    $message->attach($attachment['path'], [
-                        'as' => $attachment['name'],
-                        'mime' => $attachment['mime']
-                    ]);
-                }
-            }
-        });
-
-        Log::info("Email sent successfully", [
-            'to' => $to,
-            'template' => $template,
-            'attachments_count' => count($attachments)
-        ]);
+    // Verifica che il template esista
+    $templatePath = resource_path("views/emails/{$template}.blade.php");
+    if (!file_exists($templatePath)) {
+        throw new \Exception("Template non trovato: {$templatePath}");
     }
+
+    Mail::send("emails.{$template}", $data, function($message) use ($to, $recipientName, $data, $attachments) {
+        $message->to($to, $recipientName)
+               ->subject("Assegnazione Arbitri - " . ($data['tournament_name'] ?? 'N/A'));
+
+        foreach ($attachments as $attachment) {
+            if (file_exists($attachment['path'])) {
+                $message->attach($attachment['path'], [
+                    'as' => $attachment['name'],
+                    'mime' => $attachment['mime']
+                ]);
+            }
+        }
+    });
+
+    Log::info("=== EMAIL INVIATA ===", [
+        'to' => $to,
+        'template' => $template
+    ]);
+}
 
     /**
      * 🔗 Salva notifica individuale

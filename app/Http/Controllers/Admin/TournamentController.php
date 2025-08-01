@@ -332,8 +332,8 @@ foreach ($tournaments->take(5) as $tournament) {
             'tournamentType',
             'zone',
             'club',
-            'assignments.referee',
-            'availabilities.referee'
+            'assignments.user',
+            'availabilities.user'
         ]);
 
         // Get statistics

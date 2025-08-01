@@ -26,7 +26,7 @@ class SeederValidationTest extends TestCase
         $this->artisan('db:seed', ['--class' => 'DatabaseSeeder']);
     }
 
-    /** @test */
+    #[Test]
     public function seeder_creates_correct_number_of_zones()
     {
         $expectedZones = 7;
@@ -43,7 +43,7 @@ class SeederValidationTest extends TestCase
             "Zone codes don't match expected values");
     }
 
-    /** @test */
+    #[Test]
     public function seeder_creates_correct_admin_structure()
     {
         // Verifica Super Admin
@@ -70,7 +70,7 @@ class SeederValidationTest extends TestCase
             "All zones should have an admin");
     }
 
-    /** @test */
+    #[Test]
     public function seeder_maintains_zone_consistency()
     {
         // Verifica che tutti i club appartengano alla zona corretta
@@ -95,7 +95,7 @@ class SeederValidationTest extends TestCase
             "All referees should belong to correct zones");
     }
 
-    /** @test */
+    #[Test]
     public function seeder_creates_valid_tournament_structure()
     {
         // Verifica tipologie tornei
@@ -126,7 +126,7 @@ class SeederValidationTest extends TestCase
             "Tournament zone should match club zone");
     }
 
-    /** @test */
+    #[Test]
     public function seeder_creates_logical_date_sequences()
     {
         // Verifica che start_date <= end_date
@@ -148,7 +148,7 @@ class SeederValidationTest extends TestCase
             "Completed tournaments should be in the past");
     }
 
-    /** @test */
+    #[Test]
     public function seeder_creates_valid_availability_workflow()
     {
         // Verifica che le disponibilità siano solo per tornei aperti
@@ -175,7 +175,7 @@ class SeederValidationTest extends TestCase
             "Only active referees should have availabilities");
     }
 
-    /** @test */
+    #[Test]
     public function seeder_creates_valid_assignment_logic()
     {
         // Verifica che le assegnazioni rispettino min/max arbitri
@@ -208,7 +208,7 @@ class SeederValidationTest extends TestCase
             "Only active referees should have assignments");
     }
 
-    /** @test */
+    #[Test]
     public function seeder_maintains_referential_integrity()
     {
         // Verifica che tutte le foreign key siano valide
@@ -246,7 +246,7 @@ class SeederValidationTest extends TestCase
         $this->assertEquals(0, $orphanedAssignmentTournaments, "All assignments should have valid tournament");
     }
 
-    /** @test */
+    #[Test]
     public function seeder_creates_unique_identifiers()
     {
         // Verifica email univoche
@@ -274,7 +274,7 @@ class SeederValidationTest extends TestCase
         $this->assertEquals($totalClubCodes, $uniqueClubCodes, "All club codes should be unique");
     }
 
-    /** @test */
+    #[Test]
     public function seeder_creates_realistic_distributions()
     {
         // Verifica distribuzione livelli arbitri
@@ -302,7 +302,7 @@ class SeederValidationTest extends TestCase
         $this->assertArrayHasKey('completed', $statusCounts, "Should have completed tournaments");
     }
 
-    /** @test */
+    #[Test]
     public function seeder_creates_testable_scenarios()
     {
         // Scenario 1: Zone con dati completi per testing
@@ -333,7 +333,7 @@ class SeederValidationTest extends TestCase
         $this->assertGreaterThan(0, $assignedTournaments, "Should have tournaments with assignments");
     }
 
-    /** @test */
+    #[Test]
     public function seeder_performance_is_acceptable()
     {
         // Test che il database non sia troppo grande per performance
@@ -357,7 +357,7 @@ class SeederValidationTest extends TestCase
         $this->assertLessThan(1.0, $zoneFilterTime, "Zone-filtered queries should be fast");
     }
 
-    /** @test */
+    #[Test]
     public function seeder_creates_valid_test_credentials()
     {
         // Verifica che esistano le credenziali di test documentate

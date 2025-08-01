@@ -111,7 +111,8 @@ class CompleteWorkflowTest extends TestCase
      * @test
      * Test workflow completo: creazione torneo → disponibilità → assegnazione → notifica
      */
-    public function test_complete_tournament_workflow()
+    #[Test]
+public function test_complete_tournament_workflow()
     {
         // STEP 1: Zone Admin crea torneo
         $this->actingAs($this->zoneAdmin);
@@ -203,7 +204,8 @@ class CompleteWorkflowTest extends TestCase
      * @test
      * Test autorizzazioni per zone
      */
-    public function test_zone_access_restrictions()
+    #[Test]
+public function test_zone_access_restrictions()
     {
         // Crea seconda zona e admin
         $zone2 = Zone::factory()->create(['code' => 'SZR2']);
@@ -232,7 +234,8 @@ class CompleteWorkflowTest extends TestCase
      * @test
      * Test sistema template e notifiche
      */
-    public function test_template_and_notification_system()
+    #[Test]
+public function test_template_and_notification_system()
     {
         $templateService = app(TemplateService::class);
 
@@ -268,7 +271,8 @@ class CompleteWorkflowTest extends TestCase
      * @test
      * Test performance con molti dati
      */
-    public function test_system_performance_with_bulk_data()
+    #[Test]
+public function test_system_performance_with_bulk_data()
     {
         $startTime = microtime(true);
 
@@ -315,7 +319,8 @@ class CompleteWorkflowTest extends TestCase
      * @test
      * Test error handling e resilienza
      */
-    public function test_error_handling_and_resilience()
+    #[Test]
+public function test_error_handling_and_resilience()
     {
         $notificationService = app(NotificationService::class);
 
@@ -347,7 +352,8 @@ class CompleteWorkflowTest extends TestCase
      * @test
      * Test integrità dati durante operazioni
      */
-    public function test_data_integrity_during_operations()
+    #[Test]
+public function test_data_integrity_during_operations()
     {
         $tournament = Tournament::factory()->create([
             'zone_id' => $this->zone->id,

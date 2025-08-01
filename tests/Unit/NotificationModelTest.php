@@ -14,7 +14,7 @@ class NotificationModelTest extends TestCase
 {
     use RefreshDatabase;
 
-    /** @test */
+    #[Test]
     public function notification_can_be_marked_as_sent()
     {
         $notification = Notification::factory()->create(['status' => 'pending']);
@@ -26,7 +26,7 @@ class NotificationModelTest extends TestCase
         $this->assertNull($notification->error_message);
     }
 
-    /** @test */
+    #[Test]
     public function notification_can_be_marked_as_failed()
     {
         $notification = Notification::factory()->create(['status' => 'pending']);
@@ -38,7 +38,7 @@ class NotificationModelTest extends TestCase
         $this->assertEquals(1, $notification->retry_count);
     }
 
-    /** @test */
+    #[Test]
     public function notification_can_check_retry_eligibility()
     {
         $notification = Notification::factory()->create([
@@ -52,7 +52,7 @@ class NotificationModelTest extends TestCase
         $this->assertFalse($notification->canBeRetried());
     }
 
-    /** @test */
+    #[Test]
     public function notification_calculates_priority_correctly()
     {
         $assignment = Assignment::factory()->create();
@@ -67,7 +67,7 @@ class NotificationModelTest extends TestCase
         $this->assertGreaterThanOrEqual(0, $priority);
     }
 
-    /** @test */
+    #[Test]
     public function notification_has_correct_status_labels()
     {
         $notification = Notification::factory()->create(['status' => 'sent']);

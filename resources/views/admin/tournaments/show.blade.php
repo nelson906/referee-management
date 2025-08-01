@@ -485,12 +485,13 @@
                             </a>
                         @endif
 
-                        @if ($tournament->assignments()->count() > 0)
-                            <button onclick="sendNotifications()"
-                                class="block w-full text-center px-4 py-2 border border-transparent rounded-md text-sm font-medium text-white bg-blue-600 hover:bg-blue-700">
-                                Invia Notifiche
-                            </button>
-                        @endif
+<form action="{{ route('admin.tournament-notifications.prepare', $tournament) }}" method="POST">
+    @csrf
+    <button type="submit"
+        class="block w-full text-center px-4 py-2 border border-transparent rounded-md text-sm font-medium text-white bg-green-600 hover:bg-green-700">
+        Salva Notifica
+    </button>
+</form>
 
                         <a href="{{ route('reports.tournament.show', $tournament) }}"
                             class="block w-full text-center px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
@@ -582,11 +583,11 @@
             }
 
             // Send notifications
-function sendNotifications() {
-    if (confirm('Inviare le notifiche a tutti gli arbitri assegnati?')) {
-        window.location.href = '{{ route("admin.tournaments.show-assignment-form", $tournament) }}';
-    }
-}
+// function sendNotifications() {
+//     if (confirm('Inviare le notifiche a tutti gli arbitri assegnati?')) {
+//         window.location.href = '{{ route("admin.tournaments.show-assignment-form", $tournament) }}';
+//     }
+// }
 
         </script>
     @endpush

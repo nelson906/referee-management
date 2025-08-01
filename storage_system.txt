@@ -1,0 +1,31 @@
+/Users/iMac/Sites/referee-management/storage/app/public/
+├── convocationi
+│   ├── CRC
+│   │   └── generated
+│   ├── SZR1
+│   │   └── generated
+│   ├── SZR2
+│   │   └── generated
+│   ├── SZR3
+│   │   └── generated
+│   ├── SZR4
+│   │   └── generated
+│   ├── SZR5
+│   │   └── generated
+│   ├── SZR6
+│   │   └── generated
+│   │       ├── MARCO-SIMONE-Trofeo-delle-Regioni---Memorial-Giorgio-Bordoni.docx
+│   │       └── MARE-ROMA-BEBBO-CUP.pdf
+│   ├── SZR7
+│   │   └── generated
+│   └── templates
+├── documents
+│   └── general
+│       └── 2025
+│           └── 07
+│               └── model-assignment_1753808221.txt
+└── letterheads
+    └── logos
+        └── vcZDZQQWs3POftplPTyXoh7rBXLbubKiriMw7shr.png
+
+25 directories, 4 files
