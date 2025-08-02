@@ -7,6 +7,7 @@ use App\Models\Notification;
 use App\Models\Tournament;
 use App\Models\TournamentNotification;
 use App\Services\FileStorageService;
+use App\Services\NotificationService;
 use App\Services\DocumentGenerationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -24,13 +25,17 @@ class TournamentNotificationController extends Controller
 {
     protected $fileStorage;
     protected $documentService;
+    protected $notificationService;
 
     public function __construct(
         FileStorageService $fileStorage,
-        DocumentGenerationService $documentService
-    ) {
+        DocumentGenerationService $documentService,
+        NotificationService $notificationService
+    )
+    {
         $this->fileStorage = $fileStorage;
         $this->documentService = $documentService;
+        $this->notificationService = $notificationService;
     }
 
     /**
@@ -106,12 +111,6 @@ class TournamentNotificationController extends Controller
      */
     public function store(Request $request, Tournament $tournament)
     {
-        // 🔥 DEBUG: Log inizio
-        Log::info('=== INIZIO STORE CONTROLLER ===', [
-            'tournament_id' => $tournament->id,
-            'request_data' => $request->all(),
-            'user_id' => auth()->id()
-        ]);
 
         $validator = Validator::make($request->all(), [
             'email_template' => 'required|string',
@@ -127,17 +126,6 @@ class TournamentNotificationController extends Controller
             return redirect()->back()->withErrors($validator)->withInput();
         }
 
-        // 🔥 DEBUG: Log prima del service
-        Log::info('=== CHIAMATA SERVICE ===', [
-            'options' => [
-                'email_template' => $request->email_template,
-                'include_attachments' => $request->boolean('include_attachments', true),
-                'send_to_club' => $request->boolean('send_to_club', true),
-                'send_to_referees' => $request->boolean('send_to_referees', true),
-                'send_to_institutional' => $request->boolean('send_to_institutional', true),
-                'sent_by' => auth()->id()
-            ]
-        ]);
 
         DB::beginTransaction();
         try {
@@ -151,24 +139,13 @@ class TournamentNotificationController extends Controller
                 'sent_by' => auth()->id()
             ]);
 
-            // 🔥 DEBUG: Log risultato service
-            Log::info('=== RISULTATO SERVICE ===', ['result' => $result]);
-
             DB::commit();
-
-            Log::info('=== COMMIT SUCCESSFUL ===');
 
             return redirect()->route('admin.tournament-notifications.index')
                 ->with('success', "✅ Test completato");
         } catch (\Exception $e) {
             DB::rollBack();
 
-            Log::error('=== ERRORE CONTROLLER ===', [
-                'error' => $e->getMessage(),
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
-                'trace' => $e->getTraceAsString()
-            ]);
 
             return redirect()->back()->withInput()
                 ->with('error', 'Errore: ' . $e->getMessage());
@@ -231,19 +208,19 @@ class TournamentNotificationController extends Controller
         $docxPath = $this->fileStorage->storeInZone($docxData, $tournament, 'docx');
 
 
-Log::info('PDF Path: ' . $pdfPath);
-Log::info('DOCX Path: ' . $docxPath);
+        Log::info('PDF Path: ' . $pdfPath);
+        Log::info('DOCX Path: ' . $docxPath);
 
         $attachmentsPaths = [
             storage_path('app/public/' . $pdfPath),
             storage_path('app/public/' . $docxPath)
         ];
-Log::info('Attachments array:', $attachmentsPaths);
+        Log::info('Attachments array:', $attachmentsPaths);
 
         // 2. INVIA AGLI ARBITRI (con PDF)
         foreach ($tournament->assignments as $assignment) {
-    Log::info('Sending to referee: ' . $assignment->user->email);
-    Log::info('With attachment: ' . $attachmentsPaths[0]);
+            Log::info('Sending to referee: ' . $assignment->user->email);
+            Log::info('With attachment: ' . $attachmentsPaths[0]);
             Mail::to($assignment->user->email)
                 ->send(new RefereeAssignmentMail($assignment, $tournament, [$attachmentsPaths[0]]));
 
@@ -267,7 +244,7 @@ Log::info('Attachments array:', $attachmentsPaths);
         // 3. INVIA AL CIRCOLO (con PDF + DOCX)
         if ($tournament->club->email) {
             Mail::to($tournament->club->email)
-             ->send(new ClubNotificationMail($tournament, $attachmentsPaths));
+                ->send(new ClubNotificationMail($tournament, $attachmentsPaths));
 
             Notification::create([
                 'recipient_type' => 'club',
