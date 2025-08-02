@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use App\Mail\RefereeAssignmentMail;
 use App\Mail\ClubNotificationMail;
+use App\Mail\InstitutionalNotificationMail;
 use Carbon\Carbon;
 
 
@@ -213,54 +214,158 @@ class TournamentNotificationController extends Controller
     }
 
     /**
-     * SEND - Invia email con allegati
+     * Send notifications with correct recipients
      */
     public function send(TournamentNotification $notification)
     {
-        $tournament = Tournament::with(['club.zone', 'assignments.user'])->find($notification->tournament_id);
+        $tournament = Tournament::with(['club.zone', 'assignments.user', 'tournamentType'])->find($notification->tournament_id);
         $sent = 0;
+        $attachments = [];
 
-        // 1. Invia agli arbitri (con PDF se disponibile)
+        // 1. GENERA DOCUMENTI
+        // PDF Convocazione
+        $pdfPath = $this->documentService->generateConvocationPDF($tournament);
+
+        // DOCX Facsimile per circolo
+        $docxData = $this->documentService->generateClubDocument($tournament);
+        $docxPath = $this->fileStorage->storeInZone($docxData, $tournament, 'docx');
+
+
+Log::info('PDF Path: ' . $pdfPath);
+Log::info('DOCX Path: ' . $docxPath);
+
+        $attachmentsPaths = [
+            storage_path('app/public/' . $pdfPath),
+            storage_path('app/public/' . $docxPath)
+        ];
+Log::info('Attachments array:', $attachmentsPaths);
+
+        // 2. INVIA AGLI ARBITRI (con PDF)
         foreach ($tournament->assignments as $assignment) {
+    Log::info('Sending to referee: ' . $assignment->user->email);
+    Log::info('With attachment: ' . $attachmentsPaths[0]);
             Mail::to($assignment->user->email)
-                ->send(new RefereeAssignmentMail($assignment, $tournament));
+                ->send(new RefereeAssignmentMail($assignment, $tournament, [$attachmentsPaths[0]]));
+
+
+            // Crea record notifica individuale
+            Notification::create([
+                'assignment_id' => $assignment->id,
+                'recipient_type' => 'referee',
+                'recipient_email' => $assignment->user->email,
+                'recipient_name' => $assignment->user->name,
+                'subject' => "Convocazione {$assignment->role} - {$tournament->name}",
+                'body' => 'Convocazione ufficiale in allegato',
+                'status' => 'sent',
+                'sent_at' => now(),
+                'tournament_id' => $tournament->id
+            ]);
+
             $sent++;
         }
-        // 2. Invia al circolo (con DOCX facsimile)
+
+        // 3. INVIA AL CIRCOLO (con PDF + DOCX)
         if ($tournament->club->email) {
-            $attachments = [];
+            Mail::to($tournament->club->email)
+             ->send(new ClubNotificationMail($tournament, $attachmentsPaths));
 
-            // Allega facsimile Word
-            $clubDocPath = $this->fileStorage->getClubLetterPath($tournament);
-            if (Storage::exists($clubDocPath)) {
-                $attachments[] = storage_path('app/public/' . $clubDocPath);
-            }
+            Notification::create([
+                'recipient_type' => 'club',
+                'recipient_email' => $tournament->club->email,
+                'recipient_name' => $tournament->club->name,
+                'subject' => "Arbitri Assegnati - {$tournament->name}",
+                'body' => 'Comunicazione arbitri assegnati',
+                'status' => 'sent',
+                'sent_at' => now(),
+                'tournament_id' => $tournament->id
+            ]);
 
-            Mail::to($tournament->club->email)->send(new ClubNotificationMail($tournament, $attachments));
             $sent++;
         }
 
-        // 3. Aggiorna stato
+        // 4. DESTINATARI ISTITUZIONALI
+        $institutionalRecipients = $this->getInstitutionalRecipients($tournament);
+
+        foreach ($institutionalRecipients as $recipient) {
+            Mail::to($recipient['email'])
+                ->send(new InstitutionalNotificationMail($tournament, $recipient['type']));
+
+            Notification::create([
+                'recipient_type' => 'institutional',
+                'recipient_email' => $recipient['email'],
+                'recipient_name' => $recipient['name'],
+                'subject' => "[{$recipient['type']}] {$tournament->name}",
+                'body' => 'Notifica istituzionale',
+                'status' => 'sent',
+                'sent_at' => now(),
+                'tournament_id' => $tournament->id
+            ]);
+
+            $sent++;
+        }
+
+        // 5. AGGIORNA STATO
         $notification->update([
             'status' => 'sent',
             'sent_at' => now(),
             'total_recipients' => $sent,
-            'details' => [                    // QUESTO per i conteggi
+            'details' => [
                 'sent' => $sent,
                 'arbitri' => $tournament->assignments->count(),
-                'club' => 1
+                'club' => 1,
+                'institutional' => count($institutionalRecipients)
             ],
-            'templates_used' => [             // QUESTO per i template
-                'club' => 'facsimile_convocazione_v1',
-                'referee' => 'convocazione_arbitro_v1',
-                'institutional' => null
+            'templates_used' => [
+                'club' => 'tournament_assignment_generic',
+                'referee' => 'tournament_assignment_generic',
+                'institutional' => 'institutional_notification'
+            ],
+            'attachments' => [
+                'convocation' => basename($pdfPath),
+                'club_letter' => basename($docxPath)
             ]
         ]);
 
         return redirect()->route('admin.tournament-notifications.index')
-            ->with('success', "Inviate {$sent} notifiche");
+            ->with('success', "Inviate {$sent} notifiche con allegati");
     }
 
+    /**
+     * Get institutional recipients based on tournament type
+     */
+    private function getInstitutionalRecipients(Tournament $tournament): array
+    {
+        $recipients = [];
+
+        // Ufficio Campionati sempre
+        $recipients[] = [
+            'email' => config('golf.emails.ufficio_campionati', 'campionati@federgolf.it'),
+            'name' => 'Ufficio Campionati FIG',
+            'type' => 'COORDINAMENTO'
+        ];
+
+        if ($tournament->is_national || $tournament->tournamentType->is_national) {
+            // Per tornei nazionali
+
+            // SZR competente per conoscenza
+            $recipients[] = [
+                'email' => "szr{$tournament->zone_id}@federgolf.it",
+                'name' => "SZR {$tournament->zone->name}",
+                'type' => 'CONOSCENZA'
+            ];
+        } else {
+            // Per tornei zonali
+
+            // CRC Regionale per conoscenza
+            $recipients[] = [
+                'email' => 'crc@federgolf.it',
+                'name' => 'CRC - Comitato Regionale',
+                'type' => 'CONOSCENZA'
+            ];
+        }
+
+        return $recipients;
+    }
 
     public function update(Request $request, TournamentNotification $notification)
     {
@@ -485,7 +590,7 @@ class TournamentNotificationController extends Controller
 
         // Controlla convocazione
         if (isset($attachments['convocation'])) {
-            $path = "convocationi/{$zone}/generated/{$attachments['convocation']}";
+            $path = "convocazioni/{$zone}/generated/{$attachments['convocation']}";
 
             if (Storage::disk('public')->exists($path)) {
                 $convocation = [
@@ -499,7 +604,7 @@ class TournamentNotificationController extends Controller
 
         // Controlla lettera circolo
         if (isset($attachments['club_letter'])) {
-            $path = "convocationi/{$zone}/generated/{$attachments['club_letter']}";
+            $path = "convocazioni/{$zone}/generated/{$attachments['club_letter']}";
 
             if (Storage::disk('public')->exists($path)) {
                 $clubLetter = [
@@ -609,7 +714,7 @@ class TournamentNotificationController extends Controller
         }
 
         $zone = $this->getZoneFolder($tournament);
-        $path = "convocationi/{$zone}/generated/{$filename}";
+        $path = "convocazioni/{$zone}/generated/{$filename}";
         $fullPath = storage_path('app/public/' . $path);
 
         if (file_exists($fullPath)) {

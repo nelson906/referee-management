@@ -16,7 +16,7 @@ class FileStorageService
         $zone = $this->getZoneFolder($tournament);
         $filename = $fileData['filename'];
 
-        $relativePath = "convocationi/{$zone}/generated/{$filename}";
+        $relativePath = "convocazioni/{$zone}/generated/{$filename}";
 
         Storage::disk('public')->put($relativePath, file_get_contents($fileData['path']));
 
@@ -34,7 +34,7 @@ class FileStorageService
     {
         $zone = $this->getZoneFolder($tournament);
         $filename = Str::slug($tournament->club->name) . '-' . Str::slug($tournament->name) . '.docx';
-        return "convocationi/{$zone}/generated/{$filename}";
+        return "convocazioni/{$zone}/generated/{$filename}";
     }
 
     /**

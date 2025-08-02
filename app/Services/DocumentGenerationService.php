@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
 use Illuminate\Support\Str;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class DocumentGenerationService
 {
@@ -51,7 +52,6 @@ class DocumentGenerationService
             ]);
 
             return $path;
-
         } catch (\Exception $e) {
             Log::error('Error generating convocation letter', [
                 'assignment_id' => $assignment->id,
@@ -76,8 +76,11 @@ class DocumentGenerationService
             $this->addLetterhead($section, $tournament->zone_id);
 
             // Contenuto
-            $section->addText('CONVOCAZIONE ARBITRI', ['bold' => true, 'size' => 14],
-                ['alignment' => \PhpOffice\PhpWord\SimpleType\Jc::CENTER]);
+            $section->addText(
+                'CONVOCAZIONE ARBITRI',
+                ['bold' => true, 'size' => 14],
+                ['alignment' => \PhpOffice\PhpWord\SimpleType\Jc::CENTER]
+            );
             $section->addTextBreak(2);
 
             $section->addText("Torneo: {$tournament->name}", ['bold' => true]);
@@ -94,7 +97,6 @@ class DocumentGenerationService
 
             $filename = $this->generateFilename('convocation_tournament', $tournament);
             return $this->saveDocumentToZone($phpWord, $filename, $tournament);
-
         } catch (\Exception $e) {
             Log::error('Error generating tournament convocation: ' . $e->getMessage());
             throw $e;
@@ -130,7 +132,6 @@ class DocumentGenerationService
             ]);
 
             return $path;
-
         } catch (\Exception $e) {
             Log::error('Error generating club letter', [
                 'tournament_id' => $tournament->id,
@@ -260,7 +261,7 @@ class DocumentGenerationService
      */
     protected function getClubLetterVariables(Tournament $tournament): array
     {
-        $refereeList = $tournament->assignments->map(function($assignment) {
+        $refereeList = $tournament->assignments->map(function ($assignment) {
             return "- {$assignment->user->name} ({$assignment->role})";
         })->implode("\n");
 
@@ -351,8 +352,11 @@ class DocumentGenerationService
     {
         if (!isset($variables['referee_name'])) {
             // Contenuto per lettera circolo
-            $section->addText('COMUNICAZIONE ARBITRI ASSEGNATI', ['bold' => true, 'size' => 14],
-                ['alignment' => \PhpOffice\PhpWord\SimpleType\Jc::CENTER]);
+            $section->addText(
+                'COMUNICAZIONE ARBITRI ASSEGNATI',
+                ['bold' => true, 'size' => 14],
+                ['alignment' => \PhpOffice\PhpWord\SimpleType\Jc::CENTER]
+            );
             $section->addTextBreak(2);
 
             $section->addText("Gentile {$variables['club_name']},");
@@ -365,8 +369,11 @@ class DocumentGenerationService
         }
 
         // Contenuto per convocazione arbitro
-        $section->addText('CONVOCAZIONE ARBITRO', ['bold' => true, 'size' => 14],
-            ['alignment' => \PhpOffice\PhpWord\SimpleType\Jc::CENTER]);
+        $section->addText(
+            'CONVOCAZIONE ARBITRO',
+            ['bold' => true, 'size' => 14],
+            ['alignment' => \PhpOffice\PhpWord\SimpleType\Jc::CENTER]
+        );
         $section->addTextBreak(2);
 
         $section->addText("Gentile {$variables['referee_name']},", ['bold' => true]);
@@ -455,5 +462,59 @@ class DocumentGenerationService
         }
 
         return "{$type}_{$date}.docx";
+    }
+
+    /**
+     * Generate convocation PDF for tournament
+     */
+    public function generateConvocationPDF(Tournament $tournament): string
+    {
+        try {
+            $tournament->load(['club', 'zone', 'tournamentType', 'assignments.user']);
+
+            // Prepara dati per la view
+            $data = [
+                'tournament' => $tournament,
+                'letterhead' => $this->getLetterhead($tournament->zone_id),
+                'referees' => $tournament->assignments->map(function ($assignment) {
+                    return [
+                        'name' => $assignment->user->name,
+                        'role' => $assignment->role,
+                        'code' => $assignment->user->referee_code,
+                        'level' => $assignment->user->level
+                    ];
+                }),
+                'generated_at' => Carbon::now()->format('d/m/Y H:i')
+            ];
+
+            // Genera PDF usando una view Blade
+            $pdf = Pdf::loadView('documents.convocation-pdf', $data);
+            $pdf->setPaper('A4', 'portrait');
+
+            // Nome file
+            $filename = "convocazione_" . date('Ymd') . "_" . Str::slug($tournament->name) . ".pdf";
+
+            // Salva nella zona corretta
+            $zone = $this->fileStorage->getZoneFolder($tournament);
+            $relativePath = "convocazioni/{$zone}/generated/{$filename}";
+
+            Storage::disk('public')->put($relativePath, $pdf->output());
+
+            return $relativePath;
+        } catch (\Exception $e) {
+            Log::error('Error generating convocation PDF: ' . $e->getMessage());
+            throw $e;
+        }
+    }
+
+    /**
+     * Get letterhead for zone
+     */
+    protected function getLetterhead($zoneId)
+    {
+        return Letterhead::where('zone_id', $zoneId)
+            ->where('is_active', true)
+            ->orderBy('is_default', 'desc')
+            ->first();
     }
 }

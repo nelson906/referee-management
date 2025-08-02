@@ -64,8 +64,8 @@ public function send(TournamentNotification $notification)
     private function generateDocuments(Tournament $tournament): array
     {
         $zone = $tournament->zone;
-        $templateBasePath = storage_path('app/public/convocationi/templates/');
-        $generatedBasePath = storage_path("app/public/convocationi/SZR{$zone->id}/generated/");
+        $templateBasePath = storage_path('app/public/convocazioni/templates/');
+        $generatedBasePath = storage_path("app/public/convocazioni/SZR{$zone->id}/generated/");
 
         // Crea directory se non esiste
         if (!file_exists($generatedBasePath)) {

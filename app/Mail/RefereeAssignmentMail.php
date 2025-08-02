@@ -18,13 +18,26 @@ class RefereeAssignmentMail extends Mailable
     /**
      * Create a new message instance.
      */
-    public function __construct($assignment, Tournament $tournament)
+public function __construct($assignment, Tournament $tournament, array $attachmentPaths = [])
     {
         $this->assignment = $assignment;
         $this->tournament = $tournament;
+        $this->attachmentPaths = $attachmentPaths;  // Usa un nome diverso
+
     }
 
+public function attachments(): array
+{
+    $mailAttachments = [];
 
+    foreach ($this->attachmentPaths as $path) {
+        if (file_exists($path)) {
+            $mailAttachments[] = \Illuminate\Mail\Mailables\Attachment::fromPath($path);
+        }
+    }
+
+    return $mailAttachments;
+}
 public function build()
 {
     return $this->subject("Convocazione {$this->assignment->role} - {$this->tournament->name}")
@@ -45,5 +58,7 @@ public function build()
                 'zone_email' => "szr{$this->tournament->zone_id}@federgolf.it",
                 'club_email' => $this->tournament->club->email
             ]);
-}}
+}
 
+
+}

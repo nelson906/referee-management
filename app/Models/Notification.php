@@ -19,14 +19,13 @@ class Notification extends Model
         'status',
         'priority',
         'sent_at',
-            'recipient_name', // ✅ ADDED: Missing field
-
+        'recipient_name', // ✅ ADDED: Missing field
+        'tournament_id',
         'error_message',
         'attachments',
         'retry_count',
         'metadata',
-        'attachments'
-];
+    ];
 
     protected $casts = [
         'sent_at' => 'datetime',

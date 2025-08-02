@@ -190,7 +190,7 @@
         </div>
 
         <!-- 📧 Lista Dettagliata Notifiche Individuali -->
-        <div class="bg-white rounded-lg shadow-md">
+        {{-- <div class="bg-white rounded-lg shadow-md">
             <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
                 <h5 class="text-lg font-semibold mb-0">📧 Dettaglio Notifiche Inviate
                     ({{ $individualNotifications->count() }})</h5>
@@ -353,7 +353,7 @@
                     </div>
                 @endif
             </div>
-        </div>
+        </div> --}}
 
         <!-- ⚡ Azioni Principali -->
         <div class="bg-white rounded-lg shadow-md mt-6">
