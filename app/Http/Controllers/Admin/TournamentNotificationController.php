@@ -702,28 +702,58 @@ class TournamentNotificationController extends Controller
     }
 
     // Per caricare file modificato
-    public function uploadDocument(Request $request, TournamentNotification $notification, $type)
-    {
-        $file = $request->file('document');
-        $tournament = $notification->tournament;
+ public function uploadDocument(Request $request, TournamentNotification $notification, $type)
+{
+    $request->validate([
+        'document' => 'required|file|mimes:doc,docx|max:10240'
+    ]);
 
-        // Salva usando la struttura corretta
-        $fileData = [
-            'path' => $file->getRealPath(),
-            'filename' => $notification->attachments[$type] ?? $this->generateFilename($type, $tournament),
-            'type' => $type
-        ];
+    $file = $request->file('document');
+    $tournament = $notification->tournament;
 
-        $path = $this->fileStorage->storeInZone($fileData, $tournament, 'docx');
+    // Gestisci attachments come stringa o array (NON attachmentPaths!)
+    $attachments = is_string($notification->attachments) ?
+        json_decode($notification->attachments, true) : $notification->attachments;
+    $attachments = $attachments ?? [];
 
-        // Aggiorna attachments
-        $attachments = is_string($notification->attachments) ?
-            json_decode($notification->attachments, true) : $notification->attachments;
-        $attachments[$type] = basename($path);
-        $notification->update(['attachments' => $attachments]);
+    // Usa il DocumentGenerationService che già hai
+    $filename = isset($attachments[$type]) ?
+        $attachments[$type] :
+        $this->documentService->generateFilename($type, $tournament);
 
-        return redirect()->back()->with('success', 'Documento caricato');
-    }
+    // Prepara dati per storage
+    $fileData = [
+        'path' => $file->getRealPath(),
+        'filename' => $filename,
+        'type' => $type
+    ];
+
+    Log::info('Upload document - BEFORE', [
+        'type' => $type,
+        'current_attachments' => $notification->attachments,
+        'filename_to_use' => $filename
+    ]);
+
+    $path = $this->fileStorage->storeInZone($fileData, $tournament, 'docx');
+
+    Log::info('Upload document - AFTER storage', [
+        'stored_path' => $path,
+        'basename' => basename($path)
+    ]);
+
+    // Aggiorna attachments nel database
+    $attachments[$type] = basename($path);
+    $notification->update(['attachments' => json_encode($attachments)]);
+
+    // Ricarica per verificare
+    $notification->refresh();
+
+    Log::info('Upload document - AFTER update', [
+        'updated_attachments' => $notification->attachments
+    ]);
+
+    return redirect()->back()->with('success', 'Documento caricato con successo');
+}
 
 
     /**

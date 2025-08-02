@@ -15,10 +15,10 @@ class NotificationService
 
     protected $documentService;
 
-public function __construct(DocumentGenerationService $documentService)
-{
-    $this->documentService = $documentService;
-}
+    public function __construct(DocumentGenerationService $documentService)
+    {
+        $this->documentService = $documentService;
+    }
 
     /**
      * Send assignment notification to referee.
@@ -135,33 +135,33 @@ public function __construct(DocumentGenerationService $documentService)
      */
 
     private function sendToInstitutional(Tournament $tournament, array $data, array &$results)
-{
-    // Solo se l'utente ha selezionato institutional come destinatario
-    // E ha fornito email specifiche in $data['institutional_emails']
+    {
+        // Solo se l'utente ha selezionato institutional come destinatario
+        // E ha fornito email specifiche in $data['institutional_emails']
 
-    if (empty($data['institutional_emails'])) {
-        $results['errors'][] = "Nessun indirizzo istituzionale selezionato";
-        return;
-    }
+        if (empty($data['institutional_emails'])) {
+            $results['errors'][] = "Nessun indirizzo istituzionale selezionato";
+            return;
+        }
 
-    $emails = explode(',', $data['institutional_emails']);
+        $emails = explode(',', $data['institutional_emails']);
 
-    foreach ($emails as $email) {
-        $email = trim($email);
-        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) continue;
+        foreach ($emails as $email) {
+            $email = trim($email);
+            if (!filter_var($email, FILTER_VALIDATE_EMAIL)) continue;
 
-        try {
-            $this->notificationService->sendCustomNotification($email, $tournament, [
-                'custom_subject' => $data['subject'],
-                'custom_message' => $data['message'],
-            ]);
-            $results['sent']++;
-        } catch (\Exception $e) {
-            $results['failed']++;
-            $results['errors'][] = "Errore invio a {$email}: " . $e->getMessage();
+            try {
+                $this->notificationService->sendCustomNotification($email, $tournament, [
+                    'custom_subject' => $data['subject'],
+                    'custom_message' => $data['message'],
+                ]);
+                $results['sent']++;
+            } catch (\Exception $e) {
+                $results['failed']++;
+                $results['errors'][] = "Errore invio a {$email}: " . $e->getMessage();
+            }
         }
     }
-}
 
     /**
      * Send notification to custom email.
@@ -293,34 +293,34 @@ public function __construct(DocumentGenerationService $documentService)
     /**
      * Get tournament attachments.
      */
-// Nel getAttachments(), sostituisci con:
-private function getAttachments(Tournament $tournament): array
-{
-    $attachments = [];
 
-    try {
-        // Usa app() per risolvere il service
-        $documentService = app(DocumentGenerationService::class);
+    private function getAttachments(Tournament $tournament): array
+    {
+        $attachments = [];
 
-        foreach ($tournament->assignments as $assignment) {
-            \Log::info('Generando convocazione per assignment', ['assignment_id' => $assignment->id]);
-            $convocationPath = $documentService->generateConvocationLetter($assignment);
-            if ($convocationPath) {
-                $attachments['convocation_' . $assignment->id] = $convocationPath;
-                \Log::info('Convocazione generata', ['path' => $convocationPath]);
+        try {
+            // Usa app() per risolvere il service
+            $documentService = app(DocumentGenerationService::class);
+
+            foreach ($tournament->assignments as $assignment) {
+                \Log::info('Generando convocazione per assignment', ['assignment_id' => $assignment->id]);
+                $convocationPath = $documentService->generateConvocationLetter($assignment);
+                if ($convocationPath) {
+                    $attachments['convocation_' . $assignment->id] = $convocationPath;
+                    \Log::info('Convocazione generata', ['path' => $convocationPath]);
+                }
             }
+
+            $clubLetterPath = $documentService->generateClubLetter($tournament);
+            if ($clubLetterPath) {
+                $attachments['club_letter'] = $clubLetterPath;
+            }
+        } catch (\Exception $e) {
+            \Log::error('Errore generazione allegati', [
+                'error' => $e->getMessage()
+            ]);
         }
 
-        $clubLetterPath = $documentService->generateClubLetter($tournament);
-        if ($clubLetterPath) {
-            $attachments['club_letter'] = $clubLetterPath;
-        }
-
-    } catch (\Exception $e) {
-        \Log::error('Errore generazione allegati', [
-            'error' => $e->getMessage()
-        ]);
+        return $attachments;
     }
-
-    return $attachments;
-}}
+}

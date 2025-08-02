@@ -445,7 +445,7 @@ class DocumentGenerationService
     /**
      * Generate filename
      */
-    protected function generateFilename(string $type, $model): string
+    public function generateFilename(string $type, $model): string
     {
         $date = Carbon::now()->format('Ymd');
 

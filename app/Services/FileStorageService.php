@@ -11,21 +11,26 @@ class FileStorageService
     /**
      * Salva file nella zona corretta
      */
-    public function storeInZone($fileData, Tournament $tournament, $extension)
-    {
-        $zone = $this->getZoneFolder($tournament);
-        $filename = $fileData['filename'];
+public function storeInZone($fileData, Tournament $tournament, $extension)
+{
+    $zone = $this->getZoneFolder($tournament);
+    $filename = $fileData['filename'];
 
-        $relativePath = "convocazioni/{$zone}/generated/{$filename}";
+    $relativePath = "convocazioni/{$zone}/generated/{$filename}";
 
-        Storage::disk('public')->put($relativePath, file_get_contents($fileData['path']));
+    // PRIMA leggi il contenuto
+    $content = file_get_contents($fileData['path']);
 
-        if (file_exists($fileData['path'])) {
-            unlink($fileData['path']);
-        }
+    // POI salva
+    Storage::disk('public')->put($relativePath, $content);
 
-        return $relativePath;
+    // INFINE elimina il file temporaneo
+    if (file_exists($fileData['path'])) {
+        unlink($fileData['path']);
     }
+
+    return $relativePath;
+}
 
     /**
      * Ottieni path per lettera circolo
