@@ -150,10 +150,11 @@ class DocumentGenerationService
         $this->configureDocument($phpWord);
 
         $section = $phpWord->addSection();
-        $this->addLetterhead($section, $tournament->zone_id);
+        // $this->addLetterhead($section, $tournament->zone_id);
+        $section->addText("facsimile comunicazione di convocazione", ['bold' => true, 'size' => 14, 'color' => 'red']);
 
         // Contenuto semplificato
-        $section->addText("COMUNICAZIONE ARBITRI", ['bold' => true, 'size' => 14]);
+        // $section->addText("COMUNICAZIONE ARBITRI", ['bold' => true, 'size' => 14]);
         $section->addTextBreak();
 
         $section->addText("Circolo: {$tournament->club->name}");
@@ -166,7 +167,7 @@ class DocumentGenerationService
             $section->addText("- {$assignment->user->name} ({$assignment->role})");
         }
 
-        $filename = Str::slug($tournament->club->name) . '-' . Str::slug($tournament->name) . '.docx';
+        $filename = 'facsimile-' . Str::slug($tournament->club->name) . '-' . Str::slug($tournament->name) . '.docx';
         $tempPath = storage_path('app/temp/' . $filename);
 
         if (!is_dir(dirname($tempPath))) {
@@ -452,7 +453,7 @@ class DocumentGenerationService
         if ($model instanceof Tournament) {
             $tournament = preg_replace('/[^a-zA-Z0-9_-]/', '_', $model->name);
             $tournament = trim($tournament, '_');
-            return "{$type}_{$date}_{$tournament}.docx";
+            return "{$type}_{$tournament}.docx";
         }
 
         if ($model instanceof Assignment) {
@@ -492,7 +493,7 @@ class DocumentGenerationService
             $pdf->setPaper('A4', 'portrait');
 
             // Nome file
-            $filename = "convocazione_" . date('Ymd') . "_" . Str::slug($tournament->name) . ".pdf";
+            $filename = "convocazione_" . Str::slug($tournament->name) . ".pdf";
 
             // Salva nella zona corretta
             $zone = $this->fileStorage->getZoneFolder($tournament);

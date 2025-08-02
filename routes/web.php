@@ -135,6 +135,10 @@ Route::middleware(['auth'])->group(function () {
             Route::post('maintenance', [SuperAdmin\SystemController::class, 'toggleMaintenance'])->name('maintenance');
         });
     });
+    // // In web.php
+    // Route::get('admin/tournament-notifications/find-by-tournament/{tournament}',
+    //     [TournamentNotificationController::class, 'findByTournament'])
+    //     ->name('admin.tournament-notifications.find-by-tournament');
 
     // =================================================================
     // 🔧 ADMIN ROUTES (Zone Admin & CRC Admin) + Super Admin Access
@@ -275,6 +279,7 @@ Route::middleware(['auth'])->group(function () {
         // 🏆 TOURNAMENT NOTIFICATIONS SYSTEM (Nuovo)
         Route::prefix('tournament-notifications')->name('tournament-notifications.')->group(function () {
             Route::get('/', [Admin\TournamentNotificationController::class, 'index'])->name('index');
+            Route::post('/{tournament}/store', [Admin\TournamentNotificationController::class, 'store'])->name('store');
             Route::post('/{tournament}/prepare', [Admin\TournamentNotificationController::class, 'prepare'])->name('prepare');
             Route::post('/{notification}/send', [Admin\TournamentNotificationController::class, 'send'])->name('send');
             Route::post('/{notification}/resend', [Admin\TournamentNotificationController::class, 'resend'])->name('resend');
@@ -288,6 +293,7 @@ Route::middleware(['auth'])->group(function () {
             Route::post('/{notification}/generate/{type}', [Admin\TournamentNotificationController::class, 'generateDocument'])->name('generate-document');
             Route::post('/{notification}/regenerate/{type}', [Admin\TournamentNotificationController::class, 'regenerateDocument'])->name('regenerate-document');
             Route::delete('/{notification}/document/{type}', [Admin\TournamentNotificationController::class, 'deleteDocument'])->name('delete-document');
+            Route::get('/find-by-tournament/{tournament}', [TournamentNotificationController::class, 'findByTournament'])->name('find-by-tournament');
         });
 
         // Settings

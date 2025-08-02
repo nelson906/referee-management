@@ -143,14 +143,28 @@
                                                     clip-rule="evenodd" />
                                             </svg>
                                         </div>
-                                        <div class="ml-3">
-                                            <p class="text-sm font-medium text-yellow-800">Nessun documento</p>
-                                            <p class="text-xs text-yellow-600">
-                                                <a href="{{ route('tournaments.show', $tournament) }}" class="underline">
-                                                    Genera i documenti prima
-                                                </a>
-                                            </p>
-                                        </div>
+                                        @if (!$documentStatus['hasConvocation'] && !$documentStatus['hasClubLetter'])
+                                            <div class="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                                                <div class="flex">
+                                                    <div class="flex-shrink-0">
+                                                        <svg class="w-5 h-5 text-yellow-400" viewBox="0 0 20 20"
+                                                            fill="currentColor">
+                                                            <path fill-rule="evenodd" d="..." clip-rule="evenodd" />
+                                                        </svg>
+                                                    </div>
+                                                    <div class="ml-3">
+                                                        <p class="text-sm font-medium text-yellow-800">Nessun documento</p>
+                                                        <p class="text-xs text-yellow-600">
+                                                            <a href="javascript:void(0)"
+                                                                onclick="openDocumentManagerModal({{ $tournament->id }})"
+                                                                class="underline">
+                                                                Genera o gestisci documenti
+                                                            </a>
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        @endif
                                     </div>
                                 </div>
                             @endif
@@ -274,9 +288,9 @@
                                                 $tournament->club->name .
                                                 '.
 
-                                        Si prega di prendere nota degli arbitri assegnati e di procedere con le comunicazioni necessarie.
+                                                                                Si prega di prendere nota degli arbitri assegnati e di procedere con le comunicazioni necessarie.
 
-                                        Cordiali saluti',
+                                                                                Cordiali saluti',
                                         ) }}</textarea>
                                     @error('message')
                                         <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
@@ -442,50 +456,53 @@
                                     </div>
                                 @endif
                                 {{-- Institutional Emails --}}
-{{-- ✅ Email Istituzionali - CORRETTA --}}
-@if ($groupedEmails && $groupedEmails->count() > 0)
-    <div>
-        <label class="block text-sm font-medium text-gray-700 mb-3">
-            📮 Email Istituzionali
-        </label>
-        <div class="space-y-4">
-            @foreach ($groupedEmails as $category => $emails)
-                <div class="border border-gray-200 rounded-lg">
-                    <div class="px-4 py-2 bg-gray-50 border-b border-gray-200">
-                        <h4 class="text-sm font-medium text-gray-900 capitalize">
-                            {{ ucfirst($category) }}
-                        </h4>
-                    </div>
-                    <div class="p-4 space-y-2">
-                        @foreach ($emails as $email)
-                            @if (is_object($email) && isset($email->id))
-                                <div class="flex items-center">
-                                    <input type="checkbox" name="fixed_addresses[]"
-                                        value="{{ $email->id }}"
-                                        id="institutional_{{ $email->id }}"
-                                        {{ $category === 'convocazioni' ? 'checked' : '' }}
-                                        class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded">
+                                {{-- ✅ Email Istituzionali - CORRETTA --}}
+                                @if ($groupedEmails && $groupedEmails->count() > 0)
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-3">
+                                            📮 Email Istituzionali
+                                        </label>
+                                        <div class="space-y-4">
+                                            @foreach ($groupedEmails as $category => $emails)
+                                                <div class="border border-gray-200 rounded-lg">
+                                                    <div class="px-4 py-2 bg-gray-50 border-b border-gray-200">
+                                                        <h4 class="text-sm font-medium text-gray-900 capitalize">
+                                                            {{ ucfirst($category) }}
+                                                        </h4>
+                                                    </div>
+                                                    <div class="p-4 space-y-2">
+                                                        @foreach ($emails as $email)
+                                                            @if (is_object($email) && isset($email->id))
+                                                                <div class="flex items-center">
+                                                                    <input type="checkbox" name="fixed_addresses[]"
+                                                                        value="{{ $email->id }}"
+                                                                        id="institutional_{{ $email->id }}"
+                                                                        {{ $category === 'convocazioni' ? 'checked' : '' }}
+                                                                        class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded">
 
-                                    <label for="institutional_{{ $email->id }}"
-                                        class="ml-2 text-sm text-gray-700">
-                                        <span class="font-medium">{{ $email->name }}</span>
-                                        <span class="text-gray-500">({{ $email->email }})</span>
-                                        @if ($email->receive_all_notifications)
-                                            <span class="text-xs text-blue-600">• Tutte le notifiche</span>
-                                        @endif
-                                    </label>
-                                </div>
-                            @else
-                                {{-- DEBUG: Mostra il tipo di valore non valido --}}
-                                <!-- Email non valida: {{ gettype($email) }} - {{ json_encode($email) }} -->
-                            @endif
-                        @endforeach
-                    </div>
-                </div>
-            @endforeach
-        </div>
-    </div>
-@endif
+                                                                    <label for="institutional_{{ $email->id }}"
+                                                                        class="ml-2 text-sm text-gray-700">
+                                                                        <span
+                                                                            class="font-medium">{{ $email->name }}</span>
+                                                                        <span
+                                                                            class="text-gray-500">({{ $email->email }})</span>
+                                                                        @if ($email->receive_all_notifications)
+                                                                            <span class="text-xs text-blue-600">• Tutte le
+                                                                                notifiche</span>
+                                                                        @endif
+                                                                    </label>
+                                                                </div>
+                                                            @else
+                                                                {{-- DEBUG: Mostra il tipo di valore non valido --}}
+                                                                <!-- Email non valida: {{ gettype($email) }} - {{ json_encode($email) }} -->
+                                                            @endif
+                                                        @endforeach
+                                                    </div>
+                                                </div>
+                                            @endforeach
+                                        </div>
+                                    </div>
+                                @endif
                                 <!-- Email Aggiuntive -->
                                 <div>
                                     <label class="block text-sm font-medium text-gray-700 mb-3">
@@ -535,6 +552,301 @@
             </div>
         </div>
     </div>
+    {{-- Modal Gestione Documenti --}}
+    <div id="documentManagerModal"
+        class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-50">
+        <div class="relative top-10 mx-auto p-5 border w-11/12 max-w-4xl shadow-lg rounded-md bg-white">
+            <div class="flex justify-between items-center pb-3 border-b">
+                <h5 class="text-xl font-bold">📄 Gestione Documenti Notifica</h5>
+                <button type="button" onclick="closeModal('documentManagerModal')"
+                    class="text-gray-400 hover:text-gray-600">
+                    <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd"
+                            d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                            clip-rule="evenodd"></path>
+                    </svg>
+                </button>
+            </div>
+
+            <div id="documentManagerContent" class="py-4">
+                {{-- Contenuto caricato dinamicamente --}}
+            </div>
+        </div>
+    </div>
+
+    {{-- Modal Upload Documento --}}
+    <div id="uploadDocumentModal"
+        class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-50">
+        <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <div class="flex justify-between items-center pb-3">
+                <h5 class="text-lg font-bold">📤 Carica Documento Modificato</h5>
+                <button type="button" onclick="closeModal('uploadDocumentModal')" class="text-gray-400">
+                    <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd"
+                            d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                            clip-rule="evenodd"></path>
+                    </svg>
+                </button>
+            </div>
+
+            <form id="uploadDocumentForm" method="POST" enctype="multipart/form-data">
+                @csrf
+                <input type="hidden" name="document_type" id="upload_document_type">
+
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        Seleziona file Word (.docx)
+                    </label>
+                    <input type="file" name="document" required accept=".docx"
+                        class="w-full border rounded px-3 py-2">
+                </div>
+
+                <div class="bg-yellow-50 border border-yellow-200 rounded p-3 mb-4">
+                    <p class="text-sm text-yellow-700">
+                        <i class="fas fa-info-circle mr-1"></i>
+                        Il file caricato sostituirà il documento esistente
+                    </p>
+                </div>
+
+                <div class="flex justify-end space-x-3">
+                    <button type="button" onclick="closeModal('uploadDocumentModal')"
+                        class="px-4 py-2 bg-gray-500 text-white rounded">
+                        Annulla
+                    </button>
+                    <button type="submit" class="px-4 py-2 bg-purple-600 text-white rounded">
+                        <i class="fas fa-upload mr-1"></i> Carica
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <script>
+        function openDocumentManagerModal(tournamentId) {
+            // Cerca se esiste una notifica per questo torneo
+            fetch(`/admin/tournament-notifications/find-by-tournament/${tournamentId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.notification_id) {
+                        openDocumentManager(data.notification_id);
+                    } else {
+                        alert('Nessuna notifica trovata. Creane una prima.');
+                    }
+                });
+        }
+
+        function buildDocumentManagerContent(data) {
+            return `
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="border rounded-lg p-4 ${data.convocation ? 'border-green-200 bg-green-50' : 'border-gray-200'}">
+                <h4 class="font-bold text-lg mb-3 flex items-center">
+                    <i class="fas fa-file-word mr-2 text-blue-600"></i>
+                    Convocazione SZR
+                </h4>
+
+                ${data.convocation ? `
+                        <div class="space-y-3">
+                            <div class="text-sm text-gray-600">
+                                <p><strong>File:</strong> ${data.convocation.filename}</p>
+                                <p><strong>Generato:</strong> ${data.convocation.generated_at}</p>
+                                <p><strong>Dimensione:</strong> ${data.convocation.size}</p>
+                            </div>
+
+                            <div class="flex flex-col space-y-2">
+                                <a href="/admin/tournament-notifications/${data.notification_id}/download/convocation"
+                                   class="bg-green-600 text-white px-4 py-2 rounded text-center hover:bg-green-700">
+                                    <i class="fas fa-download mr-1"></i> Scarica
+                                </a>
+
+                                <button onclick="openUploadModal(${data.notification_id}, 'convocation')"
+                                        class="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700">
+                                    <i class="fas fa-upload mr-1"></i> Sostituisci
+                                </button>
+
+                                <button onclick="regenerateDocument(${data.notification_id}, 'convocation')"
+                                        class="bg-orange-600 text-white px-4 py-2 rounded hover:bg-orange-700">
+                                    <i class="fas fa-redo mr-1"></i> Rigenera
+                                </button>
+
+                                <button onclick="deleteDocument(${data.notification_id}, 'convocation')"
+                                        class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700">
+                                    <i class="fas fa-trash mr-1"></i> Elimina
+                                </button>
+                            </div>
+                        </div>
+                    ` : `
+                        <div class="text-center py-8">
+                            <i class="fas fa-file-excel text-4xl text-gray-300 mb-3"></i>
+                            <p class="text-gray-500 mb-4">Nessun documento presente</p>
+                            <button onclick="generateDocument(${data.notification_id}, 'convocation')"
+                                    class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+                                <i class="fas fa-plus mr-1"></i> Genera Convocazione
+                            </button>
+                        </div>
+                    `}
+            </div>
+
+            <div class="border rounded-lg p-4 ${data.club_letter ? 'border-green-200 bg-green-50' : 'border-gray-200'}">
+                <h4 class="font-bold text-lg mb-3 flex items-center">
+                    <i class="fas fa-building mr-2 text-green-600"></i>
+                    Lettera Circolo
+                </h4>
+
+                ${data.club_letter ? `
+                        <div class="space-y-3">
+                            <div class="text-sm text-gray-600">
+                                <p><strong>File:</strong> ${data.club_letter.filename}</p>
+                                <p><strong>Generato:</strong> ${data.club_letter.generated_at}</p>
+                                <p><strong>Dimensione:</strong> ${data.club_letter.size}</p>
+                            </div>
+
+                            <div class="flex flex-col space-y-2">
+                                <a href="/admin/tournament-notifications/${data.notification_id}/download/club_letter"
+                                   class="bg-green-600 text-white px-4 py-2 rounded text-center hover:bg-green-700">
+                                    <i class="fas fa-download mr-1"></i> Scarica
+                                </a>
+
+                                <button onclick="openUploadModal(${data.notification_id}, 'club_letter')"
+                                        class="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700">
+                                    <i class="fas fa-upload mr-1"></i> Sostituisci
+                                </button>
+
+                                <button onclick="regenerateDocument(${data.notification_id}, 'club_letter')"
+                                        class="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700">
+                                    <i class="fas fa-redo mr-1"></i> Rigenera
+                                </button>
+
+                                <button onclick="deleteDocument(${data.notification_id}, 'club_letter')"
+                                        class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700">
+                                    <i class="fas fa-trash mr-1"></i> Elimina
+                                </button>
+                            </div>
+                        </div>
+                    ` : `
+                        <div class="text-center py-8">
+                            <i class="fas fa-file-excel text-4xl text-gray-300 mb-3"></i>
+                            <p class="text-gray-500 mb-4">Nessun documento presente</p>
+                            <button onclick="generateDocument(${data.notification_id}, 'club_letter')"
+                                    class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
+                                <i class="fas fa-plus mr-1"></i> Genera Lettera
+                            </button>
+                        </div>
+                    `}
+            </div>
+        </div>
+    `;
+        }
+
+        // Funzioni base per modal
+        function openModal(modalId) {
+            document.getElementById(modalId).classList.remove('hidden');
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.add('hidden');
+        }
+
+        // Funzione per aprire modal upload
+        function openUploadModal(notificationId, documentType) {
+            document.getElementById('upload_document_type').value = documentType;
+            document.getElementById('uploadDocumentForm').action =
+                `/admin/tournament-notifications/${notificationId}/upload/${documentType}`;
+            openModal('uploadDocumentModal');
+        }
+
+        // Genera documento
+        function generateDocument(notificationId, type) {
+            if (confirm('Generare il documento?')) {
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = `/admin/tournament-notifications/${notificationId}/generate/${type}`;
+
+                const token = document.createElement('input');
+                token.type = 'hidden';
+                token.name = '_token';
+                token.value = '{{ csrf_token() }}';
+                form.appendChild(token);
+
+                document.body.appendChild(form);
+                form.submit();
+            }
+        }
+
+        // Rigenera documento
+        function regenerateDocument(notificationId, type) {
+            if (confirm('Rigenerare il documento? Questo sovrascriverà il file esistente.')) {
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = `/admin/tournament-notifications/${notificationId}/regenerate/${type}`;
+
+                const token = document.createElement('input');
+                token.type = 'hidden';
+                token.name = '_token';
+                token.value = '{{ csrf_token() }}';
+                form.appendChild(token);
+
+                document.body.appendChild(form);
+                form.submit();
+            }
+        }
+
+        // Elimina documento
+        function deleteDocument(notificationId, type) {
+            if (confirm('Eliminare il documento?')) {
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = `/admin/tournament-notifications/${notificationId}/document/${type}`;
+
+                const token = document.createElement('input');
+                token.type = 'hidden';
+                token.name = '_token';
+                token.value = '{{ csrf_token() }}';
+                form.appendChild(token);
+
+                const method = document.createElement('input');
+                method.type = 'hidden';
+                method.name = '_method';
+                method.value = 'DELETE';
+                form.appendChild(method);
+
+                document.body.appendChild(form);
+                form.submit();
+            }
+        }
+
+        // Chiudi modal cliccando fuori
+        window.onclick = function(event) {
+            const modals = ['documentManagerModal', 'uploadDocumentModal'];
+            modals.forEach(modalId => {
+                const modal = document.getElementById(modalId);
+                if (event.target === modal) {
+                    closeModal(modalId);
+                }
+            });
+        }
+        // Chiudi modal cliccando fuori
+        window.onclick = function(event) {
+            const modals = ['documentManagerModal', 'uploadDocumentModal'];
+            modals.forEach(modalId => {
+                const modal = document.getElementById(modalId);
+                if (event.target === modal) {
+                    closeModal(modalId);
+                }
+            });
+        }
+
+        // AGGIUNGI QUI IL REFRESH DOPO UPLOAD
+        document.addEventListener('DOMContentLoaded', function() {
+            const uploadForm = document.getElementById('uploadDocumentForm');
+            if (uploadForm) {
+                uploadForm.addEventListener('submit', function() {
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 2500);
+                });
+            }
+        });
+    </script>
+
 
     {{-- JavaScript for Dynamic Functionality --}}
     <script>

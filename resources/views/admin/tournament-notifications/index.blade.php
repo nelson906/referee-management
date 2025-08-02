@@ -333,7 +333,7 @@ function buildDocumentManagerContent(data) {
                             </button>
 
                             <button onclick="regenerateDocument(${data.notification_id}, 'club_letter')"
-                                    class="bg-orange-600 text-white px-4 py-2 rounded hover:bg-orange-700">
+                                    class="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700">
                                 <i class="fas fa-redo mr-1"></i> Rigenera
                             </button>
 
@@ -445,6 +445,27 @@ function buildDocumentManagerContent(data) {
                 }
             });
         }
+// Chiudi modal cliccando fuori
+window.onclick = function(event) {
+    const modals = ['documentManagerModal', 'uploadDocumentModal'];
+    modals.forEach(modalId => {
+        const modal = document.getElementById(modalId);
+        if (event.target === modal) {
+            closeModal(modalId);
+        }
+    });
+}
 
+// AGGIUNGI QUI IL REFRESH DOPO UPLOAD
+document.addEventListener('DOMContentLoaded', function() {
+    const uploadForm = document.getElementById('uploadDocumentForm');
+    if (uploadForm) {
+        uploadForm.addEventListener('submit', function() {
+            setTimeout(() => {
+                window.location.reload();
+            }, 2500);
+        });
+    }
+});
     </script>
 @endsection
