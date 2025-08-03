@@ -12,6 +12,10 @@ use Illuminate\Http\Request;
 use Carbon\Carbon;
 use Illuminate\View\View;
 use Illuminate\Support\Facades\DB;
+use App\Mail\BatchAvailabilityNotification;
+use App\Mail\BatchAvailabilityAdminNotification;
+use Illuminate\Support\Facades\Mail;
+use App\Models\User;
 
 class AvailabilityController extends Controller
 {
@@ -134,67 +138,116 @@ if (!$currentPage) {
     /**
      * Save referee availabilities - SEMPLIFICATO
      */
-    public function save(Request $request)
-    {
-        $request->validate([
-            'availabilities' => 'array',
-            'availabilities.*' => 'exists:tournaments,id',
+public function save(Request $request)
+{
+    $request->validate([
+        'availabilities' => 'array',
+        'availabilities.*' => 'exists:tournaments,id',
+    ]);
+
+    $user = auth()->user();
+    $isNationalReferee = RefereeLevelsHelper::canAccessNationalTournaments($user->level);
+    $selectedTournaments = $request->input('availabilities', []);
+
+    // Get accessible tournaments
+    $accessibleQuery = Tournament::whereYear('start_date', Carbon::now()->year);
+
+    if ($isNationalReferee) {
+        $accessibleQuery->where(function ($q) use ($user) {
+            $q->where('zone_id', $user->zone_id)
+              ->orWhere(function ($q2) use ($user) {
+                  $q2->where('zone_id', '!=', $user->zone_id)
+                     ->whereHas('tournamentType', function ($q3) {
+                         $q3->where('is_national', true);
+                     });
+              });
+        });
+    } else {
+        $accessibleQuery->where('zone_id', $user->zone_id);
+    }
+
+    $accessibleTournaments = $accessibleQuery->pluck('id')->toArray();
+    $selectedTournaments = array_intersect($selectedTournaments, $accessibleTournaments);
+
+    // SALVA LE VECCHIE PRIMA DI CANCELLARE
+    $oldAvailabilities = Availability::where('user_id', $user->id)
+        ->whereIn('tournament_id', $accessibleTournaments)
+        ->pluck('tournament_id')
+        ->toArray();
+
+    DB::beginTransaction();
+
+    try {
+        // Remove old availabilities
+        Availability::where('user_id', $user->id)
+            ->whereIn('tournament_id', $accessibleTournaments)
+            ->delete();
+
+        // Add new availabilities
+        foreach ($selectedTournaments as $tournamentId) {
+            Availability::create([
+                'user_id' => $user->id,
+                'tournament_id' => $tournamentId,
+                'submitted_at' => Carbon::now(),
+            ]);
+        }
+
+        DB::commit();
+
+// SOLO QUESTA PARTE È NUOVA - INVIA NOTIFICHE
+$added = array_diff($selectedTournaments, $oldAvailabilities);
+$removed = array_diff($oldAvailabilities, $selectedTournaments);
+
+\Log::info('DEBUG Notifiche disponibilità', [
+    'user_email' => $user->email,
+    'added' => $added,
+    'removed' => $removed,
+    'has_changes' => count($added) > 0 || count($removed) > 0
+]);
+
+if (count($added) > 0 || count($removed) > 0) {
+    try {
+        $addedTournaments = Tournament::whereIn('id', $added)->get();
+        $removedTournaments = Tournament::whereIn('id', $removed)->get();
+
+        \Log::info('Tornei recuperati', [
+            'added_count' => $addedTournaments->count(),
+            'removed_count' => $removedTournaments->count()
         ]);
 
-        $user = auth()->user();
-        $isNationalReferee = RefereeLevelsHelper::canAccessNationalTournaments($user->level);
-        $selectedTournaments = $request->input('availabilities', []);
+        // Notifica al referee
+        \Log::info('Tentativo invio email referee a: ' . $user->email);
+        Mail::to($user->email)->send(new BatchAvailabilityNotification(
+            $user,
+            $addedTournaments,
+            $removedTournaments
+        ));
+        \Log::info('Email referee inviata OK');
 
-        // Get accessible tournaments
-        $accessibleQuery = Tournament::whereYear('start_date', Carbon::now()->year);
+        // Notifica admin
+        $adminEmails = ["szr{$user->zone_id}@federgolf.it"];
+        \Log::info('Tentativo invio email admin a:', $adminEmails);
+        Mail::to($adminEmails)->send(new BatchAvailabilityAdminNotification(
+            $user,
+            $addedTournaments,
+            $removedTournaments
+        ));
+        \Log::info('Email admin inviata OK');
 
-        // ✅ CORRETTO: Stessa logica zone del metodo index
-        if ($isNationalReferee) {
-            $accessibleQuery->where(function ($q) use ($user) {
-                // Tutte le gare della propria zona
-                $q->where('zone_id', $user->zone_id)
-                  // OPPURE gare nazionali di altre zone
-                  ->orWhere(function ($q2) use ($user) {
-                      $q2->where('zone_id', '!=', $user->zone_id)
-                         ->whereHas('tournamentType', function ($q3) {
-                             $q3->where('is_national', true);
-                         });
-                  });
-            });
-        } else {
-            $accessibleQuery->where('zone_id', $user->zone_id);
-        }
-
-        $accessibleTournaments = $accessibleQuery->pluck('id')->toArray();
-        $selectedTournaments = array_intersect($selectedTournaments, $accessibleTournaments);
-
-        DB::beginTransaction();
-
-        try {
-            // Remove old availabilities
-            Availability::where('user_id', $user->id)
-                ->whereIn('tournament_id', $accessibleTournaments)
-                ->delete();
-
-            // Add new availabilities
-            foreach ($selectedTournaments as $tournamentId) {
-                Availability::create([
-                    'user_id' => $user->id,
-                    'tournament_id' => $tournamentId,
-                    'submitted_at' => Carbon::now(),
-                ]);
-            }
-
-            DB::commit();
-
-            return redirect()->route('referee.availability.index')
-                ->with('success', 'Disponibilità aggiornate con successo!');
-
-        } catch (\Exception $e) {
-            DB::rollback();
-
-            return redirect()->back()
-                ->withErrors(['error' => 'Errore durante il salvataggio. Riprova.']);
-        }
+    } catch (\Exception $e) {
+        \Log::error('ERRORE INVIO EMAIL: ' . $e->getMessage());
+        \Log::error('Stack trace: ' . $e->getTraceAsString());
     }
+}
+        return redirect()->route('referee.availability.index')
+            ->with('success', 'Disponibilità aggiornate con successo!');
+
+    } catch (\Exception $e) {
+        DB::rollback();
+
+        return redirect()->back()
+            ->withErrors(['error' => 'Errore durante il salvataggio. Riprova.']);
+    }
+}
+
 }

@@ -101,76 +101,66 @@
                         <div class="p-6">
                             <h4 class="text-md font-medium text-gray-900 mb-4">📎 Documenti Disponibili</h4>
 
-                            @if ($documentStatus['hasConvocation'])
-                                <div class="flex items-center p-3 mb-3 bg-green-50 border border-green-200 rounded-lg">
+                            {{-- Mostra sempre lo stato dei documenti --}}
+                            <div class="space-y-3 mb-4">
+                                {{-- Convocazione --}}
+                                <div
+                                    class="flex items-center p-3 {{ $documentStatus['hasConvocation'] ? 'bg-green-50 border border-green-200' : 'bg-gray-50 border border-gray-200' }} rounded-lg">
                                     <div class="flex-shrink-0">
-                                        <svg class="w-5 h-5 text-green-400" viewBox="0 0 20 20" fill="currentColor">
+                                        <svg class="w-5 h-5 {{ $documentStatus['hasConvocation'] ? 'text-green-400' : 'text-gray-400' }}"
+                                            viewBox="0 0 20 20" fill="currentColor">
                                             <path fill-rule="evenodd"
                                                 d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
                                                 clip-rule="evenodd" />
                                         </svg>
                                     </div>
-                                    <div class="ml-3">
-                                        <p class="text-sm font-medium text-green-800">Convocazione SZR</p>
-                                        <p class="text-xs text-green-600">Disponibile per arbitri</p>
+                                    <div class="ml-3 flex-1">
+                                        <p
+                                            class="text-sm font-medium {{ $documentStatus['hasConvocation'] ? 'text-green-800' : 'text-gray-600' }}">
+                                            Convocazione SZR
+                                        </p>
+                                        <p
+                                            class="text-xs {{ $documentStatus['hasConvocation'] ? 'text-green-600' : 'text-gray-500' }}">
+                                            {{ $documentStatus['hasConvocation'] ? 'Disponibile per arbitri' : 'Non ancora generata' }}
+                                        </p>
                                     </div>
                                 </div>
-                            @endif
 
-                            @if ($documentStatus['hasClubLetter'])
-                                <div class="flex items-center p-3 mb-3 bg-blue-50 border border-blue-200 rounded-lg">
+                                {{-- Lettera Circolo --}}
+                                <div
+                                    class="flex items-center p-3 {{ $documentStatus['hasClubLetter'] ? 'bg-blue-50 border border-blue-200' : 'bg-gray-50 border border-gray-200' }} rounded-lg">
                                     <div class="flex-shrink-0">
-                                        <svg class="w-5 h-5 text-blue-400" viewBox="0 0 20 20" fill="currentColor">
+                                        <svg class="w-5 h-5 {{ $documentStatus['hasClubLetter'] ? 'text-blue-400' : 'text-gray-400' }}"
+                                            viewBox="0 0 20 20" fill="currentColor">
                                             <path fill-rule="evenodd"
                                                 d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
                                                 clip-rule="evenodd" />
                                         </svg>
                                     </div>
-                                    <div class="ml-3">
-                                        <p class="text-sm font-medium text-blue-800">Lettera Circolo</p>
-                                        <p class="text-xs text-blue-600">Disponibile per circolo</p>
+                                    <div class="ml-3 flex-1">
+                                        <p
+                                            class="text-sm font-medium {{ $documentStatus['hasClubLetter'] ? 'text-blue-800' : 'text-gray-600' }}">
+                                            Lettera Circolo
+                                        </p>
+                                        <p
+                                            class="text-xs {{ $documentStatus['hasClubLetter'] ? 'text-blue-600' : 'text-gray-500' }}">
+                                            {{ $documentStatus['hasClubLetter'] ? 'Disponibile per circolo' : 'Non ancora generata' }}
+                                        </p>
                                     </div>
                                 </div>
-                            @endif
+                            </div>
 
-                            @if (!$documentStatus['hasConvocation'] && !$documentStatus['hasClubLetter'])
-                                <div class="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                                    <div class="flex">
-                                        <div class="flex-shrink-0">
-                                            <svg class="w-5 h-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
-                                                <path fill-rule="evenodd"
-                                                    d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
-                                                    clip-rule="evenodd" />
-                                            </svg>
-                                        </div>
-                                        @if (!$documentStatus['hasConvocation'] && !$documentStatus['hasClubLetter'])
-                                            <div class="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                                                <div class="flex">
-                                                    <div class="flex-shrink-0">
-                                                        <svg class="w-5 h-5 text-yellow-400" viewBox="0 0 20 20"
-                                                            fill="currentColor">
-                                                            <path fill-rule="evenodd" d="..." clip-rule="evenodd" />
-                                                        </svg>
-                                                    </div>
-                                                    <div class="ml-3">
-                                                        <p class="text-sm font-medium text-yellow-800">Nessun documento</p>
-                                                        <p class="text-xs text-yellow-600">
-                                                            <a href="javascript:void(0)"
-                                                                onclick="openDocumentManagerModal({{ $tournament->id }})"
-                                                                class="underline">
-                                                                Genera o gestisci documenti
-                                                            </a>
-                                                        </p>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        @endif
-                                    </div>
-                                </div>
-                            @endif
+                            {{-- Bottone sempre presente per gestire documenti --}}
+                            <button type="button" onclick="openDocumentManagerModal({{ $tournament->id }})"
+                                class="w-full px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 flex items-center justify-center">
+                                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                </svg>
+                                Gestisci Documenti
+                            </button>
                         </div>
                     </div>
-
                     {{-- Assignments Summary --}}
                     <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                         <div class="p-6">
@@ -288,9 +278,9 @@
                                                 $tournament->club->name .
                                                 '.
 
-                                                                                Si prega di prendere nota degli arbitri assegnati e di procedere con le comunicazioni necessarie.
+                                                                                                                        Si prega di prendere nota degli arbitri assegnati e di procedere con le comunicazioni necessarie.
 
-                                                                                Cordiali saluti',
+                                                                                                                        Cordiali saluti',
                                         ) }}</textarea>
                                     @error('message')
                                         <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
@@ -620,6 +610,7 @@
             </form>
         </div>
     </div>
+
     <script>
         function openDocumentManagerModal(tournamentId) {
             // Cerca se esiste una notifica per questo torneo
@@ -634,6 +625,29 @@
                 });
         }
 
+        function openDocumentManager(notificationId) {
+            const content = document.getElementById('documentManagerContent');
+            content.innerHTML = '<div class="text-center"><i class="fas fa-spinner fa-spin text-2xl"></i></div>';
+
+            openModal('documentManagerModal');
+
+            fetch(`/admin/tournament-notifications/${notificationId}/documents-status`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    content.innerHTML = buildDocumentManagerContent(data);
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    content.innerHTML =
+                        '<div class="text-center text-red-600">Errore nel caricamento dei documenti</div>';
+                });
+        }
+
         function buildDocumentManagerContent(data) {
             return `
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -644,45 +658,45 @@
                 </h4>
 
                 ${data.convocation ? `
-                        <div class="space-y-3">
-                            <div class="text-sm text-gray-600">
-                                <p><strong>File:</strong> ${data.convocation.filename}</p>
-                                <p><strong>Generato:</strong> ${data.convocation.generated_at}</p>
-                                <p><strong>Dimensione:</strong> ${data.convocation.size}</p>
+                            <div class="space-y-3">
+                                <div class="text-sm text-gray-600">
+                                    <p><strong>File:</strong> ${data.convocation.filename}</p>
+                                    <p><strong>Generato:</strong> ${data.convocation.generated_at}</p>
+                                    <p><strong>Dimensione:</strong> ${data.convocation.size}</p>
+                                </div>
+
+                                <div class="flex flex-col space-y-2">
+                                    <a href="/admin/tournament-notifications/${data.notification_id}/download/convocation"
+                                       class="bg-green-600 text-white px-4 py-2 rounded text-center hover:bg-green-700">
+                                        <i class="fas fa-download mr-1"></i> Scarica
+                                    </a>
+
+                                    <button onclick="openUploadModal(${data.notification_id}, 'convocation')"
+                                            class="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700">
+                                        <i class="fas fa-upload mr-1"></i> Sostituisci
+                                    </button>
+
+                                    <button onclick="regenerateDocument(${data.notification_id}, 'convocation')"
+                                            class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+                                        <i class="fas fa-redo mr-1"></i> Rigenera
+                                    </button>
+
+                                    <button onclick="deleteDocument(${data.notification_id}, 'convocation')"
+                                            class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700">
+                                        <i class="fas fa-trash mr-1"></i> Elimina
+                                    </button>
+                                </div>
                             </div>
-
-                            <div class="flex flex-col space-y-2">
-                                <a href="/admin/tournament-notifications/${data.notification_id}/download/convocation"
-                                   class="bg-green-600 text-white px-4 py-2 rounded text-center hover:bg-green-700">
-                                    <i class="fas fa-download mr-1"></i> Scarica
-                                </a>
-
-                                <button onclick="openUploadModal(${data.notification_id}, 'convocation')"
-                                        class="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700">
-                                    <i class="fas fa-upload mr-1"></i> Sostituisci
-                                </button>
-
-                                <button onclick="regenerateDocument(${data.notification_id}, 'convocation')"
-                                        class="bg-orange-600 text-white px-4 py-2 rounded hover:bg-orange-700">
-                                    <i class="fas fa-redo mr-1"></i> Rigenera
-                                </button>
-
-                                <button onclick="deleteDocument(${data.notification_id}, 'convocation')"
-                                        class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700">
-                                    <i class="fas fa-trash mr-1"></i> Elimina
+                        ` : `
+                            <div class="text-center py-8">
+                                <i class="fas fa-file-excel text-4xl text-gray-300 mb-3"></i>
+                                <p class="text-gray-500 mb-4">Nessun documento presente</p>
+                                <button onclick="generateDocument(${data.notification_id}, 'convocation')"
+                                        class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+                                    <i class="fas fa-plus mr-1"></i> Genera Convocazione
                                 </button>
                             </div>
-                        </div>
-                    ` : `
-                        <div class="text-center py-8">
-                            <i class="fas fa-file-excel text-4xl text-gray-300 mb-3"></i>
-                            <p class="text-gray-500 mb-4">Nessun documento presente</p>
-                            <button onclick="generateDocument(${data.notification_id}, 'convocation')"
-                                    class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
-                                <i class="fas fa-plus mr-1"></i> Genera Convocazione
-                            </button>
-                        </div>
-                    `}
+                        `}
             </div>
 
             <div class="border rounded-lg p-4 ${data.club_letter ? 'border-green-200 bg-green-50' : 'border-gray-200'}">
@@ -692,45 +706,45 @@
                 </h4>
 
                 ${data.club_letter ? `
-                        <div class="space-y-3">
-                            <div class="text-sm text-gray-600">
-                                <p><strong>File:</strong> ${data.club_letter.filename}</p>
-                                <p><strong>Generato:</strong> ${data.club_letter.generated_at}</p>
-                                <p><strong>Dimensione:</strong> ${data.club_letter.size}</p>
+                            <div class="space-y-3">
+                                <div class="text-sm text-gray-600">
+                                    <p><strong>File:</strong> ${data.club_letter.filename}</p>
+                                    <p><strong>Generato:</strong> ${data.club_letter.generated_at}</p>
+                                    <p><strong>Dimensione:</strong> ${data.club_letter.size}</p>
+                                </div>
+
+                                <div class="flex flex-col space-y-2">
+                                    <a href="/admin/tournament-notifications/${data.notification_id}/download/club_letter"
+                                       class="bg-green-600 text-white px-4 py-2 rounded text-center hover:bg-green-700">
+                                        <i class="fas fa-download mr-1"></i> Scarica
+                                    </a>
+
+                                    <button onclick="openUploadModal(${data.notification_id}, 'club_letter')"
+                                            class="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700">
+                                        <i class="fas fa-upload mr-1"></i> Sostituisci
+                                    </button>
+
+                                    <button onclick="regenerateDocument(${data.notification_id}, 'club_letter')"
+                                            class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+                                        <i class="fas fa-redo mr-1"></i> Rigenera
+                                    </button>
+
+                                    <button onclick="deleteDocument(${data.notification_id}, 'club_letter')"
+                                            class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700">
+                                        <i class="fas fa-trash mr-1"></i> Elimina
+                                    </button>
+                                </div>
                             </div>
-
-                            <div class="flex flex-col space-y-2">
-                                <a href="/admin/tournament-notifications/${data.notification_id}/download/club_letter"
-                                   class="bg-green-600 text-white px-4 py-2 rounded text-center hover:bg-green-700">
-                                    <i class="fas fa-download mr-1"></i> Scarica
-                                </a>
-
-                                <button onclick="openUploadModal(${data.notification_id}, 'club_letter')"
-                                        class="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700">
-                                    <i class="fas fa-upload mr-1"></i> Sostituisci
-                                </button>
-
-                                <button onclick="regenerateDocument(${data.notification_id}, 'club_letter')"
-                                        class="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700">
-                                    <i class="fas fa-redo mr-1"></i> Rigenera
-                                </button>
-
-                                <button onclick="deleteDocument(${data.notification_id}, 'club_letter')"
-                                        class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700">
-                                    <i class="fas fa-trash mr-1"></i> Elimina
+                        ` : `
+                            <div class="text-center py-8">
+                                <i class="fas fa-file-excel text-4xl text-gray-300 mb-3"></i>
+                                <p class="text-gray-500 mb-4">Nessun documento presente</p>
+                                <button onclick="generateDocument(${data.notification_id}, 'club_letter')"
+                                        class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
+                                    <i class="fas fa-plus mr-1"></i> Genera Lettera
                                 </button>
                             </div>
-                        </div>
-                    ` : `
-                        <div class="text-center py-8">
-                            <i class="fas fa-file-excel text-4xl text-gray-300 mb-3"></i>
-                            <p class="text-gray-500 mb-4">Nessun documento presente</p>
-                            <button onclick="generateDocument(${data.notification_id}, 'club_letter')"
-                                    class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
-                                <i class="fas fa-plus mr-1"></i> Genera Lettera
-                            </button>
-                        </div>
-                    `}
+                        `}
             </div>
         </div>
     `;
