@@ -225,7 +225,7 @@ class TournamentController extends Controller
             // Check if zone user can see this zonal type
             return $type->isAvailableForZone($user->zone_id);
         });
-$tournamentTypes = $types;
+        $tournamentTypes = $types;
         // Get zones
         $zones = $isNationalAdmin
             ? Zone::orderBy('name')->get()
@@ -608,8 +608,8 @@ $tournamentTypes = $types;
     }
 
     // ============================================
-// 🔍 METODO DEBUG (aggiungere temporaneamente)
-// ============================================
+    // 🔍 METODO DEBUG (aggiungere temporaneamente)
+    // ============================================
 
     /**
      * 🔍 Debug method - aggiungere temporaneamente per vedere i nomi effettivi
