@@ -225,7 +225,7 @@ class TournamentController extends Controller
             // Check if zone user can see this zonal type
             return $type->isAvailableForZone($user->zone_id);
         });
-
+$tournamentTypes = $types;
         // Get zones
         $zones = $isNationalAdmin
             ? Zone::orderBy('name')->get()
@@ -239,7 +239,7 @@ class TournamentController extends Controller
             ->ordered()
             ->get();
 
-        return view('admin.tournaments.create', compact('types', 'zones', 'clubs'));
+        return view('admin.tournaments.create', compact('tournamentTypes', 'zones', 'clubs'));
     }
 
     /**

@@ -10,13 +10,13 @@ use App\Http\Controllers\Admin\LetterTemplateController;
 use App\Http\Controllers\Admin\LetterheadController; // ← AGGIUNTO
 use App\Http\Controllers\Admin\StatisticsDashboardController; // ← AGGIUNTO
 use App\Http\Controllers\Admin\MonitoringController; // ← AGGIUNTO
-use App\Http\Controllers\Admin\TournamentNotificationController;
+use App\Http\Controllers\Admin\NotificationController;
 use App\Http\Controllers\Referee;
 use App\Http\Controllers\Reports;
 use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 use App\Http\Controllers\DashboardController;
-use App\Http\Controllers\NotificationController;
+// use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\TournamentController;
 use Illuminate\Support\Facades\DB;
@@ -278,22 +278,22 @@ Route::middleware(['auth'])->group(function () {
         });
         // 🏆 TOURNAMENT NOTIFICATIONS SYSTEM (Nuovo)
         Route::prefix('tournament-notifications')->name('tournament-notifications.')->group(function () {
-            Route::get('/', [Admin\TournamentNotificationController::class, 'index'])->name('index');
-            Route::post('/{tournament}/store', [Admin\TournamentNotificationController::class, 'store'])->name('store');
-            Route::post('/{tournament}/prepare', [Admin\TournamentNotificationController::class, 'prepare'])->name('prepare');
-            Route::post('/{notification}/send', [Admin\TournamentNotificationController::class, 'send'])->name('send');
-            Route::post('/{notification}/resend', [Admin\TournamentNotificationController::class, 'resend'])->name('resend');
-            Route::get('/{notification}/edit', [Admin\TournamentNotificationController::class, 'edit'])->name('edit');
-            Route::put('/{notification}', [Admin\TournamentNotificationController::class, 'update'])->name('update');
-            Route::get('/{notification}', [Admin\TournamentNotificationController::class, 'show'])->name('show');
-            Route::delete('/{notification}', [Admin\TournamentNotificationController::class, 'destroy'])->name('destroy');
-            Route::get('/{notification}/documents-status', [Admin\TournamentNotificationController::class, 'documentsStatus'])->name('documents-status');
-            Route::get('/{notification}/download/{type}', [Admin\TournamentNotificationController::class, 'downloadDocument'])->name('download-document');
-            Route::post('/{notification}/upload/{type}', [Admin\TournamentNotificationController::class, 'uploadDocument'])->name('upload-document');
-            Route::post('/{notification}/generate/{type}', [Admin\TournamentNotificationController::class, 'generateDocument'])->name('generate-document');
-            Route::post('/{notification}/regenerate/{type}', [Admin\TournamentNotificationController::class, 'regenerateDocument'])->name('regenerate-document');
-            Route::delete('/{notification}/document/{type}', [Admin\TournamentNotificationController::class, 'deleteDocument'])->name('delete-document');
-            Route::get('/find-by-tournament/{tournament}', [TournamentNotificationController::class, 'findByTournament'])->name('find-by-tournament');
+            Route::get('/', [Admin\NotificationController::class, 'index'])->name('index');
+            Route::post('/{tournament}/store', [Admin\NotificationController::class, 'store'])->name('store');
+            Route::post('/{tournament}/prepare', [Admin\NotificationController::class, 'prepare'])->name('prepare');
+            Route::post('/{notification}/send', [Admin\NotificationController::class, 'send'])->name('send');
+            Route::post('/{notification}/resend', [Admin\NotificationController::class, 'resend'])->name('resend');
+            Route::get('/{notification}/edit', [Admin\NotificationController::class, 'edit'])->name('edit');
+            Route::put('/{notification}', [Admin\NotificationController::class, 'update'])->name('update');
+            Route::get('/{notification}', [Admin\NotificationController::class, 'show'])->name('show');
+            Route::delete('/{notification}', [Admin\NotificationController::class, 'destroy'])->name('destroy');
+            Route::get('/{notification}/documents-status', [Admin\NotificationController::class, 'documentsStatus'])->name('documents-status');
+            Route::get('/{notification}/download/{type}', [Admin\NotificationController::class, 'downloadDocument'])->name('download-document');
+            Route::post('/{notification}/upload/{type}', [Admin\NotificationController::class, 'uploadDocument'])->name('upload-document');
+            Route::post('/{notification}/generate/{type}', [Admin\NotificationController::class, 'generateDocument'])->name('generate-document');
+            Route::post('/{notification}/regenerate/{type}', [Admin\NotificationController::class, 'regenerateDocument'])->name('regenerate-document');
+            Route::delete('/{notification}/document/{type}', [Admin\NotificationController::class, 'deleteDocument'])->name('delete-document');
+            Route::get('/find-by-tournament/{tournament}', [NotificationController::class, 'findByTournament'])->name('find-by-tournament');
         });
 
         // Settings

@@ -1,0 +1,17 @@
+/Users/iMac/Sites/referee-management/app/Mail
+├── AssignmentNotification.php
+├── BatchAvailabilityAdminNotification.php
+├── BatchAvailabilityNotification.php
+├── ClubNotificationMail.php
+├── InstitutionalNotificationMail.php
+├── RefereeAssignmentMail.php
+├── TournamentNotifications
+│   ├── ClubNotificationMail.php
+│   ├── InstitutionalNotificationMail.php
+│   ├── NotificationConfirmationMail.php
+│   ├── NotificationErrorMail.php
+│   ├── NotificationStatsMail.php
+│   └── RefereeNotificationMail.php
+└── UnifiedAssignmentNotification.php
+
+2 directories, 13 files

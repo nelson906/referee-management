@@ -109,54 +109,53 @@ class TournamentNotificationController extends Controller
     /**
      * 📧 Invio unificato di tutte le notifiche del torneo
      */
-public function store(Request $request, Tournament $tournament)
-{
-    $validated = $request->validate([
-        'email_template' => 'required|string',
-        'send_to_club' => 'boolean',
-        'send_to_referees' => 'boolean',
-        'generate_documents' => 'boolean',
-        'institutional_emails' => 'array',
-        'additional_emails' => 'array'
-    ]);
-
-    DB::beginTransaction();
-    try {
-        // Crea la notifica
-        $notification = TournamentNotification::create([
-            'tournament_id' => $tournament->id,
-            'status' => 'pending',
-            'referee_list' => $tournament->assignments->pluck('user.name')->implode(', '),
-            'total_recipients' => $tournament->assignments->count() + 1,
-            'sent_by' => auth()->id(),
-            'templates_used' => ['email' => $request->email_template]
+    public function store(Request $request, Tournament $tournament)
+    {
+        $validated = $request->validate([
+            'email_template' => 'required|string',
+            'send_to_club' => 'boolean',
+            'send_to_referees' => 'boolean',
+            'generate_documents' => 'boolean',
+            'institutional_emails' => 'array',
+            'additional_emails' => 'array'
         ]);
 
-        // Genera documenti se richiesto
-        if ($request->boolean('generate_documents', true)) {
-            $pdfPath = $this->documentService->generateConvocationPDF($tournament);
-            $docxData = $this->documentService->generateClubDocument($tournament);
-            $docxPath = $this->fileStorage->storeInZone($docxData, $tournament, 'docx');
-
-            $notification->update([
-                'attachments' => [
-                    'convocation' => basename($pdfPath),
-                    'club_letter' => basename($docxPath)
-                ]
+        DB::beginTransaction();
+        try {
+            // Crea la notifica
+            $notification = TournamentNotification::create([
+                'tournament_id' => $tournament->id,
+                'status' => 'pending',
+                'referee_list' => $tournament->assignments->pluck('user.name')->implode(', '),
+                'total_recipients' => $tournament->assignments->count() + 1,
+                'sent_by' => auth()->id(),
+                'templates_used' => ['email' => $request->email_template]
             ]);
+
+            // Genera documenti se richiesto
+            if ($request->boolean('generate_documents', true)) {
+                $pdfPath = $this->documentService->generateConvocationPDF($tournament);
+                $docxData = $this->documentService->generateClubDocument($tournament);
+                $docxPath = $this->fileStorage->storeInZone($docxData, $tournament, 'docx');
+
+                $notification->update([
+                    'attachments' => [
+                        'convocation' => basename($pdfPath),
+                        'club_letter' => basename($docxPath)
+                    ]
+                ]);
+            }
+
+            DB::commit();
+
+            return redirect()->route('admin.tournament-notifications.index')
+                ->with('success', 'Notifica preparata. Ora puoi inviarla.');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return redirect()->back()
+                ->with('error', 'Errore: ' . $e->getMessage());
         }
-
-        DB::commit();
-
-        return redirect()->route('admin.tournament-notifications.index')
-            ->with('success', 'Notifica preparata. Ora puoi inviarla.');
-
-    } catch (\Exception $e) {
-        DB::rollBack();
-        return redirect()->back()
-            ->with('error', 'Errore: ' . $e->getMessage());
     }
-}
 
     /**
      * 👁️ Dettagli notifiche torneo con espansione
