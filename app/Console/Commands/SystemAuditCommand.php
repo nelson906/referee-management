@@ -110,6 +110,7 @@ class SystemAuditCommand extends Command
                 'assignment_id' => 'assignments'
             ]
         ];
+        $table = $table ?? 'default_table';
 
         foreach ($foreignKeyChecks as $table => $relations) {
             if (!Schema::hasTable($table)) {

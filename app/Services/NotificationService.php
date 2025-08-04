@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use Illuminate\Support\Facades\Log;
+
 use App\Models\Assignment;
 use App\Models\Tournament;
 use App\Models\InstitutionalEmail;

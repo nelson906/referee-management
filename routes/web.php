@@ -7,6 +7,7 @@ use Illuminate\Foundation\Auth\EmailVerificationRequest;
 use App\Http\Controllers\SuperAdmin;
 use App\Http\Controllers\Admin;
 use App\Http\Controllers\Admin\LetterTemplateController;
+use App\Http\Controllers\Admin\TemplateManagementController;
 use App\Http\Controllers\Admin\LetterheadController; // ← AGGIUNTO
 use App\Http\Controllers\Admin\StatisticsDashboardController; // ← AGGIUNTO
 use App\Http\Controllers\Admin\MonitoringController; // ← AGGIUNTO
@@ -216,6 +217,10 @@ Route::middleware(['auth'])->group(function () {
             Route::post('/{template}/toggle-active', [LetterTemplateController::class, 'toggleActive'])->name('toggle-active');
             Route::post('/{template}/set-default', [LetterTemplateController::class, 'setDefault'])->name('set-default');
         });
+    Route::get('/templates/management', [TemplateManagementController::class, 'index'])->name('templates.management');
+    Route::get('/templates/{template}/preview', [TemplateManagementController::class, 'preview'])->name('templates.preview');
+
+
         // Letterheads Management (aggiungi dopo letter-templates)
         Route::prefix('letterheads')->name('letterheads.')->group(function () {
             Route::get('/', [Admin\LetterheadController::class, 'index'])->name('index');

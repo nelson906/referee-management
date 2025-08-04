@@ -1,0 +1,37 @@
+includes:
+    - vendor/larastan/larastan/extension.neon
+
+parameters:
+    level: 5
+    paths:
+        - app
+
+    ignoreErrors:
+        # Laravel standard behavior
+        - '#Access to an undefined property #'
+        - '#Call to an undefined method Illuminate\\Database\\Eloquent\\Relations\\HasMany::(upcoming|active|confirmed)\(\)#'
+
+        # Laravel facades (normal)
+        - '#Call to static method .* on an unknown class (DB|Log|Cache|Storage|Str|Http|Artisan)#'
+
+        # Laravel framework issues
+        - '#PHPDoc type .* is not covariant with PHPDoc type .* of overridden property#'
+        - '#Parameter \#1 \$view of function view expects view-string\|null, string given#'
+        - '#Parameter \#1 \$callback .* contains unresolvable type#'
+        - '#Cannot use .* because the name is already in use#'
+
+        # Business logic (acceptable warnings)
+        - '#Using nullsafe .* is unnecessary\. Use -> instead#'
+        - '#(Match|Ternary) .* is always (true|false)#'
+        - '#(comparison|Comparison) .* will always evaluate to (true|false)#'
+        - '#Dead catch - Exception is never thrown#'
+        - '#Variable \$.* might not be defined#'
+        - '#Method .* is unused#'
+
+        # Methods we'll handle separately
+        - '#Call to an undefined method .*::(getZoneRecommendations|getRecommendations|validateAssignmentRequest|restoreApplicationFiles|restoreStorage|sendTournamentNotifications|canSendNotifications|getNotificationBlockers)\(\)#'
+        - '#Call to an undefined static method .*::(legacySystem|newSystem|role|getStatistics|getCalendarEvents)\(\)#'
+
+        # PHP compatibility
+        - '#Parameter .* is implicitly nullable via default value null#'
+        - '#Deprecated in PHP 8\.4.*implicitly nullable#'

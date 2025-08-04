@@ -1,0 +1,34 @@
+<?php
+namespace {
+    class DB {
+        public static function connection(string $name = null) {}
+        public static function disconnect(string $name = null) {}
+        public static function beginTransaction() {}
+        public static function commit() {}
+        public static function rollback() {}
+        public static function selectOne(string $query, array $bindings = []) {}
+        public static function table(string $table) {}
+        public static function raw(string $value) {}
+    }
+    class Log {
+        public static function info(string $message, array $context = []) {}
+        public static function error(string $message, array $context = []) {}
+        public static function warning(string $message, array $context = []) {}
+    }
+    class Cache {
+        public static function put(string $key, $value, $ttl = null) {}
+        public static function get(string $key, $default = null) {}
+    }
+    class Storage {
+        public static function disk(string $name = null) {}
+    }
+    class Str {
+        public static function random(int $length = 16) {}
+    }
+    class Http {
+        public static function timeout(int $seconds) {}
+    }
+    class Artisan {
+        public static function call(string $command, array $parameters = []) {}
+    }
+}

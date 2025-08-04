@@ -5,6 +5,8 @@
 // ===================================================================
 
 namespace App\Http\Controllers\Admin;
+
+use Illuminate\Support\Facades\Log;
 use App\Helpers\RefereeLevelsHelper;
 use App\Http\Controllers\Controller;
 use App\Models\User;

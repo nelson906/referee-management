@@ -16,9 +16,25 @@ class RefereeAssignmentMail extends Mailable
     use Queueable, SerializesModels;
 
     /**
+     * L'assegnazione dell'arbitro
+     */
+    public Assignment $assignment;
+
+    /**
+     * Il torneo di riferimento
+     */
+    public Tournament $tournament;
+
+    /**
+     * I percorsi degli allegati
+     */
+    public array $attachmentPaths;
+
+
+    /**
      * Create a new message instance.
      */
-public function __construct($assignment, Tournament $tournament, array $attachmentPaths = [])
+    public function __construct($assignment, Tournament $tournament, array $attachmentPaths = [])
     {
         $this->assignment = $assignment;
         $this->tournament = $tournament;
@@ -26,21 +42,21 @@ public function __construct($assignment, Tournament $tournament, array $attachme
 
     }
 
-public function attachments(): array
-{
-    $mailAttachments = [];
+    public function attachments(): array
+    {
+        $mailAttachments = [];
 
-    foreach ($this->attachmentPaths as $path) {
-        if (file_exists($path)) {
-            $mailAttachments[] = \Illuminate\Mail\Mailables\Attachment::fromPath($path);
+        foreach ($this->attachmentPaths as $path) {
+            if (file_exists($path)) {
+                $mailAttachments[] = \Illuminate\Mail\Mailables\Attachment::fromPath($path);
+            }
         }
-    }
 
-    return $mailAttachments;
-}
-public function build()
-{
-    return $this->subject("Convocazione {$this->assignment->role} - {$this->tournament->name}")
+        return $mailAttachments;
+    }
+    public function build()
+    {
+        return $this->subject("Convocazione {$this->assignment->role} - {$this->tournament->name}")
             ->view('emails.tournament_assignment_generic')  // ← USA QUESTO
             ->with([
                 'assignment' => $this->assignment,
@@ -58,7 +74,5 @@ public function build()
                 'zone_email' => "szr{$this->tournament->zone_id}@federgolf.it",
                 'club_email' => $this->tournament->club->email
             ]);
-}
-
-
+    }
 }

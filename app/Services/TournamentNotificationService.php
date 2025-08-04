@@ -11,7 +11,9 @@ use Illuminate\Support\Facades\Storage;
 use PhpOffice\PhpWord\TemplateProcessor;
 use Dompdf\Dompdf;
 use Dompdf\Options;
-
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Str;
 class TournamentNotificationService
 {
     /**

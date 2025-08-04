@@ -313,7 +313,7 @@ class TournamentController extends Controller
     {
         if (method_exists($tournaments, 'getCollection')) {
             $collection = $tournaments->getCollection();
-            $total = $tournaments->total();
+            $total = $tournaments->count();
         } else {
             $collection = $tournaments;
             $total = $tournaments->count();

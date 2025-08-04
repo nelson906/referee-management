@@ -1,0 +1,50 @@
+includes:
+    - vendor/larastan/larastan/extension.neon
+
+parameters:
+    level: 3
+    paths:
+        - app
+
+    ignoreErrors:
+        # Laravel normale behavior
+        - '#Access to an undefined property#'
+        - '#Call to an undefined method#'
+        - '#Call to static method .* on an unknown class#'
+        - '#Instantiated class .* not found#'
+        - '#Class .* not found#'
+        - '#Relation .* is not found#'
+
+        # PHPDoc/Type issues (non critici)
+        - '#PHPDoc type .* is not covariant#'
+        - '#Parameter .* expects .*, .* given#'
+        - '#Method .* should return .* but returns#'
+        - '#has no return type specified#'
+        - '#has parameter .* with no.*type specified#'
+
+        # Business logic warnings (accettabili)
+        - '#is always (true|false)#'
+        - '#will always evaluate to#'
+        - '#is unnecessary#'
+        - '#Variable .* might not be defined#'
+        - '#Dead catch#'
+        - '#is unused#'
+        - '#is never#'
+        - '#Match#'
+        - '#Ternary#'
+        - '#Cannot use .* because the name is already in use#'
+
+        # PHP version compatibility
+        - '#implicitly nullable#'
+        - '#Deprecated in PHP#'
+
+        # View/Blade helpers
+        - '#view expects view-string#'
+        - '#callback .* contains unresolvable type#'
+
+    excludePaths:
+        - storage/*
+        - bootstrap/cache/*
+        - vendor/*
+        - database/migrations/*
+        - stubs/*

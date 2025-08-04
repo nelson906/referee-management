@@ -668,38 +668,47 @@ class NotificationController extends Controller
     /**
      * PREPARE - Crea record e genera documenti
      */
-    public function prepare(Tournament $tournament)
-    {
-        $tournament->load(['assignments.user', 'club.zone']);
+public function prepare(Tournament $tournament)
+{
+    $tournament->load(['assignments.user', 'club.zone']);
 
-        // Recupera indirizzi email fissi
-        $fixedEmails = InstitutionalEmail::active()
-            ->forZone($tournament->zone_id)
-            ->orderBy('category')
-            ->orderBy('name')
-            ->get()
-            ->groupBy('category');
+    $refereeNames = $tournament->assignments
+        ->map(fn($a) => $a->user->name)
+        ->filter()
+        ->implode(', ');
 
-        // Se esiste già una notifica, aggiorna
-        $existingNotification = TournamentNotification::where('tournament_id', $tournament->id)
-            ->whereIn('status', ['pending', 'sent'])
-            ->first();
+    // GENERA ENTRAMBI I DOCUMENTI
+    // 1. Convocazione PDF
+    $pdfPath = $this->documentService->generateConvocationPDF($tournament);
 
-        if ($existingNotification) {
-            return view('admin.tournament-notifications.prepare', compact(
-                'tournament',
-                'existingNotification',
-                'fixedEmails'
-            ));
-        }
+    // 2. Facsimile DOCX per circolo
+    $clubDoc = $this->documentService->generateClubDocument($tournament);
+    $docxPath = $this->fileStorage->storeInZone($clubDoc, $tournament, 'docx');
 
-        // Altrimenti crea nuova
-        return view('admin.tournament-notifications.prepare', compact(
-            'tournament',
-            'fixedEmails'
-        ));
-    }
 
+    // SEMPRE UNA SOLA NOTIFICA PER TORNEO
+    $notification = TournamentNotification::updateOrCreate(
+        [
+            'tournament_id' => $tournament->id  // Solo questa chiave
+        ],
+        [
+            'status' => 'pending',  // Resetta sempre a pending
+            'referee_list' => $refereeNames,
+            'total_recipients' => $tournament->assignments->count() + 1,
+            'sent_by' => auth()->id(),
+            'sent_at' => null,  // Resetta data invio
+            'attachments' => json_encode([
+                'club' => $clubDoc['filename'],
+                'szr' => null
+            ])
+        ]
+    );
+
+    return redirect()->route('admin.tournament-notifications.index')
+        ->with('success', $notification->wasRecentlyCreated ?
+            'Notifica preparata' :
+            'Notifica aggiornata (la precedente è stata sovrascritta)');
+}
     public function documentsStatus(TournamentNotification $notification)
     {
         $tournament = $notification->tournament;
@@ -778,52 +787,36 @@ class NotificationController extends Controller
     /**
      * Genera un documento
      */
-    public function generateDocument(Request $request, TournamentNotification $notification, $type)
-    {
-        $tournament = $notification->tournament;
+public function generateDocument(Request $request, TournamentNotification $notification, $type)
+{
+    $tournament = $notification->tournament;
 
-        try {
-            if ($type === 'convocation') {
-                // Genera convocazione usando il DocumentGenerationService
-                $path = $this->documentService->generateConvocationForTournament($tournament);
+    try {
+        // Recupera attachments esistenti
+        $attachments = is_string($notification->attachments) ?
+            json_decode($notification->attachments, true) : $notification->attachments;
+        $attachments = $attachments ?? [];
 
-                // Aggiorna attachments
-                // Aggiorna attachments
-                $attachments = $notification->attachments;
-
-                // DECODIFICA SE È STRINGA
-                if (is_string($attachments)) {
-                    $attachments = json_decode($attachments, true) ?? [];
-                }
-
-                // Se ancora non è array, inizializza
-                if (!is_array($attachments)) {
-                    $attachments = [];
-                }
-
-                $attachments['convocation'] = basename($path);
-                $notification->update(['attachments' => json_encode($attachments)]);
-
-                return redirect()->back()->with('success', 'Convocazione generata con successo');
-            }
-
-            if ($type === 'club_letter') {
-                $docData = $this->documentService->generateClubDocument($tournament);
-                $path = $this->fileStorage->storeInZone($docData, $tournament, 'docx');
-
-                $attachments = is_string($notification->attachments) ?
-                    json_decode($notification->attachments, true) : $notification->attachments;
-                $attachments = $attachments ?? [];
-
-                $attachments['club_letter'] = basename($path);
-                $notification->update(['attachments' => json_encode($attachments)]);
-
-                return redirect()->back()->with('success', 'Facsimile generato con successo');
-            }
-        } catch (\Exception $e) {
-            return redirect()->back()->with('error', 'Errore nella generazione: ' . $e->getMessage());
+        if ($type === 'convocation') {
+            $path = $this->documentService->generateConvocationForTournament($tournament);
+            $attachments['convocation'] = basename($path);
         }
+
+        if ($type === 'club_letter') {
+            $docData = $this->documentService->generateClubDocument($tournament);
+            $path = $this->fileStorage->storeInZone($docData, $tournament, 'docx');
+            $attachments['club_letter'] = basename($path);
+        }
+
+        // Aggiorna con TUTTI gli attachments
+        $notification->update(['attachments' => json_encode($attachments)]);
+
+        return redirect()->back()->with('success', 'Documento generato con successo');
+
+    } catch (\Exception $e) {
+        return redirect()->back()->with('error', 'Errore nella generazione: ' . $e->getMessage());
     }
+}
 
     /**
      * Rigenera un documento

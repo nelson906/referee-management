@@ -38,7 +38,7 @@ class GolfMaintenanceCommand extends Command
         }
 
         try {
-            return match($action) {
+            return match ($action) {
                 'cleanup' => $this->performCleanup($dryRun, $force),
                 'optimize' => $this->performOptimization($dryRun, $force),
                 'repair' => $this->performRepair($dryRun, $force),
@@ -56,7 +56,7 @@ class GolfMaintenanceCommand extends Command
         $this->info('🧹 Pulizia dati obsoleti...');
 
         $actions = [
-            'Notifiche scadute' => function() use ($dryRun) {
+            'Notifiche scadute' => function () use ($dryRun) {
                 $count = 0;
                 if (class_exists('\App\Models\Notification')) {
                     $query = \App\Models\Notification::where('read_at', '<', now()->subDays(30));
@@ -65,12 +65,12 @@ class GolfMaintenanceCommand extends Command
                 }
                 return $count;
             },
-            'Sessioni scadute' => function() use ($dryRun) {
+            'Sessioni scadute' => function () use ($dryRun) {
                 $count = DB::table('sessions')->where('last_activity', '<', now()->subDays(7))->count();
                 if (!$dryRun) DB::table('sessions')->where('last_activity', '<', now()->subDays(7))->delete();
                 return $count;
             },
-            'Log obsoleti' => function() use ($dryRun) {
+            'Log obsoleti' => function () use ($dryRun) {
                 $count = 0;
                 if (Schema::hasTable('activity_log')) {
                     $count = DB::table('activity_log')->where('created_at', '<', now()->subDays(90))->count();
@@ -116,7 +116,7 @@ class GolfMaintenanceCommand extends Command
         $this->info('🔨 Riparazione inconsistenze...');
 
         $repairs = [
-            'Codici arbitro mancanti' => function() use ($dryRun) {
+            'Codici arbitro mancanti' => function () use ($dryRun) {
                 $referees = User::where('user_type', 'referee')
                     ->whereNull('referee_code')
                     ->get();
@@ -130,7 +130,7 @@ class GolfMaintenanceCommand extends Command
 
                 return $referees->count();
             },
-            'Disponibilità orfane' => function() use ($dryRun) {
+            'Disponibilità orfane' => function () use ($dryRun) {
                 $orphaned = Availability::whereDoesntHave('tournament')->count();
                 if (!$dryRun) {
                     Availability::whereDoesntHave('tournament')->delete();
@@ -157,7 +157,9 @@ class GolfMaintenanceCommand extends Command
             ['Dimensione DB (MB)', $this->getDatabaseSize()],
             ['Utenti totali', User::count()],
             ['Tornei attivi', Tournament::whereIn('status', ['open', 'closed', 'assigned'])->count()],
-            ['Disponibilità pending', Availability::whereHas('tournament', function($q) { $q->where('status', 'open'); })->count()],
+            ['Disponibilità pending', Availability::whereHas('tournament', function ($q) {
+                $q->where('status', 'open');
+            })->count()],
             ['Assegnazioni non confermate', Assignment::where('is_confirmed', false)->count()],
         ];
 
@@ -187,4 +189,3 @@ class GolfMaintenanceCommand extends Command
         return $size[0]->size ?? 0;
     }
 }
-

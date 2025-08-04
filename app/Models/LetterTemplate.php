@@ -4,6 +4,8 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Model\Zone;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class LetterTemplate extends Model
 {
@@ -75,7 +77,7 @@ class LetterTemplate extends Model
         if ($zoneId) {
             return $query->where(function ($q) use ($zoneId) {
                 $q->where('zone_id', $zoneId)
-                  ->orWhereNull('zone_id');
+                    ->orWhereNull('zone_id');
             });
         }
 
@@ -90,7 +92,7 @@ class LetterTemplate extends Model
         if ($tournamentTypeId) {
             return $query->where(function ($q) use ($tournamentTypeId) {
                 $q->where('tournament_type_id', $tournamentTypeId)
-                  ->orWhereNull('tournament_type_id');
+                    ->orWhereNull('tournament_type_id');
             });
         }
 
@@ -239,6 +241,5 @@ class LetterTemplate extends Model
             ->orderBy('id')
             ->first();
     }
-
 
 }

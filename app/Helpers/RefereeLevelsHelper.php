@@ -2,6 +2,8 @@
 
 namespace App\Helpers;
 
+use Illuminate\Support\Facades\Log;
+
 /**
  * RefereeLevelsHelper - VERSIONE SEMPLIFICATA
  *

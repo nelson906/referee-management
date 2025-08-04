@@ -16,7 +16,10 @@ use App\Mail\BatchAvailabilityNotification;
 use App\Mail\BatchAvailabilityAdminNotification;
 use Illuminate\Support\Facades\Mail;
 use App\Models\User;
-
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 class AvailabilityController extends Controller
 {
     /**

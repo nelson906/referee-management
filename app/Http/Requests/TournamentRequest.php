@@ -6,7 +6,7 @@ use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use App\Models\Tournament;
 use App\Models\TournamentType;
-use App\Models\club;
+use App\Models\Club;
 use Carbon\Carbon;
 
 class TournamentRequest extends FormRequest

@@ -21,7 +21,8 @@ use App\Models\User;
 use App\Models\Zone;
 use App\Models\LetterTemplate;
 use App\Models\InstitutionalEmail;
-
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 class ProductionPrepareCommand extends Command
 {
     protected $signature = 'production:prepare

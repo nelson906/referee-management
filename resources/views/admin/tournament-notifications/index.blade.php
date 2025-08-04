@@ -132,10 +132,16 @@
                                 </div>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm">
-                                @php
-                                    $hasConvocation = isset($notification->attachments['convocation']);
-                                    $hasClubLetter = isset($notification->attachments['club_letter']);
-                                @endphp
+@php
+    $attachments = is_string($notification->attachments) ?
+        json_decode($notification->attachments, true) :
+        $notification->attachments;
+    $attachments = $attachments ?? [];
+
+    $documentCount = 0;
+    if (isset($attachments['convocation'])) $documentCount++;
+    if (isset($attachments['club_letter']) || isset($attachments['club'])) $documentCount++;
+@endphp
 
                                 <div class="flex space-x-2">
                                     {{-- GESTIONE DOCUMENTI --}}
@@ -146,11 +152,9 @@
                                                 d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                         </svg>
                                         Gestisci
-                                        @if ($hasConvocation || $hasClubLetter)
                                             <span class="ml-1 bg-green-100 text-green-800 rounded-full px-2 py-0.5 text-xs">
-                                                {{ ($hasConvocation ? 1 : 0) + ($hasClubLetter ? 1 : 0) }}
+    {{ $documentCount }}
                                             </span>
-                                        @endif
                                     </button>
                                 </div>
                             </td>
@@ -285,7 +289,7 @@ function buildDocumentManagerContent(data) {
                             </button>
 
                             <button onclick="regenerateDocument(${data.notification_id}, 'convocation')"
-                                    class="bg-orange-600 text-white px-4 py-2 rounded hover:bg-orange-700">
+                                    class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
                                 <i class="fas fa-redo mr-1"></i> Rigenera
                             </button>
 
@@ -333,7 +337,7 @@ function buildDocumentManagerContent(data) {
                             </button>
 
                             <button onclick="regenerateDocument(${data.notification_id}, 'club_letter')"
-                                    class="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700">
+                                    class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
                                 <i class="fas fa-redo mr-1"></i> Rigenera
                             </button>
 
