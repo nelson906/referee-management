@@ -192,7 +192,7 @@ public function generateConvocationForTournament(Tournament $tournament): array
         $section->addTextBreak();
 
     // ORDINA GLI ARBITRI PER GERARCHIA
-    $sortedAssignments = \App\Helpers\RefereeRoleHelper::sortByRole($tournament->assignments);
+    $sortedAssignments = RefereeRoleHelper::sortByRole($tournament->assignments);
 
     $section->addText("Arbitri assegnati:", ['bold' => true]);
 
@@ -436,7 +436,7 @@ protected function addRefereeList($section, Tournament $tournament): void
     }
 
     // ORDINA GLI ARBITRI
-    $sortedAssignments = \App\Helpers\RefereeRoleHelper::sortByRole($tournament->assignments);
+    $sortedAssignments = RefereeRoleHelper::sortByRole($tournament->assignments);
 
     $section->addTextBreak();
     $section->addText('ARBITRI DESIGNATI:', ['bold' => true, 'size' => 12]);
@@ -518,7 +518,7 @@ public function generateConvocationPDF(Tournament $tournament): string
         $tournament->load(['club', 'zone', 'tournamentType', 'assignments.user']);
 
         // ORDINA GLI ARBITRI
-        $sortedAssignments = \App\Helpers\RefereeRoleHelper::sortByRole($tournament->assignments);
+        $sortedAssignments = RefereeRoleHelper::sortByRole($tournament->assignments);
 
         // Prepara dati per la view
         $data = [
