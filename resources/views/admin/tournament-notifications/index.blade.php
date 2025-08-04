@@ -22,14 +22,14 @@
                 <tbody class="bg-white divide-y divide-gray-200">
                     @foreach ($tournamentNotifications as $notification)
                         <tr>
-<td class="px-6 py-4 whitespace-nowrap w-1/4">
-    <div class="text-sm font-medium text-gray-900 truncate max-w-xs">
-        {{ $notification->tournament->name }}
-    </div>
-    <div class="text-sm text-gray-500">
-        {{ $notification->tournament->start_date->format('d/m/Y') }}
-    </div>
-</td>
+                            <td class="px-6 py-4 whitespace-nowrap w-1/4">
+                                <div class="text-sm font-medium text-gray-900 truncate max-w-xs">
+                                    {{ $notification->tournament->name }}
+                                </div>
+                                <div class="text-sm text-gray-500">
+                                    {{ $notification->tournament->start_date->format('d/m/Y') }}
+                                </div>
+                            </td>
 
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                 {{ $notification->created_at->format('d/m/Y H:i') }}
@@ -132,16 +132,20 @@
                                 </div>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm">
-@php
-    $attachments = is_string($notification->attachments) ?
-        json_decode($notification->attachments, true) :
-        $notification->attachments;
-    $attachments = $attachments ?? [];
+                                @php
+                                    $attachments = is_string($notification->attachments)
+                                        ? json_decode($notification->attachments, true)
+                                        : $notification->attachments;
+                                    $attachments = $attachments ?? [];
 
-    $documentCount = 0;
-    if (isset($attachments['convocation'])) $documentCount++;
-    if (isset($attachments['club_letter']) || isset($attachments['club'])) $documentCount++;
-@endphp
+                                    $documentCount = 0;
+                                    if (isset($attachments['convocation'])) {
+                                        $documentCount++;
+                                    }
+                                    if (isset($attachments['club_letter']) || isset($attachments['club'])) {
+                                        $documentCount++;
+                                    }
+                                @endphp
 
                                 <div class="flex space-x-2">
                                     {{-- GESTIONE DOCUMENTI --}}
@@ -152,9 +156,9 @@
                                                 d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                         </svg>
                                         Gestisci
-                                            <span class="ml-1 bg-green-100 text-green-800 rounded-full px-2 py-0.5 text-xs">
-    {{ $documentCount }}
-                                            </span>
+                                        <span class="ml-1 bg-green-100 text-green-800 rounded-full px-2 py-0.5 text-xs">
+                                            {{ $documentCount }}
+                                        </span>
                                     </button>
                                 </div>
                             </td>
@@ -237,31 +241,32 @@
     </div>
 
     <script>
-function openDocumentManager(notificationId) {
-    const content = document.getElementById('documentManagerContent');
-    content.innerHTML = '<div class="text-center"><i class="fas fa-spinner fa-spin text-2xl"></i></div>';
+        function openDocumentManager(notificationId) {
+            const content = document.getElementById('documentManagerContent');
+            content.innerHTML = '<div class="text-center"><i class="fas fa-spinner fa-spin text-2xl"></i></div>';
 
-    openModal('documentManagerModal');
+            openModal('documentManagerModal');
 
-    // La fetch è qui, nella posizione corretta
-    fetch(`/admin/tournament-notifications/${notificationId}/documents-status`)
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Network response was not ok');
-            }
-            return response.json();
-        })
-        .then(data => {
-            content.innerHTML = buildDocumentManagerContent(data);
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            content.innerHTML = '<div class="text-center text-red-600">Errore nel caricamento dei documenti</div>';
-        });
-}
+            // La fetch è qui, nella posizione corretta
+            fetch(`/admin/tournament-notifications/${notificationId}/documents-status`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    content.innerHTML = buildDocumentManagerContent(data);
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    content.innerHTML =
+                        '<div class="text-center text-red-600">Errore nel caricamento dei documenti</div>';
+                });
+        }
 
-function buildDocumentManagerContent(data) {
-    return `
+        function buildDocumentManagerContent(data) {
+            return `
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div class="border rounded-lg p-4 ${data.convocation ? 'border-green-200 bg-green-50' : 'border-gray-200'}">
                 <h4 class="font-bold text-lg mb-3 flex items-center">
@@ -270,45 +275,45 @@ function buildDocumentManagerContent(data) {
                 </h4>
 
                 ${data.convocation ? `
-                    <div class="space-y-3">
-                        <div class="text-sm text-gray-600">
-                            <p><strong>File:</strong> ${data.convocation.filename}</p>
-                            <p><strong>Generato:</strong> ${data.convocation.generated_at}</p>
-                            <p><strong>Dimensione:</strong> ${data.convocation.size}</p>
+                        <div class="space-y-3">
+                            <div class="text-sm text-gray-600">
+                                <p><strong>File:</strong> ${data.convocation.filename}</p>
+                                <p><strong>Generato:</strong> ${data.convocation.generated_at}</p>
+                                <p><strong>Dimensione:</strong> ${data.convocation.size}</p>
+                            </div>
+
+                            <div class="flex flex-col space-y-2">
+                                <a href="/admin/tournament-notifications/${data.notification_id}/download/convocation"
+                                   class="bg-green-600 text-white px-4 py-2 rounded text-center hover:bg-green-700">
+                                    <i class="fas fa-download mr-1"></i> Scarica
+                                </a>
+
+                                <button onclick="openUploadModal(${data.notification_id}, 'convocation')"
+                                        class="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700">
+                                    <i class="fas fa-upload mr-1"></i> Sostituisci
+                                </button>
+
+                                <button onclick="regenerateDocument(${data.notification_id}, 'convocation')"
+                                        class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+                                    <i class="fas fa-redo mr-1"></i> Rigenera
+                                </button>
+
+                                <button onclick="deleteDocument(${data.notification_id}, 'convocation')"
+                                        class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700">
+                                    <i class="fas fa-trash mr-1"></i> Elimina
+                                </button>
+                            </div>
                         </div>
-
-                        <div class="flex flex-col space-y-2">
-                            <a href="/admin/tournament-notifications/${data.notification_id}/download/convocation"
-                               class="bg-green-600 text-white px-4 py-2 rounded text-center hover:bg-green-700">
-                                <i class="fas fa-download mr-1"></i> Scarica
-                            </a>
-
-                            <button onclick="openUploadModal(${data.notification_id}, 'convocation')"
-                                    class="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700">
-                                <i class="fas fa-upload mr-1"></i> Sostituisci
-                            </button>
-
-                            <button onclick="regenerateDocument(${data.notification_id}, 'convocation')"
+                    ` : `
+                        <div class="text-center py-8">
+                            <i class="fas fa-file-excel text-4xl text-gray-300 mb-3"></i>
+                            <p class="text-gray-500 mb-4">Nessun documento presente</p>
+                            <button onclick="generateDocument(${data.notification_id}, 'convocation')"
                                     class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
-                                <i class="fas fa-redo mr-1"></i> Rigenera
-                            </button>
-
-                            <button onclick="deleteDocument(${data.notification_id}, 'convocation')"
-                                    class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700">
-                                <i class="fas fa-trash mr-1"></i> Elimina
+                                <i class="fas fa-plus mr-1"></i> Genera Convocazione
                             </button>
                         </div>
-                    </div>
-                ` : `
-                    <div class="text-center py-8">
-                        <i class="fas fa-file-excel text-4xl text-gray-300 mb-3"></i>
-                        <p class="text-gray-500 mb-4">Nessun documento presente</p>
-                        <button onclick="generateDocument(${data.notification_id}, 'convocation')"
-                                class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
-                            <i class="fas fa-plus mr-1"></i> Genera Convocazione
-                        </button>
-                    </div>
-                `}
+                    `}
             </div>
 
             <div class="border rounded-lg p-4 ${data.club_letter ? 'border-green-200 bg-green-50' : 'border-gray-200'}">
@@ -318,49 +323,49 @@ function buildDocumentManagerContent(data) {
                 </h4>
 
                 ${data.club_letter ? `
-                    <div class="space-y-3">
-                        <div class="text-sm text-gray-600">
-                            <p><strong>File:</strong> ${data.club_letter.filename}</p>
-                            <p><strong>Generato:</strong> ${data.club_letter.generated_at}</p>
-                            <p><strong>Dimensione:</strong> ${data.club_letter.size}</p>
+                        <div class="space-y-3">
+                            <div class="text-sm text-gray-600">
+                                <p><strong>File:</strong> ${data.club_letter.filename}</p>
+                                <p><strong>Generato:</strong> ${data.club_letter.generated_at}</p>
+                                <p><strong>Dimensione:</strong> ${data.club_letter.size}</p>
+                            </div>
+
+                            <div class="flex flex-col space-y-2">
+                                <a href="/admin/tournament-notifications/${data.notification_id}/download/club_letter"
+                                   class="bg-green-600 text-white px-4 py-2 rounded text-center hover:bg-green-700">
+                                    <i class="fas fa-download mr-1"></i> Scarica
+                                </a>
+
+                                <button onclick="openUploadModal(${data.notification_id}, 'club_letter')"
+                                        class="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700">
+                                    <i class="fas fa-upload mr-1"></i> Sostituisci
+                                </button>
+
+                                <button onclick="regenerateDocument(${data.notification_id}, 'club_letter')"
+                                        class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+                                    <i class="fas fa-redo mr-1"></i> Rigenera
+                                </button>
+
+                                <button onclick="deleteDocument(${data.notification_id}, 'club_letter')"
+                                        class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700">
+                                    <i class="fas fa-trash mr-1"></i> Elimina
+                                </button>
+                            </div>
                         </div>
-
-                        <div class="flex flex-col space-y-2">
-                            <a href="/admin/tournament-notifications/${data.notification_id}/download/club_letter"
-                               class="bg-green-600 text-white px-4 py-2 rounded text-center hover:bg-green-700">
-                                <i class="fas fa-download mr-1"></i> Scarica
-                            </a>
-
-                            <button onclick="openUploadModal(${data.notification_id}, 'club_letter')"
-                                    class="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700">
-                                <i class="fas fa-upload mr-1"></i> Sostituisci
-                            </button>
-
-                            <button onclick="regenerateDocument(${data.notification_id}, 'club_letter')"
-                                    class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
-                                <i class="fas fa-redo mr-1"></i> Rigenera
-                            </button>
-
-                            <button onclick="deleteDocument(${data.notification_id}, 'club_letter')"
-                                    class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700">
-                                <i class="fas fa-trash mr-1"></i> Elimina
+                    ` : `
+                        <div class="text-center py-8">
+                            <i class="fas fa-file-excel text-4xl text-gray-300 mb-3"></i>
+                            <p class="text-gray-500 mb-4">Nessun documento presente</p>
+                            <button onclick="generateDocument(${data.notification_id}, 'club_letter')"
+                                    class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
+                                <i class="fas fa-plus mr-1"></i> Genera Lettera
                             </button>
                         </div>
-                    </div>
-                ` : `
-                    <div class="text-center py-8">
-                        <i class="fas fa-file-excel text-4xl text-gray-300 mb-3"></i>
-                        <p class="text-gray-500 mb-4">Nessun documento presente</p>
-                        <button onclick="generateDocument(${data.notification_id}, 'club_letter')"
-                                class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
-                            <i class="fas fa-plus mr-1"></i> Genera Lettera
-                        </button>
-                    </div>
-                `}
+                    `}
             </div>
         </div>
     `;
-}
+        }
 
         // Funzioni base per modal
         function openModal(modalId) {
@@ -449,27 +454,27 @@ function buildDocumentManagerContent(data) {
                 }
             });
         }
-// Chiudi modal cliccando fuori
-window.onclick = function(event) {
-    const modals = ['documentManagerModal', 'uploadDocumentModal'];
-    modals.forEach(modalId => {
-        const modal = document.getElementById(modalId);
-        if (event.target === modal) {
-            closeModal(modalId);
+        // Chiudi modal cliccando fuori
+        window.onclick = function(event) {
+            const modals = ['documentManagerModal', 'uploadDocumentModal'];
+            modals.forEach(modalId => {
+                const modal = document.getElementById(modalId);
+                if (event.target === modal) {
+                    closeModal(modalId);
+                }
+            });
         }
-    });
-}
 
-// AGGIUNGI QUI IL REFRESH DOPO UPLOAD
-document.addEventListener('DOMContentLoaded', function() {
-    const uploadForm = document.getElementById('uploadDocumentForm');
-    if (uploadForm) {
-        uploadForm.addEventListener('submit', function() {
-            setTimeout(() => {
-                window.location.reload();
-            }, 2500);
+        // AGGIUNGI QUI IL REFRESH DOPO UPLOAD
+        document.addEventListener('DOMContentLoaded', function() {
+            const uploadForm = document.getElementById('uploadDocumentForm');
+            if (uploadForm) {
+                uploadForm.addEventListener('submit', function() {
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 2500);
+                });
+            }
         });
-    }
-});
     </script>
 @endsection

@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
 use Illuminate\Support\Str;
 use Barryvdh\DomPDF\Facade\Pdf;
+use App\Helpers\RefereeRoleHelper;
 
 class DocumentGenerationService
 {
@@ -61,47 +62,75 @@ class DocumentGenerationService
         }
     }
 
-    /**
-     * Generate convocation for entire tournament
-     */
-    public function generateConvocationForTournament(Tournament $tournament): string
-    {
-        try {
-            $tournament->load(['club', 'zone', 'tournamentType', 'assignments.user']);
+/**
+ * Generate convocation for entire tournament
+ * RITORNA SEMPRE ARRAY CON path, filename, type
+ */
+public function generateConvocationForTournament(Tournament $tournament): array
+{
+    try {
+        $tournament->load(['club', 'zone', 'tournamentType', 'assignments.user']);
 
-            $phpWord = new PhpWord();
-            $this->configureDocument($phpWord);
+        $phpWord = new PhpWord();
+        $this->configureDocument($phpWord);
 
-            $section = $phpWord->addSection();
-            $this->addLetterhead($section, $tournament->zone_id);
+        $section = $phpWord->addSection();
+        $this->addLetterhead($section, $tournament->zone_id);
 
-            // Contenuto
-            $section->addText(
-                'CONVOCAZIONE ARBITRI',
-                ['bold' => true, 'size' => 14],
-                ['alignment' => \PhpOffice\PhpWord\SimpleType\Jc::CENTER]
-            );
-            $section->addTextBreak(2);
+        // Contenuto
+        $section->addText(
+            'CONVOCAZIONE ARBITRI',
+            ['bold' => true, 'size' => 14],
+            ['alignment' => \PhpOffice\PhpWord\SimpleType\Jc::CENTER]
+        );
+        $section->addTextBreak(2);
 
-            $section->addText("Torneo: {$tournament->name}", ['bold' => true]);
-            $section->addText("Date: {$tournament->date_range}");
-            $section->addText("Circolo: {$tournament->club->name}");
-            $section->addTextBreak();
+        $section->addText("Torneo: {$tournament->name}", ['bold' => true]);
+        $section->addText("Date: {$tournament->date_range}");
+        $section->addText("Circolo: {$tournament->club->name}");
+        $section->addTextBreak();
 
-            $section->addText("Arbitri convocati:", ['bold' => true]);
-            foreach ($tournament->assignments as $assignment) {
-                $section->addText("- {$assignment->user->name} ({$assignment->role})");
+                // ORDINA GLI ARBITRI PER GERARCHIA
+        $sortedAssignments = RefereeRoleHelper::sortByRole($tournament->assignments);
+
+        $section->addText("Arbitri convocati:", ['bold' => true]);
+        // Raggruppa per ruolo per una visualizzazione più chiara
+        $groupedByRole = $sortedAssignments->groupBy('role');
+
+        foreach (['Direttore di Torneo', 'Arbitro', 'Osservatore'] as $role) {
+            if (isset($groupedByRole[$role])) {
+                $section->addTextBreak();
+                $section->addText($role . ':', ['bold' => true, 'italic' => true]);
+                foreach ($groupedByRole[$role] as $assignment) {
+                    $section->addText("  • {$assignment->user->name}", ['indent' => 0.5]);
+                }
             }
-
-            $this->addFooter($section, $tournament->zone);
-
-            $filename = $this->generateFilename('convocation_tournament', $tournament);
-            return $this->saveDocumentToZone($phpWord, $filename, $tournament);
-        } catch (\Exception $e) {
-            Log::error('Error generating tournament convocation: ' . $e->getMessage());
-            throw $e;
         }
+
+        $this->addFooter($section, $tournament->zone);
+
+        $filename = 'convocazione-' . Str::slug($tournament->name) . '-' . date('Ymd') . '.docx';
+        $tempPath = storage_path('app/temp/' . $filename);
+
+        if (!is_dir(dirname($tempPath))) {
+            mkdir(dirname($tempPath), 0777, true);
+        }
+
+        $objWriter = IOFactory::createWriter($phpWord, 'Word2007');
+        $objWriter->save($tempPath);
+
+        return [
+            'path' => $tempPath,
+            'filename' => $filename,
+            'type' => 'convocation'
+        ];
+
+    } catch (\Exception $e) {
+        Log::error('Error generating tournament convocation: ' . $e->getMessage());
+        throw $e;
     }
+}
+
 
     /**
      * Generate club letter for a tournament
@@ -162,10 +191,18 @@ class DocumentGenerationService
         $section->addText("Date: {$tournament->date_range}");
         $section->addTextBreak();
 
-        $section->addText("Arbitri assegnati:", ['bold' => true]);
-        foreach ($tournament->assignments as $assignment) {
-            $section->addText("- {$assignment->user->name} ({$assignment->role})");
-        }
+    // ORDINA GLI ARBITRI PER GERARCHIA
+    $sortedAssignments = \App\Helpers\RefereeRoleHelper::sortByRole($tournament->assignments);
+
+    $section->addText("Arbitri assegnati:", ['bold' => true]);
+
+    // Mostra in ordine gerarchico con ruolo evidenziato
+    foreach ($sortedAssignments as $assignment) {
+        $roleText = strtoupper($assignment->role);
+        $section->addText("- {$assignment->user->name} ({$roleText})",
+            $assignment->role === 'Direttore di Torneo' ? ['bold' => true] : []
+        );
+    }
 
         $filename = 'facsimile-' . Str::slug($tournament->club->name) . '-' . Str::slug($tournament->name) . '.docx';
         $tempPath = storage_path('app/temp/' . $filename);
@@ -180,7 +217,7 @@ class DocumentGenerationService
         return [
             'path' => $tempPath,
             'filename' => $filename,
-            'type' => 'club_facsimile'
+            'type' => 'club_letter'
         ];
     }
 
@@ -392,36 +429,43 @@ class DocumentGenerationService
     /**
      * Add referee list to club letter
      */
-    protected function addRefereeList($section, Tournament $tournament): void
-    {
-        if ($tournament->assignments->isEmpty()) {
-            return;
-        }
-
-        $section->addTextBreak();
-        $section->addText('ARBITRI DESIGNATI:', ['bold' => true, 'size' => 12]);
-        $section->addTextBreak();
-
-        $table = $section->addTable([
-            'borderSize' => 6,
-            'borderColor' => '999999',
-            'cellMargin' => 80
-        ]);
-
-        $table->addRow();
-        $table->addCell(3000)->addText('Nome', ['bold' => true]);
-        $table->addCell(2000)->addText('Codice', ['bold' => true]);
-        $table->addCell(2000)->addText('Livello', ['bold' => true]);
-        $table->addCell(2000)->addText('Ruolo', ['bold' => true]);
-
-        foreach ($tournament->assignments as $assignment) {
-            $table->addRow();
-            $table->addCell(3000)->addText($assignment->user->name);
-            $table->addCell(2000)->addText($assignment->user->referee_code);
-            $table->addCell(2000)->addText(ucfirst($assignment->user->level));
-            $table->addCell(2000)->addText($assignment->role);
-        }
+protected function addRefereeList($section, Tournament $tournament): void
+{
+    if ($tournament->assignments->isEmpty()) {
+        return;
     }
+
+    // ORDINA GLI ARBITRI
+    $sortedAssignments = \App\Helpers\RefereeRoleHelper::sortByRole($tournament->assignments);
+
+    $section->addTextBreak();
+    $section->addText('ARBITRI DESIGNATI:', ['bold' => true, 'size' => 12]);
+    $section->addTextBreak();
+
+    $table = $section->addTable([
+        'borderSize' => 6,
+        'borderColor' => '999999',
+        'cellMargin' => 80
+    ]);
+
+    $table->addRow();
+    $table->addCell(3000)->addText('Nome', ['bold' => true]);
+    $table->addCell(2000)->addText('Codice', ['bold' => true]);
+    $table->addCell(2000)->addText('Livello', ['bold' => true]);
+    $table->addCell(2000)->addText('Ruolo', ['bold' => true]);
+
+    foreach ($sortedAssignments as $assignment) {
+        $table->addRow();
+
+        // Evidenzia il Direttore di Torneo
+        $nameStyle = $assignment->role === 'Direttore di Torneo' ? ['bold' => true] : [];
+
+        $table->addCell(3000)->addText($assignment->user->name, $nameStyle);
+        $table->addCell(2000)->addText($assignment->user->referee_code);
+        $table->addCell(2000)->addText(ucfirst($assignment->user->level));
+        $table->addCell(2000)->addText($assignment->role, $nameStyle);
+    }
+}
 
     /**
      * Add footer to section
@@ -468,45 +512,50 @@ class DocumentGenerationService
     /**
      * Generate convocation PDF for tournament
      */
-    public function generateConvocationPDF(Tournament $tournament): string
-    {
-        try {
-            $tournament->load(['club', 'zone', 'tournamentType', 'assignments.user']);
+public function generateConvocationPDF(Tournament $tournament): string
+{
+    try {
+        $tournament->load(['club', 'zone', 'tournamentType', 'assignments.user']);
 
-            // Prepara dati per la view
-            $data = [
-                'tournament' => $tournament,
-                'letterhead' => $this->getLetterhead($tournament->zone_id),
-                'referees' => $tournament->assignments->map(function ($assignment) {
-                    return [
-                        'name' => $assignment->user->name,
-                        'role' => $assignment->role,
-                        'code' => $assignment->user->referee_code,
-                        'level' => $assignment->user->level
-                    ];
-                }),
-                'generated_at' => Carbon::now()->format('d/m/Y H:i')
-            ];
+        // ORDINA GLI ARBITRI
+        $sortedAssignments = \App\Helpers\RefereeRoleHelper::sortByRole($tournament->assignments);
 
-            // Genera PDF usando una view Blade
-            $pdf = Pdf::loadView('documents.convocation-pdf', $data);
-            $pdf->setPaper('A4', 'portrait');
+        // Prepara dati per la view
+        $data = [
+            'tournament' => $tournament,
+            'letterhead' => $this->getLetterhead($tournament->zone_id),
+            'referees' => $sortedAssignments->map(function ($assignment) {
+                return [
+                    'name' => $assignment->user->name,
+                    'role' => $assignment->role,
+                    'code' => $assignment->user->referee_code,
+                    'level' => $assignment->user->level,
+                    'is_director' => $assignment->role === 'Direttore di Torneo'
+                ];
+            }),
+            'generated_at' => Carbon::now()->format('d/m/Y H:i')
+        ];
 
-            // Nome file
-            $filename = "convocazione_" . Str::slug($tournament->name) . ".pdf";
+        // Genera PDF usando una view Blade
+        $pdf = Pdf::loadView('documents.convocation-pdf', $data);
+        $pdf->setPaper('A4', 'portrait');
 
-            // Salva nella zona corretta
-            $zone = $this->fileStorage->getZoneFolder($tournament);
-            $relativePath = "convocazioni/{$zone}/generated/{$filename}";
+        // Nome file
+        $filename = "convocazione_" . Str::slug($tournament->name) . ".pdf";
 
-            Storage::disk('public')->put($relativePath, $pdf->output());
+        // Salva nella zona corretta
+        $zone = $this->fileStorage->getZoneFolder($tournament);
+        $relativePath = "convocazioni/{$zone}/generated/{$filename}";
 
-            return $relativePath;
-        } catch (\Exception $e) {
-            Log::error('Error generating convocation PDF: ' . $e->getMessage());
-            throw $e;
-        }
+        Storage::disk('public')->put($relativePath, $pdf->output());
+
+        return $relativePath;
+
+    } catch (\Exception $e) {
+        Log::error('Error generating convocation PDF: ' . $e->getMessage());
+        throw $e;
     }
+}
 
     /**
      * Get letterhead for zone

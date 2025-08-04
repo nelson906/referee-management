@@ -1,25 +1,68 @@
 <!DOCTYPE html>
 <html>
+
 <head>
     <meta charset="utf-8">
     <style>
-        body { font-family: Arial, sans-serif; }
-        .header { text-align: center; margin-bottom: 30px; }
-        .logo { max-height: 80px; }
-        .title { font-size: 18px; font-weight: bold; margin: 20px 0; }
-        .content { margin: 20px 0; }
-        .referee-table { width: 100%; border-collapse: collapse; margin: 20px 0; }
-        .referee-table th, .referee-table td {
+        body {
+            font-family: Arial, sans-serif;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .logo {
+            max-height: 80px;
+        }
+
+        .title {
+            font-size: 18px;
+            font-weight: bold;
+            margin: 20px 0;
+        }
+
+        .content {
+            margin: 20px 0;
+        }
+
+        .referee-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+
+        .referee-table th,
+        .referee-table td {
             border: 1px solid #ddd;
             padding: 8px;
             text-align: left;
         }
-        .referee-table th { background-color: #f2f2f2; }
-        .footer { margin-top: 50px; text-align: center; font-size: 10px; color: #666; }
+
+        .referee-table th {
+            background-color: #f2f2f2;
+        }
+
+        .footer {
+            margin-top: 50px;
+            text-align: center;
+            font-size: 10px;
+            color: #666;
+        }
+
+        .director-row {
+            background-color: #f3f4f6;
+        }
+
+        .font-bold {
+            font-weight: bold;
+        }
     </style>
 </head>
+
 <body>
-    @if($letterhead && $letterhead->logo_path)
+    @if ($letterhead && $letterhead->logo_path)
         <div class="header">
             <img src="{{ storage_path('app/public/' . $letterhead->logo_path) }}" class="logo">
         </div>
@@ -34,7 +77,8 @@
         <p><strong>Tipo:</strong> {{ $tournament->tournamentType->name ?? 'N/A' }}</p>
     </div>
 
-    <h2>Comitato di Gara Designato:</h2>
+    <h3>Arbitri Convocati:</h3>
+
     <table class="referee-table">
         <thead>
             <tr>
@@ -45,13 +89,17 @@
             </tr>
         </thead>
         <tbody>
-            @foreach($referees as $referee)
-            <tr>
-                <td>{{ $referee['name'] }}</td>
-                <td>{{ $referee['code'] }}</td>
-                <td>{{ $referee['level'] }}</td>
-                <td>{{ $referee['role'] }}</td>
-            </tr>
+            @foreach ($referees as $referee)
+                <tr class="{{ $referee['is_director'] ? 'director-row' : '' }}">
+                    <td class="{{ $referee['is_director'] ? 'font-bold' : '' }}">
+                        {{ $referee['name'] }}
+                    </td>
+                    <td>{{ $referee['code'] }}</td>
+                    <td>{{ $referee['level'] }}</td>
+                    <td class="{{ $referee['is_director'] ? 'font-bold' : '' }}">
+                        {{ $referee['role'] }}
+                    </td>
+                </tr>
             @endforeach
         </tbody>
     </table>
@@ -61,4 +109,5 @@
         <p>Comitato Regionale Arbitri - {{ $tournament->zone->name }}</p>
     </div>
 </body>
+
 </html>
