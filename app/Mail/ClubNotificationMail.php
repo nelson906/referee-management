@@ -14,6 +14,7 @@ class ClubNotificationMail extends Mailable
 
     public $tournament;
     public $attachmentPaths;
+    public $sortedAssignments; // AGGIUNGI QUESTO
 
     /**
      * Create a new message instance.
@@ -22,6 +23,24 @@ class ClubNotificationMail extends Mailable
     {
         $this->tournament = $tournament;
         $this->attachmentPaths = $attachmentPaths;
+
+        // ORDINA GLI ARBITRI PER GERARCHIA
+        $roleOrder = [
+            'Direttore di Torneo' => 1,
+            'Arbitro' => 2,
+            'Osservatore' => 3
+        ];
+
+        $this->sortedAssignments = $tournament->assignments->sort(function ($a, $b) use ($roleOrder) {
+            $orderA = $roleOrder[$a->role] ?? 999;
+            $orderB = $roleOrder[$b->role] ?? 999;
+
+            if ($orderA === $orderB) {
+                return strcmp($a->user->name, $b->user->name);
+            }
+
+            return $orderA - $orderB;
+        });
     }
 
     /**
