@@ -235,6 +235,7 @@ class StatisticsDashboardController extends Controller
             'by_status' => $query->clone()->select('status', DB::raw('count(*) as count'))
                 ->groupBy('status')->pluck('count', 'status'),
             'by_category' => $query->clone()->select('tournament_type_id', DB::raw('count(*) as count'))
+                ->orderBy('tournament_type_id')
                 ->groupBy('tournament_type_id')->with('tournamentType')->get()
                 ->pluck('count', 'tournamentType.name'),
             'by_zone' => $isNationalAdmin ? $this->getTournamentsByZone($year) : [],
@@ -308,20 +309,20 @@ class StatisticsDashboardController extends Controller
             'activity' => $this->getRefereeActivityStats($user, $isNationalAdmin, $year),
             'availability_rate' => $this->getRefereeAvailabilityRate($user, $isNationalAdmin, $year),
             'totale_arbitri' => User::where('user_type', 'referee')
-            ->where('level',"<>", 'Archivio')
-            ->count(),
+                ->where('level', "<>", 'Archivio')
+                ->count(),
             'per_livello' => User::where('user_type', 'referee')
                 ->selectRaw('level, COUNT(*) as totale')
                 ->orderByRaw("FIELD(level, \"Aspirante\", \"1_livello\", \"Regionale\",  \"Nazionale\", \"Internazionale\")")
                 ->groupBy('level')
-                ->where('level',"<>", 'Archivio')
+                ->where('level', "<>", 'Archivio')
                 ->pluck('totale', 'level'),
             'per_zona' => User::where('user_type', 'referee')
                 ->join('zones', 'users.zone_id', '=', 'zones.id')
                 ->selectRaw('zones.name, COUNT(*) as totale')
                 ->orderBy('zones.name')
                 ->groupBy('zones.name')
-                ->where('level',"<>", 'Archivio')
+                ->where('level', "<>", 'Archivio')
                 ->pluck('totale', 'name'),
             'attivi_ultimo_mese' => User::where('user_type', 'referee')
                 ->where('last_login_at', '>=', now()->subMonth())
