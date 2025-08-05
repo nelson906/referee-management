@@ -2,7 +2,7 @@
 
 @section('content')
     <div class="container mx-auto">
-        <h1>Statistiche Disponibilità</h1>
+        <h1>Statistiche Assegnazioni</h1>
 
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div class="md:">

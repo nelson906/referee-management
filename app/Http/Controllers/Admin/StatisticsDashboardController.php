@@ -169,12 +169,14 @@ class StatisticsDashboardController extends Controller
             'confirmed' => $query->clone()->where('is_confirmed', true)->count(),
             'pending' => $query->clone()->where('is_confirmed', false)->count(),
             'by_role' => $query->clone()->select('role', DB::raw('count(*) as count'))
+                ->orderByRaw("FIELD(role, \"Direttore di Torneo\", \"Arbitro\", \"Osservatore\")")
                 ->groupBy('role')->pluck('count', 'role'),
             'by_zone' => $isNationalAdmin ? $this->getAssignmentsByZone($year) : [],
             'by_level' => $this->getAssignmentsByLevel($user, $isNationalAdmin, $year),
             'workload' => $this->getWorkloadStats($user, $isNationalAdmin, $year),
             'totale_assegnazioni' => Assignment::count(),
             'per_ruolo' => Assignment::selectRaw('role, COUNT(*) as totale')
+                ->orderByRaw("FIELD(role, \"Direttore di Torneo\", \"Arbitro\", \"Osservatore\")")
                 ->groupBy('role')
                 ->pluck('totale', 'role'),
             'tornei_assegnati' => Tournament::has('assignments')->count(),
