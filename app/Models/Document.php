@@ -9,6 +9,52 @@ use Illuminate\Support\Facades\Storage;
 
 /**
  * 📁 Document Model - Gestione documenti
+ *
+ * @property int $id
+ * @property string $name Nome visualizzato
+ * @property string $original_name Nome file originale
+ * @property string $file_path Path nel storage
+ * @property int $file_size Dimensione in bytes
+ * @property string $mime_type Tipo MIME del file
+ * @property string $category Categoria del documento
+ * @property string $type Tipo di file dedotto dal MIME
+ * @property string|null $description Descrizione opzionale
+ * @property int|null $tournament_id
+ * @property int|null $zone_id
+ * @property int $uploader_id
+ * @property bool $is_public Visibile a tutti gli utenti
+ * @property int $download_count Numero di download
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read string $download_url
+ * @property-read string $file_size_human
+ * @property-read string $file_url
+ * @property-read string $type_icon
+ * @property-read \App\Models\Tournament|null $tournament
+ * @property-read \App\Models\User $uploader
+ * @property-read \App\Models\Zone|null $zone
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Document category(string $category)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Document newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Document newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Document public()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Document query()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Document whereCategory($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Document whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Document whereDescription($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Document whereDownloadCount($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Document whereFilePath($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Document whereFileSize($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Document whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Document whereIsPublic($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Document whereMimeType($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Document whereName($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Document whereOriginalName($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Document whereTournamentId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Document whereType($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Document whereUpdatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Document whereUploaderId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Document whereZoneId($value)
+ * @mixin \Eloquent
  */
 class Document extends Model
 {

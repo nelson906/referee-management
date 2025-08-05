@@ -10,9 +10,79 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
  * Referee Model - Extension Only
- *
+ * 
  * NOTE: Core referee data (referee_code, level, category, certified_date, zone_id, phone, is_active)
  * is now stored in Users table. This model contains only additional referee-specific fields.
+ *
+ * @property int $id
+ * @property int $user_id
+ * @property string|null $address
+ * @property string|null $postal_code
+ * @property string|null $tax_code
+ * @property string|null $notes
+ * @property string|null $badge_number
+ * @property \Illuminate\Support\Carbon|null $first_certification_date
+ * @property \Illuminate\Support\Carbon|null $last_renewal_date
+ * @property \Illuminate\Support\Carbon|null $expiry_date
+ * @property string|null $bio
+ * @property int $experience_years
+ * @property array<array-key, mixed>|null $qualifications
+ * @property array<array-key, mixed>|null $languages
+ * @property string|null $specializations
+ * @property bool $available_for_international
+ * @property array<array-key, mixed>|null $preferences
+ * @property int $total_tournaments
+ * @property int $tournaments_current_year
+ * @property \Illuminate\Support\Carbon|null $profile_completed_at
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property \Illuminate\Support\Carbon|null $deleted_at
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Assignment> $assignments
+ * @property-read int|null $assignments_count
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Availability> $availabilities
+ * @property-read int|null $availabilities_count
+ * @property-read string $category_label
+ * @property-read string $full_name_with_code
+ * @property-read string $level_label
+ * @property-read int $this_year_assignments_count
+ * @property-read int $this_year_availabilities_count
+ * @property-read int $upcoming_assignments_count
+ * @property-read \App\Models\User $user
+ * @property-read \App\Models\Zone|null $zone
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Referee active()
+ * @method static \Database\Factories\RefereeFactory factory($count = null, $state = [])
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Referee inZone($zoneId)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Referee nationalLevel()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Referee newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Referee newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Referee onlyTrashed()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Referee query()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Referee whereAddress($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Referee whereAvailableForInternational($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Referee whereBadgeNumber($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Referee whereBio($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Referee whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Referee whereDeletedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Referee whereExperienceYears($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Referee whereExpiryDate($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Referee whereFirstCertificationDate($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Referee whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Referee whereLanguages($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Referee whereLastRenewalDate($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Referee whereNotes($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Referee wherePostalCode($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Referee wherePreferences($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Referee whereProfileCompletedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Referee whereQualifications($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Referee whereSpecializations($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Referee whereTaxCode($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Referee whereTotalTournaments($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Referee whereTournamentsCurrentYear($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Referee whereUpdatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Referee whereUserId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Referee withTrashed(bool $withTrashed = true)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Referee withoutTrashed()
+ * @mixin \Eloquent
  */
 class Referee extends Model
 {

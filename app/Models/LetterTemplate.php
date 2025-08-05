@@ -7,6 +7,51 @@ use Illuminate\Database\Eloquent\Model;
 use App\Models\Zone;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property int $id
+ * @property string $name
+ * @property string $type
+ * @property string $subject
+ * @property string|null $description
+ * @property string $body
+ * @property int|null $zone_id
+ * @property int|null $tournament_type_id
+ * @property bool $is_active
+ * @property bool $is_default
+ * @property array<array-key, mixed>|null $variables
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read mixed $scope_label
+ * @property-read mixed $status_label
+ * @property-read mixed $type_badge_color
+ * @property-read mixed $type_display
+ * @property-read mixed $type_label
+ * @property-read mixed $used_variables
+ * @property-read \App\Models\TournamentType|null $tournamentType
+ * @property-read Zone|null $zone
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|LetterTemplate active()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|LetterTemplate default()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|LetterTemplate forTournamentType($tournamentTypeId = null)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|LetterTemplate forZone($zoneId = null)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|LetterTemplate newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|LetterTemplate newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|LetterTemplate ofType($type)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|LetterTemplate query()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|LetterTemplate whereBody($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|LetterTemplate whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|LetterTemplate whereDescription($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|LetterTemplate whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|LetterTemplate whereIsActive($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|LetterTemplate whereIsDefault($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|LetterTemplate whereName($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|LetterTemplate whereSubject($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|LetterTemplate whereTournamentTypeId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|LetterTemplate whereType($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|LetterTemplate whereUpdatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|LetterTemplate whereVariables($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|LetterTemplate whereZoneId($value)
+ * @mixin \Eloquent
+ */
 class LetterTemplate extends Model
 {
     use HasFactory;

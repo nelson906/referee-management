@@ -12,6 +12,85 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
+/**
+ * @property int $id
+ * @property string $name
+ * @property string $email
+ * @property string $user_type
+ * @property string $level
+ * @property string|null $referee_code
+ * @property string|null $category
+ * @property \Illuminate\Support\Carbon|null $certified_date
+ * @property int|null $zone_id
+ * @property \Illuminate\Support\Carbon|null $email_verified_at
+ * @property string $password
+ * @property string|null $phone
+ * @property string|null $city
+ * @property bool $is_active
+ * @property string|null $last_login_at
+ * @property string|null $preferences
+ * @property string|null $remember_token
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property \Illuminate\Support\Carbon|null $deleted_at
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Tournament> $assignedTournaments
+ * @property-read int|null $assigned_tournaments_count
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Assignment> $assignments
+ * @property-read int|null $assignments_count
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Assignment> $assignmentsMade
+ * @property-read int|null $assignments_made_count
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Availability> $availabilities
+ * @property-read int|null $availabilities_count
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Tournament> $availableTournaments
+ * @property-read int|null $available_tournaments_count
+ * @property-read string $full_name
+ * @property-read string $level_label
+ * @property-read array $referee_statistics
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Tournament> $tournaments
+ * @property-read mixed $upcoming_assignments
+ * @property-read string $user_type_label
+ * @property-read \Illuminate\Notifications\DatabaseNotificationCollection<int, \Illuminate\Notifications\DatabaseNotification> $notifications
+ * @property-read int|null $notifications_count
+ * @property-read \App\Models\Referee|null $referee
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \Laravel\Sanctum\PersonalAccessToken> $tokens
+ * @property-read int|null $tokens_count
+ * @property-read int|null $tournaments_count
+ * @property-read \App\Models\Zone|null $zone
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|User active()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|User admins()
+ * @method static \Database\Factories\UserFactory factory($count = null, $state = [])
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|User fromZone($zoneId)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|User nationalReferees()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|User newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|User newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|User ofLevel($level)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|User onlyTrashed()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|User query()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|User referees()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|User whereCategory($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|User whereCertifiedDate($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|User whereCity($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|User whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|User whereDeletedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|User whereEmail($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|User whereEmailVerifiedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|User whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|User whereIsActive($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|User whereLastLoginAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|User whereLevel($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|User whereName($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|User wherePassword($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|User wherePhone($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|User wherePreferences($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|User whereRefereeCode($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|User whereRememberToken($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|User whereUpdatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|User whereUserType($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|User whereZoneId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|User withTrashed(bool $withTrashed = true)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|User withoutTrashed()
+ * @mixin \Eloquent
+ */
 class User extends Authenticatable
 {
     use HasApiTokens, HasFactory, Notifiable, SoftDeletes;
@@ -106,10 +185,10 @@ class User extends Authenticatable
     /**
      * Get the referee details.
      */
-    public function refereeDetails(): HasOne
-    {
-        return $this->hasOne(RefereeDetail::class);
-    }
+    // public function refereeDetails(): HasOne
+    // {
+    //     return $this->hasOne(RefereeDetail::class);
+    // }
 
     /**
      * Get the availabilities declared by the user.

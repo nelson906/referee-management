@@ -9,6 +9,43 @@ use Carbon\Carbon;
 
 /**
  * 📢 Communication Model - Gestione comunicazioni di sistema
+ *
+ * @property int $id
+ * @property string $title
+ * @property string $content
+ * @property string $type Tipo di comunicazione
+ * @property string $status Stato della comunicazione
+ * @property string $priority Priorità della comunicazione
+ * @property int|null $zone_id
+ * @property int $author_id
+ * @property \Illuminate\Support\Carbon|null $scheduled_at Quando pubblicare (null = subito)
+ * @property \Illuminate\Support\Carbon|null $expires_at Quando far scadere (null = mai)
+ * @property \Illuminate\Support\Carbon|null $published_at Quando è stata effettivamente pubblicata
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \App\Models\User $author
+ * @property-read string $priority_badge
+ * @property-read string $type_badge
+ * @property-read \App\Models\Zone|null $zone
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Communication active()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Communication newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Communication newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Communication published()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Communication query()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Communication whereAuthorId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Communication whereContent($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Communication whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Communication whereExpiresAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Communication whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Communication wherePriority($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Communication wherePublishedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Communication whereScheduledAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Communication whereStatus($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Communication whereTitle($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Communication whereType($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Communication whereUpdatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Communication whereZoneId($value)
+ * @mixin \Eloquent
  */
 class Communication extends Model
 {

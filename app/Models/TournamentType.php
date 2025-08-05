@@ -7,6 +7,60 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property int $id
+ * @property string $name
+ * @property string $short_name
+ * @property string|null $description
+ * @property bool $is_national
+ * @property string $level
+ * @property string $required_level
+ * @property int $min_referees
+ * @property int $max_referees
+ * @property int $sort_order
+ * @property bool $is_active
+ * @property array<array-key, mixed>|null $settings
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property int $requires_approval
+ * @property int $priority_level
+ * @property int $active
+ * @property-read array $display_info
+ * @property-read string $formatted_name
+ * @property-read array $notification_templates
+ * @property-read string $required_referee_level
+ * @property-read string|null $special_requirements
+ * @property-read mixed $visibility_zones
+ * @property-read TournamentType|null $tournamentType
+ * @property-read TournamentType|null $tournament_type
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Tournament> $tournaments
+ * @property-read int|null $tournaments_count
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|TournamentType active()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|TournamentType national()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|TournamentType newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|TournamentType newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|TournamentType ordered()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|TournamentType query()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|TournamentType whereActive($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|TournamentType whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|TournamentType whereDescription($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|TournamentType whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|TournamentType whereIsActive($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|TournamentType whereIsNational($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|TournamentType whereLevel($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|TournamentType whereMaxReferees($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|TournamentType whereMinReferees($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|TournamentType whereName($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|TournamentType wherePriorityLevel($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|TournamentType whereRequiredLevel($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|TournamentType whereRequiresApproval($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|TournamentType whereSettings($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|TournamentType whereShortName($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|TournamentType whereSortOrder($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|TournamentType whereUpdatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|TournamentType zonal()
+ * @mixin \Eloquent
+ */
 class TournamentType extends Model
 {
     use HasFactory;

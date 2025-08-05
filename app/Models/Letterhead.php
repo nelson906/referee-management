@@ -8,6 +8,55 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\Storage;
 use Carbon\Carbon;
 
+/**
+ * @property int $id
+ * @property string $title
+ * @property string|null $description
+ * @property int|null $zone_id
+ * @property string|null $logo_path
+ * @property string|null $header_text
+ * @property string|null $header_content
+ * @property string|null $footer_text
+ * @property string|null $footer_content
+ * @property array<array-key, mixed>|null $contact_info
+ * @property array<array-key, mixed>|null $settings
+ * @property bool $is_active
+ * @property bool $is_default
+ * @property int|null $updated_by
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read array $font_settings
+ * @property-read string $formatted_contact_info
+ * @property-read string|null $logo_url
+ * @property-read array $margin_settings
+ * @property-read string $scope_display
+ * @property-read \App\Models\User|null $updatedBy
+ * @property-read \App\Models\Zone|null $zone
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Letterhead active()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Letterhead default()
+ * @method static \Database\Factories\LetterheadFactory factory($count = null, $state = [])
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Letterhead forZone($zoneId = null)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Letterhead newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Letterhead newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Letterhead query()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Letterhead whereContactInfo($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Letterhead whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Letterhead whereDescription($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Letterhead whereFooterContent($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Letterhead whereFooterText($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Letterhead whereHeaderContent($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Letterhead whereHeaderText($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Letterhead whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Letterhead whereIsActive($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Letterhead whereIsDefault($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Letterhead whereLogoPath($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Letterhead whereSettings($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Letterhead whereTitle($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Letterhead whereUpdatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Letterhead whereUpdatedBy($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Letterhead whereZoneId($value)
+ * @mixin \Eloquent
+ */
 class Letterhead extends Model
 {
     use HasFactory;

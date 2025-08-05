@@ -7,6 +7,52 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+/**
+ * @property int $id
+ * @property int $tournament_id
+ * @property string $status
+ * @property int $total_recipients
+ * @property string|null $referee_list
+ * @property \Illuminate\Support\Carbon|null $sent_at
+ * @property int|null $sent_by
+ * @property array<array-key, mixed>|null $details
+ * @property array<array-key, mixed>|null $templates_used
+ * @property string|null $error_message
+ * @property array<array-key, mixed>|null $attachments
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read string $recipients_list
+ * @property-read array $stats
+ * @property-read string $status_formatted
+ * @property-read string $templates_formatted
+ * @property-read string $time_ago
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Notification> $individualNotifications
+ * @property-read int|null $individual_notifications_count
+ * @property-read \App\Models\User|null $sentBy
+ * @property-read \App\Models\Tournament $tournament
+ * @method static \Database\Factories\TournamentNotificationFactory factory($count = null, $state = [])
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|TournamentNotification failed()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|TournamentNotification forZone($zoneId)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|TournamentNotification newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|TournamentNotification newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|TournamentNotification query()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|TournamentNotification sent()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|TournamentNotification today()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|TournamentNotification whereAttachments($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|TournamentNotification whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|TournamentNotification whereDetails($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|TournamentNotification whereErrorMessage($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|TournamentNotification whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|TournamentNotification whereRefereeList($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|TournamentNotification whereSentAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|TournamentNotification whereSentBy($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|TournamentNotification whereStatus($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|TournamentNotification whereTemplatesUsed($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|TournamentNotification whereTotalRecipients($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|TournamentNotification whereTournamentId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|TournamentNotification whereUpdatedAt($value)
+ * @mixin \Eloquent
+ */
 class TournamentNotification extends Model
 {
     use HasFactory;

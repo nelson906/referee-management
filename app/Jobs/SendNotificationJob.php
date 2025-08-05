@@ -104,7 +104,6 @@ class SendNotificationJob implements ShouldQueue
                 'recipient' => $this->notification->recipient_email,
                 'attempt' => $this->attempts()
             ]);
-
         } catch (\Exception $e) {
             Log::error('Failed to send notification', [
                 'notification_id' => $this->notification->id,
@@ -140,6 +139,17 @@ class SendNotificationJob implements ShouldQueue
     {
         // Reload the notification to get fresh data
         $this->notification->refresh();
+        // PREPARA LE VARIABILI
+        $mailVariables = [
+            'tournament_name' => $this->notification->tournament->name ?? 'N/A',
+            'tournament_date' => $this->notification->tournament->start_date->format('d/m/Y') ?? 'N/A',
+            'club_name' => $this->notification->tournament->club->name ?? 'N/A',
+            'referee_name' => $this->notification->recipient_name ?? 'N/A',
+            'role' => $this->notification->assignment->role ?? 'Arbitro',
+            'tournament' => $this->notification->tournament,
+            'subject' => $this->notification->subject,
+            'body' => $this->notification->body
+        ];
 
         if ($this->notification->assignment) {
             // Send using the AssignmentNotification mailable
@@ -157,18 +167,15 @@ class SendNotificationJob implements ShouldQueue
 
             Mail::to($this->notification->recipient_email)
                 ->send(new AssignmentNotification(
-                    $assignment,
                     $this->notification,
-                    $attachments,
-                    $recipientName,
-                    $isClub
+                    $mailVariables  // solo 2 parametri!
                 ));
         } else {
             // For standalone notifications, use a simple mail
             Mail::raw($this->notification->body, function ($message) {
                 $message->to($this->notification->recipient_email)
-                        ->subject($this->notification->subject)
-                        ->from(config('mail.from.address'), config('mail.from.name'));
+                    ->subject($this->notification->subject)
+                    ->from(config('mail.from.address'), config('mail.from.name'));
             });
         }
 
@@ -225,20 +232,19 @@ class SendNotificationJob implements ShouldQueue
 
             $subject = 'Notification System: Permanent Failure';
             $body = "A notification has permanently failed to send.\n\n" .
-                   "Notification ID: {$this->notification->id}\n" .
-                   "Recipient: {$this->notification->recipient_email}\n" .
-                   "Subject: {$this->notification->subject}\n" .
-                   "Error: {$exception->getMessage()}\n" .
-                   "Time: " . now()->format('Y-m-d H:i:s');
+                "Notification ID: {$this->notification->id}\n" .
+                "Recipient: {$this->notification->recipient_email}\n" .
+                "Subject: {$this->notification->subject}\n" .
+                "Error: {$exception->getMessage()}\n" .
+                "Time: " . now()->format('Y-m-d H:i:s');
 
             foreach ($adminEmails as $adminEmail) {
                 Mail::raw($body, function ($message) use ($adminEmail, $subject) {
                     $message->to($adminEmail)
-                            ->subject($subject)
-                            ->from(config('mail.from.address'), config('mail.from.name'));
+                        ->subject($subject)
+                        ->from(config('mail.from.address'), config('mail.from.name'));
                 });
             }
-
         } catch (\Exception $e) {
             Log::error('Failed to notify admins of notification failure', [
                 'original_notification_id' => $this->notification->id,

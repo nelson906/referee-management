@@ -8,6 +8,89 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Carbon\Carbon;
 
+/**
+ * @property int $id
+ * @property string $name
+ * @property \Illuminate\Support\Carbon $start_date
+ * @property \Illuminate\Support\Carbon $end_date
+ * @property \Illuminate\Support\Carbon|null $availability_deadline
+ * @property int $club_id
+ * @property int $tournament_type_id
+ * @property int $zone_id
+ * @property string|null $description
+ * @property string|null $notes
+ * @property string $status
+ * @property string|null $convocation_letter
+ * @property string|null $club_letter
+ * @property \Illuminate\Support\Carbon|null $letters_generated_at
+ * @property string|null $convocation_file_path
+ * @property string|null $convocation_file_name
+ * @property \Illuminate\Support\Carbon|null $convocation_generated_at
+ * @property string|null $club_letter_file_path
+ * @property string|null $club_letter_file_name
+ * @property \Illuminate\Support\Carbon|null $club_letter_generated_at
+ * @property int|null $documents_last_updated_by
+ * @property int $document_version
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\User> $assignedReferees
+ * @property-read int|null $assigned_referees_count
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Assignment> $assignments
+ * @property-read int|null $assignments_count
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Availability> $availabilities
+ * @property-read int|null $availabilities_count
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\User> $availableReferees
+ * @property-read int|null $available_referees_count
+ * @property-read \App\Models\Club $club
+ * @property-read \App\Models\User|null $documentsLastUpdatedBy
+ * @property-read string $date_range
+ * @property-read int $days_until_deadline
+ * @property-read int $max_referees
+ * @property-read array $notification_status
+ * @property-read int $required_referees
+ * @property-read string $status_color
+ * @property-read string $status_label
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\TournamentNotification> $notifications
+ * @property-read int|null $notifications_count
+ * @property-read \App\Models\TournamentType $tournamentType
+ * @property-read \App\Models\Zone $zone
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Tournament active()
+ * @method static \Database\Factories\TournamentFactory factory($count = null, $state = [])
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Tournament newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Tournament newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Tournament notified()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Tournament openForAvailability()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Tournament past()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Tournament query()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Tournament readyForNotification()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Tournament upcoming()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Tournament visibleToZone($zoneId)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Tournament whereAvailabilityDeadline($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Tournament whereClubId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Tournament whereClubLetter($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Tournament whereClubLetterFileName($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Tournament whereClubLetterFilePath($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Tournament whereClubLetterGeneratedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Tournament whereConvocationFileName($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Tournament whereConvocationFilePath($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Tournament whereConvocationGeneratedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Tournament whereConvocationLetter($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Tournament whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Tournament whereDescription($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Tournament whereDocumentVersion($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Tournament whereDocumentsLastUpdatedBy($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Tournament whereEndDate($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Tournament whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Tournament whereLettersGeneratedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Tournament whereName($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Tournament whereNotes($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Tournament whereStartDate($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Tournament whereStatus($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Tournament whereTournamentTypeId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Tournament whereUpdatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Tournament whereZoneId($value)
+ * @mixin \Eloquent
+ */
 class Tournament extends Model
 {
     use HasFactory;

@@ -6,6 +6,39 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property int $id
+ * @property int $user_id
+ * @property int $tournament_id
+ * @property int|null $is_available
+ * @property string|null $notes
+ * @property \Illuminate\Support\Carbon|null $submitted_at
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \App\Models\Assignment|null $assignment
+ * @property-read int $days_since_submission
+ * @property-read string $status
+ * @property-read string $status_color
+ * @property-read string $status_label
+ * @property-read \App\Models\User $referee
+ * @property-read \App\Models\Tournament $tournament
+ * @property-read \App\Models\User $user
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Availability forOpenTournaments()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Availability forUpcomingTournaments()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Availability newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Availability newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Availability query()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Availability unassigned()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Availability whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Availability whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Availability whereIsAvailable($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Availability whereNotes($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Availability whereSubmittedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Availability whereTournamentId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Availability whereUpdatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Availability whereUserId($value)
+ * @mixin \Eloquent
+ */
 class Availability extends Model
 {
     use HasFactory;

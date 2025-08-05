@@ -7,6 +7,68 @@ use Illuminate\Database\Eloquent\Model;
 use App\Models\Assignment;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property int $id
+ * @property int|null $assignment_id
+ * @property int|null $tournament_id
+ * @property string $recipient_type
+ * @property string|null $recipient_email
+ * @property string|null $recipient_name
+ * @property string $subject
+ * @property string|null $body
+ * @property string|null $template_used
+ * @property string $status
+ * @property \Illuminate\Support\Carbon|null $sent_at
+ * @property string|null $scheduled_at
+ * @property string|null $expires_at
+ * @property string|null $error_message
+ * @property int $retry_count
+ * @property int $priority
+ * @property array<array-key, mixed>|null $attachments
+ * @property array<array-key, mixed>|null $metadata
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property int|null $sender_id
+ * @property-read Assignment|null $assignment
+ * @property-read mixed $formatted_sent_date
+ * @property-read mixed $priority_badge_color
+ * @property-read mixed $priority_display
+ * @property-read mixed $recipient_type_display
+ * @property-read mixed $referee
+ * @property-read mixed $status_badge_color
+ * @property-read mixed $status_display
+ * @property-read \App\Models\Tournament|null $tournament
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Notification failed()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Notification newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Notification newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Notification ofType($type)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Notification pending()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Notification query()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Notification sent()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Notification whereAssignmentId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Notification whereAttachments($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Notification whereBody($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Notification whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Notification whereErrorMessage($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Notification whereExpiresAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Notification whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Notification whereMetadata($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Notification wherePriority($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Notification whereRecipientEmail($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Notification whereRecipientName($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Notification whereRecipientType($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Notification whereRetryCount($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Notification whereScheduledAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Notification whereSenderId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Notification whereSentAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Notification whereStatus($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Notification whereSubject($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Notification whereTemplateUsed($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Notification whereTournamentId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Notification whereUpdatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Notification withPriority($priority)
+ * @mixin \Eloquent
+ */
 class Notification extends Model
 {
     use HasFactory;

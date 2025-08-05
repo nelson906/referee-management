@@ -7,6 +7,63 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property int $id
+ * @property string $name
+ * @property string|null $code
+ * @property string|null $description
+ * @property bool $is_national
+ * @property int $is_active
+ * @property string|null $header_document_path
+ * @property \Illuminate\Support\Carbon|null $header_updated_at
+ * @property int|null $header_updated_by
+ * @property \Illuminate\Support\Carbon|null $created_at
+ * @property \Illuminate\Support\Carbon|null $updated_at
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\User> $admins
+ * @property-read int|null $admins_count
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Club> $clubs
+ * @property-read int|null $clubs_count
+ * @property-read int $active_circles_count
+ * @property-read int $active_clubs_count
+ * @property-read int $active_referees_count
+ * @property-read int $active_tournaments_count
+ * @property-read array $referees_by_level
+ * @property-read array $statistics
+ * @property-read array $tournaments_by_category
+ * @property-read int $upcoming_tournaments_count
+ * @property-read \App\Models\User|null $headerUpdatedBy
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\InstitutionalEmail> $institutionalEmails
+ * @property-read int|null $institutional_emails_count
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\LetterTemplate> $letterTemplates
+ * @property-read int|null $letter_templates_count
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Letterhead> $letterheads
+ * @property-read int|null $letterheads_count
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\User> $referees
+ * @property-read int|null $referees_count
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\Tournament> $tournaments
+ * @property-read int|null $tournaments_count
+ * @property-read \Illuminate\Database\Eloquent\Collection<int, \App\Models\User> $users
+ * @property-read int|null $users_count
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Zone active()
+ * @method static \Database\Factories\ZoneFactory factory($count = null, $state = [])
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Zone newModelQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Zone newQuery()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Zone ordered()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Zone query()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Zone regional()
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Zone whereCode($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Zone whereCreatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Zone whereDescription($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Zone whereHeaderDocumentPath($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Zone whereHeaderUpdatedAt($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Zone whereHeaderUpdatedBy($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Zone whereId($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Zone whereIsActive($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Zone whereIsNational($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Zone whereName($value)
+ * @method static \Illuminate\Database\Eloquent\Builder<static>|Zone whereUpdatedAt($value)
+ * @mixin \Eloquent
+ */
 class Zone extends Model
 {
     use HasFactory;

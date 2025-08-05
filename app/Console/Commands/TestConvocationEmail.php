@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Mail;
 use App\Models\Tournament;
+use App\Mail\AssignmentNotification;
 
 class TestConvocationEmail extends Command
 {
@@ -13,44 +14,41 @@ class TestConvocationEmail extends Command
 
     public function handle()
     {
-        $tournamentId = $this->argument('tournament_id');
-        $email = $this->argument('email');
+        // CREA UN NOTIFICATION DI TEST
+        $notification = new \App\Models\Notification();
+        $notification->id = 999;
+        $notification->subject = 'Test Convocazione';
+        $notification->body = 'Questo è un test della convocazione';
+        $notification->recipient_email = $this->argument('email') ?? 'test@example.com';
+        $notification->recipient_name = 'Test User';
+        $notification->recipient_type = 'referee';
+        $notification->status = 'pending';
 
-        $tournament = Tournament::with(['club', 'assignments.referee.user'])->find($tournamentId);
+        // CREA LE VARIABILI PER IL TEMPLATE
+        $variables = [
+            'tournament_name' => 'Torneo di Test',
+            'tournament_date' => now()->format('d/m/Y'),
+            'club_name' => 'Golf Club Test',
+            'referee_name' => 'Mario Rossi',
+            'role' => 'Arbitro',
+            'tournament' => (object)[
+                'name' => 'Torneo di Test',
+                'start_date' => now(),
+                'end_date' => now()->addDays(2),
+                'club' => (object)['name' => 'Golf Club Test']
+            ]
+        ];
 
-        if (!$tournament) {
-            $this->error('Tournament not found');
-            return 1;
+        // CREA L'EMAIL
+        $mail = new AssignmentNotification($notification, $variables);
+
+        // INVIA O VISUALIZZA
+        if ($this->option('send')) {
+            Mail::to($notification->recipient_email)->send($mail);
+            $this->info('Email inviata a: ' . $notification->recipient_email);
+        } else {
+            $this->info('Preview email:');
+            $this->line($mail->render());
         }
-
-        // Crea file test
-        $testPath = storage_path('app/public/convocations/test_convocation.txt');
-        file_put_contents($testPath, 'Test convocation content');
-
-        // Crea mail
-        $mail = new UnifiedAssignmentNotification(
-            $tournament,
-            $tournament->assignments,
-            'Test Convocazione',
-            'Questo è un test con allegato',
-            'Test User'
-        );
-
-        // Aggiungi allegato
-        $mail->attach($testPath, [
-            'as' => 'convocazione_test.txt',
-            'mime' => 'text/plain',
-        ]);
-
-        // Invia
-        Mail::to($email)->send($mail);
-
-        $this->info("Email inviata a {$email}");
-        $this->info("Controlla Mailhog per verificare l'allegato");
-
-        // Pulisci
-        unlink($testPath);
-
-        return 0;
     }
 }
