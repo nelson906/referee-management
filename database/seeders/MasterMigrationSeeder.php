@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\DB;
 use App\Helpers\RefereeLevelsHelper;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Storage;
 use App\Models\Zone;
 use Illuminate\Console\Command;
@@ -53,8 +54,8 @@ class MasterMigrationSeeder extends Seeder
         // $this->createZones();           // Manuale: SZR1-SZR7, CRC
         // $this->createAdminUsers();      // ✅ AGGIUNTO: Crea admin per ogni zona
         // $this->createTournamentTypes(); // Manuale: defaults con short_name
-        $this->migrateArbitri();        // arbitri → users + referees
-        $this->migrateCircoli();        // circoli → clubs
+        // $this->migrateArbitri();        // arbitri → users + referees
+        // $this->migrateCircoli();        // circoli → clubs
         $this->migrateGare();           // gare_2025 → tournaments
         $this->migrateDisponibilita();  // gare_2025.Disponibili → availabilities
         $this->migrateAssegnazioni();   // gare_2025.TD+Arbitri+Osservatori → assignments
@@ -985,54 +986,110 @@ class MasterMigrationSeeder extends Seeder
     /**
      * Migra tornei (gare_2025 → tournaments)
      */
-    private function migrateGare()
-    {
-        $this->command->info('🏆 Migrazione tornei (gare_2025)...');
+private function migrateGare()
+{
+    $this->command->info('🏆 Migrazione tornei multi-anno...');
 
-        // SEMPRE leggi dal database reale (anche in dry-run per statistiche corrette)
-        try {
-            $gare = DB::connection('real')->table('gare_2025')->get();
-            $this->command->info("🔍 Trovati {$gare->count()} tornei nel database reale Sql1466239_4");
-        } catch (\Exception $e) {
-            $this->command->error("❌ Errore lettura tornei: {$e->getMessage()}");
-            return;
+    $currentYear = date('Y'); // 2025
+
+    // LOOP FINO A currentYear - 1 (2024) per tabelle tournaments_YYYY
+    for ($year = 2015; $year < $currentYear; $year++) {
+        $tableName = "gare_{$year}";
+
+        if (!$this->tableExists('real', $tableName)) {
+            $this->command->info("⏭️ Tabella {$tableName} non trovata, skip");
+            continue;
         }
 
-        $processedCount = 0;
+        try {
+            $gare = DB::connection('real')->table($tableName)->get();
+            $this->command->info("📅 Anno {$year}: trovati {$gare->count()} tornei");
+
+            // Crea tabella tournaments_YYYY
+            $this->createTournamentTableForYear($year);
+
+            foreach ($gare as $gara) {
+                $tournamentData = $this->buildTournamentData($gara);
+
+                // Inserisci in tournaments_YYYY
+                $this->dryRunUpdateOrInsert(
+                    "tournaments_{$year}",
+                    ['id' => $gara->id],
+                    $tournamentData,
+                    "Creazione torneo anno {$year}: {$tournamentData['name']}"
+                );
+            }
+
+        } catch (\Exception $e) {
+            $this->command->error("❌ Errore migrazione anno {$year}: " . $e->getMessage());
+        }
+    }
+
+    // ANNO CORRENTE (2025) va direttamente in tournaments
+    $this->migrateCurrentYearToMain($currentYear);
+}
+
+/**
+ * Migra l'anno corrente direttamente nella tabella tournaments principale
+ */
+private function migrateCurrentYearToMain($year)
+{
+    $this->command->info("📅 Anno {$year} (corrente): migrazione diretta in tournaments...");
+
+    $tableName = "gare_{$year}";
+
+    if (!$this->tableExists('real', $tableName)) {
+        $this->command->error("❌ Tabella {$tableName} non trovata");
+        return;
+    }
+
+    try {
+        $gare = DB::connection('real')->table($tableName)->get();
+        $this->command->info("🔍 Trovati {$gare->count()} tornei per l'anno corrente");
 
         foreach ($gare as $gara) {
-            $clubId = $this->resolveClubForTournament($gara);
-            $tournamentTypeId = $this->resolveTournamentType($gara);
-            $zoneId = $this->resolveZoneForTournament($gara, $clubId);
+            $tournamentData = $this->buildTournamentData($gara);
 
-            $tournamentData = [
-                'name' => $gara->Nome_gara ?? "Torneo #{$gara->id}",
-                'description' => $gara->descrizione ?? null,
-                'start_date' => $this->parseDate($gara->StartTime),
-                'end_date' => $this->parseDate($gara->EndTime),
-                'availability_deadline' => $this->calculateAvailabilityDeadline($gara->StartTime), // ✅ FIX
-                'club_id' => $clubId,
-                'zone_id' => $zoneId,
-                'tournament_type_id' => $tournamentTypeId,
-                'status' => $this->mapTournamentStatus($gara->stato ?? 'draft'),
-                'notes' => $gara->note ?? null,
-                'created_at' => $this->parseDate($gara->created_at ?? null) ?? now(),
-                'updated_at' => now(),
-            ];
-
+            // Inserisci direttamente in tournaments (NO tournaments_2025)
             $this->dryRunUpdateOrInsert(
-                'tournaments',
+                "tournaments",  // <-- TABELLA PRINCIPALE
                 ['id' => $gara->id],
                 $tournamentData,
-                "Creazione torneo: {$tournamentData['name']}"
+                "Creazione torneo corrente: {$tournamentData['name']}"
             );
-
-            $processedCount++;
         }
 
-        $this->stats['tornei'] = $processedCount;
-        $this->command->info("✅ Migrati {$processedCount} tornei");
+        $this->command->info("✅ Anno corrente migrato in tabella tournaments principale");
+
+    } catch (\Exception $e) {
+        $this->command->error("❌ Errore migrazione anno corrente: " . $e->getMessage());
     }
+}
+
+/**
+ * Helper: costruisce i dati del torneo
+ */
+private function buildTournamentData($gara): array
+{
+    $clubId = $this->resolveClubForTournament($gara);
+    $tournamentTypeId = $this->resolveTournamentType($gara);
+    $zoneId = $this->resolveZoneForTournament($gara, $clubId);
+
+    return [
+        'name' => $gara->Nome_gara ?? "Torneo #{$gara->id}",
+        'description' => $gara->descrizione ?? null,
+        'start_date' => $this->parseDate($gara->StartTime),
+        'end_date' => $this->parseDate($gara->EndTime),
+        'availability_deadline' => $this->calculateAvailabilityDeadline($gara->StartTime),
+        'club_id' => $clubId,
+        'zone_id' => $zoneId,
+        'tournament_type_id' => $tournamentTypeId,
+        'status' => $this->mapTournamentStatus($gara->stato ?? 'draft'),
+        'notes' => $gara->note ?? null,
+        'created_at' => $this->parseDate($gara->created_at ?? null) ?? now(),
+        'updated_at' => now(),
+    ];
+}
 
     /**
      * Migra disponibilità (parsing CSV da gare_2025.Disponibilità)
@@ -1840,4 +1897,31 @@ class MasterMigrationSeeder extends Seeder
         // 10 giorni prima della data di inizio
         return $startDate->copy()->subDays(10);
     }
+
+
+// AGGIUNGI questo metodo per creare tabelle anno
+private function createTournamentTableForYear($year)
+{
+    $tableName = "tournaments_{$year}";
+
+    if (!Schema::hasTable($tableName)) {
+        Schema::create($tableName, function (Blueprint $table) {
+            // COPIA STRUTTURA da tournaments
+            $table->id();
+            $table->string('name');
+            $table->text('description')->nullable();
+            $table->date('start_date');
+            $table->date('end_date');
+            $table->dateTime('availability_deadline')->nullable();
+            $table->foreignId('club_id')->constrained('clubs');
+            $table->foreignId('zone_id')->nullable()->constrained('zones');
+            $table->foreignId('tournament_type_id')->nullable();
+            $table->enum('status', ['draft', 'open', 'closed', 'cancelled', 'completed'])->default('draft');
+            $table->text('notes')->nullable();
+            $table->timestamps();
+        });
+
+        $this->command->info("✅ Creata tabella {$tableName}");
+    }
+}
 }

@@ -36,6 +36,19 @@
                                 🏌️ Golf Admin
                             </h1>
                         </div>
+{{-- DOPO il logo/brand, PRIMA del menu --}}
+<div class="flex items-center ml-auto mr-4">
+    <label class="mr-2 text-sm">Anno:</label>
+    <select id="year-selector"
+            class="text-sm border-gray-300 rounded-md"
+            onchange="changeYear(this.value)">
+        @for($y = date('Y'); $y >= 2015; $y--)
+            <option value="{{ $y }}" {{ session('selected_year', date('Y')) == $y ? 'selected' : '' }}>
+                {{ $y }}
+            </option>
+        @endfor
+    </select>
+</div>
 
                         {{-- Desktop Navigation Menu - DUE RIGHE --}}
                         <div class="ml-4">
@@ -349,6 +362,21 @@
 
     {{-- Page-specific scripts --}}
     @stack('scripts')
+<script>
+function changeYear(year) {
+    // Salva in sessione via AJAX
+    fetch('/api/set-year', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+        },
+        body: JSON.stringify({ year: year })
+    }).then(() => {
+        window.location.reload(); // Ricarica per applicare il nuovo anno
+    });
+}
+</script>
 </body>
 
 </html>

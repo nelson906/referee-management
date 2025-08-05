@@ -217,8 +217,8 @@ Route::middleware(['auth'])->group(function () {
             Route::post('/{template}/toggle-active', [LetterTemplateController::class, 'toggleActive'])->name('toggle-active');
             Route::post('/{template}/set-default', [LetterTemplateController::class, 'setDefault'])->name('set-default');
         });
-    Route::get('/templates/management', [TemplateManagementController::class, 'index'])->name('templates.management');
-    Route::get('/templates/{template}/preview', [TemplateManagementController::class, 'preview'])->name('templates.preview');
+        Route::get('/templates/management', [TemplateManagementController::class, 'index'])->name('templates.management');
+        Route::get('/templates/{template}/preview', [TemplateManagementController::class, 'preview'])->name('templates.preview');
 
 
         // Letterheads Management (aggiungi dopo letter-templates)
@@ -301,6 +301,12 @@ Route::middleware(['auth'])->group(function () {
             Route::get('/find-by-tournament/{tournament}', [NotificationController::class, 'findByTournament'])->name('find-by-tournament');
         });
 
+        // Curricula
+        Route::get('/admin/referees/curricula', [Admin\RefereeController::class, 'allCurricula'])
+            ->name('admin.referees.curricula');
+        Route::get('/admin/referee/{id}/curriculum', [Admin\RefereeController::class, 'showCurriculum'])
+            ->name('admin.referee.curriculum');
+
         // Settings
         Route::get('/settings', [Admin\SettingsController::class, 'index'])->name('settings');
         Route::post('/settings', [Admin\SettingsController::class, 'update'])->name('settings.update');
@@ -351,6 +357,11 @@ Route::middleware(['referee_or_admin'])->prefix('referee')->name('referee.')->gr
         Route::post('/{notification}/upload', [DocumentController::class, 'upload'])->name('upload');
         Route::get('/{notification}/regenerate', [DocumentController::class, 'regenerate'])->name('regenerate');
     });
+
+    // Curriculum
+        Route::get('/referee/my-curriculum', [Admin\RefereeController::class, 'myCurriculum'])
+        ->name('referee.my-curriculum');
+
 });
 
 // =================================================================
@@ -457,6 +468,11 @@ Route::prefix('api')->name('api.')->group(function () {
 Route::prefix('notifications')->name('notifications.')->group(function () {
     Route::get('/', [Admin\NotificationController::class, 'index'])->name('index');
     // ... altre route
+});
+Route::post('/api/set-year', function (Request $request) {
+    $request->validate(['year' => 'required|integer|between:2015,' . date('Y')]);
+    session(['selected_year' => $request->year]);
+    return response()->json(['success' => true]);
 });
 
 // =================================================================

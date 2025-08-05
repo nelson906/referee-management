@@ -494,4 +494,52 @@ public function index(Request $request): View
             abort(403, 'Non sei autorizzato ad accedere a questo arbitro.');
         }
     }
+    // Per ADMIN - vede tutti
+public function allCurricula()
+{
+    $referees = User::where('user_type', 'referee')
+        ->orderBy('name')
+        ->paginate(20);
+
+    return view('admin.referees.curricula', compact('referees'));
+}
+
+// Per REFEREE - vede solo il suo
+public function myCurriculum()
+{
+    return $this->showCurriculum(auth()->id());
+}
+
+// Metodo comune
+public function showCurriculum($id)
+{
+    $referee = User::findOrFail($id);
+    $curriculumData = [];
+
+    // Raccogli dati per ogni anno
+    for ($year = date('Y'); $year >= 2015; $year--) {
+        if (Schema::hasTable("tournaments_{$year}")) {
+            $assignments = DB::table("assignments")
+                ->join("tournaments_{$year} as t", "assignments.tournament_id", "=", "t.id")
+                ->join("clubs as c", "t.club_id", "=", "c.id")
+                ->where("assignments.user_id", $id)
+                ->select("t.*", "assignments.role", "c.name as club_name")
+                ->orderBy("t.start_date", "desc")
+                ->get();
+
+            if ($assignments->count() > 0) {
+                // Prendi il livello dall'anno specifico
+                $levelColumn = "level_{$year}";
+                $level = $referee->$levelColumn ?? $referee->level;
+
+                $curriculumData[$year] = [
+                    'level' => $level,
+                    'assignments' => $assignments
+                ];
+            }
+        }
+    }
+
+    return view('referee.curriculum', compact('referee', 'curriculumData'));
+}
 }
