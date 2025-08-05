@@ -78,7 +78,7 @@
                                 Il mio curriculum
                             </a>
 
-                        </div>
+                       </div>
                     </div>
 
                     <!-- User Menu -->
@@ -147,10 +147,10 @@
                         Le Mie Assegnazioni
                     </a>
 
-                    <a href="{{ route('tournaments.calendar') }}"
+                    <a href="{{ route('referee.my-curriculum') }}"
                        class="block pl-3 pr-4 py-2 border-l-4 text-base font-medium transition duration-150 ease-in-out
-                       {{ request()->routeIs('tournaments.calendar') ? 'border-white text-white bg-blue-800' : 'border-transparent text-blue-100 hover:text-white hover:bg-blue-800 hover:border-blue-300' }}">
-                        🌐 Tornei Pubblici
+                       {{ request()->routeIs('referee.assignments.*') ? 'border-white text-white bg-blue-800' : 'border-transparent text-blue-100 hover:text-white hover:bg-blue-800 hover:border-blue-300' }}">
+                        Il mio curriculum
                     </a>
                 </div>
 
