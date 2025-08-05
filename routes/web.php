@@ -44,6 +44,9 @@ Route::middleware('auth')->group(function () {
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
     Route::put('/password', [ProfileController::class, 'updatePassword'])->name('password.update');
 });
+    // Curriculum
+        Route::get('/referee/my-curriculum', [Admin\RefereeController::class, 'myCurriculum'])
+        ->name('referee.my-curriculum');
 
 // Authenticated Routes
 Route::middleware(['auth'])->group(function () {
@@ -358,9 +361,6 @@ Route::middleware(['referee_or_admin'])->prefix('referee')->name('referee.')->gr
         Route::get('/{notification}/regenerate', [DocumentController::class, 'regenerate'])->name('regenerate');
     });
 
-    // Curriculum
-        Route::get('/referee/my-curriculum', [Admin\RefereeController::class, 'myCurriculum'])
-        ->name('referee.my-curriculum');
 
 });
 

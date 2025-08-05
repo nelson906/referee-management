@@ -1,19 +1,19 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="container">
-    <div class="d-flex justify-content-between align-items-center mb-4">
+<div class="container mx-auto">
+    <div class="flex justify-between items-center mb-4">
         <h1>Curriculum {{ $referee->name }}</h1>
-        <button onclick="window.print()" class="btn btn-primary">🖨️ Stampa</button>
+        <button onclick="window.print()" class="px-4 py-2 rounded-lg font-medium transition-colors duration-200 bg-blue-600 hover:bg-blue-700 text-white">🖨️ Stampa</button>
     </div>
 
     @foreach($curriculumData as $year => $data)
-    <div class="card mb-4">
-        <div class="card-header bg-primary text-white">
+    <div class="bg-white rounded-lg shadow-md mb-4">
+        <div class="px-6 py-4 border-b border-gray-200 bg-blue-600 text-white">
             <h3 class="mb-0">Anno {{ $year }} - Livello: {{ $data['level'] }}</h3>
         </div>
-        <div class="card-body">
-            <table class="table">
+        <div class="p-6">
+            <table class="min-w-full divide-y divide-gray-200">
                 <thead>
                     <tr>
                         <th>Data</th>
