@@ -1457,4 +1457,27 @@ class NotificationController extends Controller
 
         return null;
     }
+
+        /**
+     * Validate assignment notification request
+     */
+    private function validateAssignmentRequest(Request $request)
+    {
+        return $request->validate([
+            'subject' => 'required|string|max:255',
+            'message' => 'required|string',
+            'template_id' => 'nullable|exists:letter_templates,id',
+            'recipients' => 'nullable|array',
+            'recipients.*' => 'exists:users,id',
+            'institutional_emails' => 'nullable|array',
+            'institutional_emails.*' => 'exists:institutional_emails,id',
+            'additional_emails' => 'nullable|array',
+            'additional_emails.*' => 'nullable|email',
+            'additional_names' => 'nullable|array',
+            'additional_names.*' => 'nullable|string',
+            'send_to_club' => 'boolean',
+            'attach_documents' => 'boolean'
+        ]);
+    }
+
 }
