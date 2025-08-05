@@ -209,7 +209,9 @@
                         </div>
                     </div>
                 </div>
-
+<div id="message-preview" class="mt-2 p-4 bg-gray-50 rounded-lg prose prose-sm"
+     style="display:none;">
+</div>
                 {{-- Main Content: Form --}}
                 <div class="lg:col-span-2">
                     <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
@@ -611,6 +613,7 @@
         </div>
     </div>
 
+
     <script>
         function openDocumentManagerModal(tournamentId) {
             // Cerca se esiste una notifica per questo torneo
@@ -871,7 +874,11 @@
             const option = document.querySelector(`option[value="${templateId}"]`);
             if (option) {
                 document.getElementById('subject').value = option.dataset.subject || '';
-                document.getElementById('message').value = option.dataset.body || '';
+        // Carica body convertendo markdown in HTML per textarea
+        let body = option.dataset.body || '';
+        // Converti ** in newline per textarea
+        body = body.replace(/\*\*(.*?)\*\*/g, '$1');
+        document.getElementById('message').value = body;
             }
         }
 
@@ -960,5 +967,22 @@
                 });
             }
         });
-    </script>
+
+function updatePreview() {
+    const message = document.getElementById('message').value;
+    const preview = document.getElementById('message-preview');
+
+    // Converti markdown in HTML
+    let html = message
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\n/g, '<br>');
+
+    preview.innerHTML = html;
+    preview.style.display = 'block';
+}
+
+// Aggiungi listener
+document.getElementById('message').addEventListener('input', updatePreview);
+</script>
+
 @endsection

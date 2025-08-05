@@ -494,4 +494,32 @@ public function index(Request $request): View
             abort(403, 'Non sei autorizzato ad accedere a questo arbitro.');
         }
     }
+
+    public function curriculum($id)
+{
+    $referee = User::findOrFail($id);
+    $curriculumData = [];
+
+    // Raccogli dati per ogni anno
+    for ($year = date('Y'); $year >= 2015; $year--) {
+        if (Schema::hasTable("tournaments_{$year}")) {
+            $assignments = DB::table("assignments")
+                ->join("tournaments_{$year} as t", "assignments.tournament_id", "=", "t.id")
+                ->where("assignments.user_id", $id)
+                ->select("t.*", "assignments.role")
+                ->orderBy("t.start_date", "desc")
+                ->get();
+
+            if ($assignments->count() > 0) {
+                $curriculumData[$year] = [
+                    'level' => $referee->{"level_{$year}"} ?? $referee->level,
+                    'assignments' => $assignments
+                ];
+            }
+        }
+    }
+
+    return view('referee.curriculum', compact('referee', 'curriculumData'));
+}
+
 }

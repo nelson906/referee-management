@@ -227,7 +227,9 @@ class NotificationController extends Controller
         }
 
         $assignments = $this->getTournamentAssignments($tournament);
-        $templates = LetterTemplate::where('is_active', true)->get();
+        $templates = LetterTemplate::where('is_active', true)
+            ->where('type', 'assignment')
+            ->get();
         $institutionalEmails = InstitutionalEmail::where('is_active', true)
             ->orderBy('category')
             ->orderBy('name')
