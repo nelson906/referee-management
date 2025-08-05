@@ -175,6 +175,12 @@ class StatisticsDashboardController extends Controller
             'by_level' => $this->getAssignmentsByLevel($user, $isNationalAdmin, $year),
             'workload' => $this->getWorkloadStats($user, $isNationalAdmin, $year),
             'totale_assegnazioni' => Assignment::count(),
+            'per_zona' => Assignment::join('zones', 'assignments.assigned_by_id', '=', 'zones.id')
+                // ->join('zones', 'assignments.zone_id', '=', 'zones.id')
+                ->selectRaw('zones.name, COUNT(*) as totale')
+                ->orderBy('zones.name')
+                ->groupBy('zones.name')
+                ->pluck('totale', 'name'),
             'per_ruolo' => Assignment::selectRaw('role, COUNT(*) as totale')
                 ->orderByRaw("FIELD(role, \"Direttore di Torneo\", \"Arbitro\", \"Osservatore\")")
                 ->groupBy('role')
