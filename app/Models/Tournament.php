@@ -95,6 +95,8 @@ class Tournament extends Model
 {
     use HasFactory;
 
+    protected $table = 'tournaments'; // tabella base
+
     /**
      * The attributes that are mass assignable.
      *
@@ -412,7 +414,7 @@ class Tournament extends Model
 
 
 
-/**
+    /**
      * 📧 Relazione con notifiche torneo (nuovo sistema)
      */
     public function notifications()
@@ -487,6 +489,13 @@ class Tournament extends Model
     public function scopeReadyForNotification($query)
     {
         return $query->whereDoesntHave('notifications')
-                    ->whereHas('assignments');
+            ->whereHas('assignments');
+    }
+
+    public static function fromYear($year)
+    {
+        $instance = new static;
+        $instance->setTable("tournaments_{$year}");
+        return $instance;
     }
 }
