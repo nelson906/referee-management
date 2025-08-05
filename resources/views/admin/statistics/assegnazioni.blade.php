@@ -52,10 +52,10 @@
                 <div class="bg-white rounded-lg shadow-md">
                     <div class="p-6">
                         <h4>Designazioni per zona</h4>
-                        <table class="min-w-full divide-y divide-gray-200">
-                            @foreach ($stats['per_zona'] as $mese => $totale)
+                        <table class="min-w-full divide-y divide-gray-200 gap-6 mt-4">
+                            @foreach ($stats['per_zona'] as $zona => $totale)
                                 <tr>
-                                    <td>Mese {{ $mese }}</td>
+                                    <td>zona {{ $zona }}</td>
                                     <td>{{ $totale }}</td>
                                 </tr>
                             @endforeach

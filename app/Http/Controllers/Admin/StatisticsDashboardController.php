@@ -176,7 +176,6 @@ class StatisticsDashboardController extends Controller
             'workload' => $this->getWorkloadStats($user, $isNationalAdmin, $year),
             'totale_assegnazioni' => Assignment::count(),
             'per_zona' => Assignment::join('zones', 'assignments.assigned_by_id', '=', 'zones.id')
-                // ->join('zones', 'assignments.zone_id', '=', 'zones.id')
                 ->selectRaw('zones.name, COUNT(*) as totale')
                 ->orderBy('zones.name')
                 ->groupBy('zones.name')
