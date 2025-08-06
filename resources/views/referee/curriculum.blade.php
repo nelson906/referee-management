@@ -1,45 +1,79 @@
-@extends('layouts.app')
+@extends('layouts.referee')
 
 @section('content')
-<div class="container mx-auto">
-    <div class="flex justify-between items-center mb-4">
+<div class="container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
         <h1>Curriculum {{ $referee->name }}</h1>
-        <button onclick="window.print()" class="px-4 py-2 rounded-lg font-medium transition-colors duration-200 bg-blue-600 hover:bg-blue-700 text-white">🖨️ Stampa</button>
+        <div>
+            @if(request()->get('print'))
+                <script>window.print();</script>
+            @endif
+            <button onclick="window.print()" class="btn btn-primary">
+                <i class="fas fa-print"></i> Stampa
+            </button>
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <p><strong>Codice:</strong> {{ $referee->referee_code }}</p>
+                    <p><strong>Email:</strong> {{ $referee->email }}</p>
+                </div>
+                <div class="col-md-6">
+                    <p><strong>Telefono:</strong> {{ $referee->phone ?? 'N/A' }}</p>
+                    <p><strong>Zona:</strong> {{ $referee->zone->name ?? 'N/A' }}</p>
+                </div>
+            </div>
+        </div>
     </div>
 
     @foreach($curriculumData as $year => $data)
-    <div class="bg-white rounded-lg shadow-md mb-4">
-        <div class="px-6 py-4 border-b border-gray-200 bg-blue-600 text-white">
-            <h3 class="mb-0">Anno {{ $year }} - Livello: {{ $data['level'] }}</h3>
-        </div>
-        <div class="p-6">
-            <table class="min-w-full divide-y divide-gray-200">
-                <thead>
-                    <tr>
-                        <th>Data</th>
-                        <th>Torneo</th>
-                        <th>Circolo</th>
-                        <th>Ruolo</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach($data['assignments'] as $assignment)
-                    <tr>
-                        <td>{{ Carbon\Carbon::parse($assignment->start_date)->format('d/m/Y') }}</td>
-                        <td>{{ $assignment->name }}</td>
-                        <td>{{ $assignment->club_name ?? 'N/A' }}</td>
-                        <td><strong>{{ $assignment->role }}</strong></td>
-                    </tr>
-                    @endforeach
-                </tbody>
-            </table>
-        </div>
-    </div>
+        @if($data['count'] > 0)
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h3 class="mb-0">
+                        Anno {{ $year }}
+                        <span class="badge badge-light">{{ $data['count'] }} tornei</span>
+                        <span class="badge badge-warning">Livello: {{ $data['level'] }}</span>
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th width="15%">Data</th>
+                                <th width="35%">Torneo</th>
+                                <th width="30%">Circolo</th>
+                                <th width="20%">Ruolo</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach($data['assignments']->sortByDesc('start_date') as $assignment)
+                                <tr>
+                                    <td>{{ \Carbon\Carbon::parse($assignment->start_date)->format('d/m') }} -
+                                        {{ \Carbon\Carbon::parse($assignment->end_date)->format('d/m') }}</td>
+                                    <td><strong>{{ $assignment->name }}</strong></td>
+                                    <td>{{ $assignment->club_name }}</td>
+                                    <td>
+                                        <span class="badge {{ $assignment->role == 'Direttore di Torneo' ? 'badge-success' : 'badge-info' }}">
+                                            {{ $assignment->role }}
+                                        </span>
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        @endif
     @endforeach
 </div>
 
 <style media="print">
-    .btn { display: none; }
+    .btn { display: none !important; }
     .card { page-break-inside: avoid; }
+    body { font-size: 12pt; }
 </style>
 @endsection

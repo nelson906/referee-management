@@ -24,97 +24,97 @@ class RefereeController extends Controller
     /**
      * Display a listing of referees.
      */
-public function index(Request $request): View
-{
-    $user = auth()->user();
-    $isNationalAdmin = $user->user_type === 'national_admin' || $user->user_type === 'super_admin';
+    public function index(Request $request): View
+    {
+        $user = auth()->user();
+        $isNationalAdmin = $user->user_type === 'national_admin' || $user->user_type === 'super_admin';
 
-    $query = User::where('user_type', 'referee')
-        ->with(['zone', 'referee'])
-        ->withCount(['assignments', 'availabilities']);
+        $query = User::where('user_type', 'referee')
+            ->with(['zone', 'referee'])
+            ->withCount(['assignments', 'availabilities']);
 
-    // Filter by zone for non-national admins
-    if (!$isNationalAdmin) {
-        $query->where('zone_id', $user->zone_id);
+        // Filter by zone for non-national admins
+        if (!$isNationalAdmin) {
+            $query->where('zone_id', $user->zone_id);
+        }
+
+        // Apply search filter
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                    ->orWhere('email', 'like', "%{$search}%")
+                    ->orWhere('referee_code', 'like', "%{$search}%");
+            });
+        }
+
+        // Apply zone filter
+        if ($request->filled('zone_id')) {
+            $query->where('zone_id', $request->zone_id);
+        }
+
+        // Apply level filter with helper normalization
+        if ($request->filled('level')) {
+            $normalizedLevel = RefereeLevelsHelper::normalize($request->level);
+            $query->where('level', $normalizedLevel);
+        }
+
+        // ✅ APPLY STATUS FILTER - DEFAULT ATTIVI
+        if ($request->filled('status')) {
+            // Se l'utente ha specificato uno status, usalo
+            $query->where('is_active', $request->status === 'active');
+        } elseif (!$request->has('status')) {
+            // ✅ DEFAULT: mostra solo arbitri attivi se non specificato
+            $query->where('is_active', true);
+        }
+        // Se status = 'all' o '', mostra tutti (non aggiunge filtro)
+
+        // GESTIONE ORDINAMENTO
+        $sortField = $request->get('sort', 'name');
+        $sortDirection = $request->get('direction', 'asc');
+
+        // Validazione campi ordinamento
+        $allowedSortFields = ['name', 'email', 'level', 'zone_name', 'is_active', 'created_at', 'last_name'];
+        if (!in_array($sortField, $allowedSortFields)) {
+            $sortField = 'name';
+        }
+
+        if (!in_array($sortDirection, ['asc', 'desc'])) {
+            $sortDirection = 'asc';
+        }
+
+        // Applica ordinamento
+        switch ($sortField) {
+            case 'zone_name':
+                $query->join('zones', 'users.zone_id', '=', 'zones.id')
+                    ->orderBy('zones.name', $sortDirection)
+                    ->select('users.*'); // Evita conflitti di campo
+                break;
+
+            case 'last_name':
+                // Ordina per cognome (ultima parola del nome)
+                $query->orderByRaw("SUBSTRING_INDEX(name, ' ', -1) {$sortDirection}");
+                break;
+
+            default:
+                $query->orderBy($sortField, $sortDirection);
+                break;
+        }
+
+        // Ordinamento secondario per consistenza
+        if ($sortField !== 'name') {
+            $query->orderBy('name', 'asc');
+        }
+
+        $referees = $query->paginate(20)->withQueryString();
+
+        // Get zones for filters
+        $zones = $isNationalAdmin
+            ? Zone::orderBy('name')->get()
+            : Zone::where('id', $user->zone_id)->get();
+
+        return view('admin.referees.index', compact('referees', 'zones', 'isNationalAdmin'));
     }
-
-    // Apply search filter
-    if ($request->filled('search')) {
-        $search = $request->search;
-        $query->where(function ($q) use ($search) {
-            $q->where('name', 'like', "%{$search}%")
-                ->orWhere('email', 'like', "%{$search}%")
-                ->orWhere('referee_code', 'like', "%{$search}%");
-        });
-    }
-
-    // Apply zone filter
-    if ($request->filled('zone_id')) {
-        $query->where('zone_id', $request->zone_id);
-    }
-
-    // Apply level filter with helper normalization
-    if ($request->filled('level')) {
-        $normalizedLevel = RefereeLevelsHelper::normalize($request->level);
-        $query->where('level', $normalizedLevel);
-    }
-
-    // ✅ APPLY STATUS FILTER - DEFAULT ATTIVI
-    if ($request->filled('status')) {
-        // Se l'utente ha specificato uno status, usalo
-        $query->where('is_active', $request->status === 'active');
-    } elseif (!$request->has('status')) {
-        // ✅ DEFAULT: mostra solo arbitri attivi se non specificato
-        $query->where('is_active', true);
-    }
-    // Se status = 'all' o '', mostra tutti (non aggiunge filtro)
-
-    // GESTIONE ORDINAMENTO
-    $sortField = $request->get('sort', 'name');
-    $sortDirection = $request->get('direction', 'asc');
-
-    // Validazione campi ordinamento
-    $allowedSortFields = ['name', 'email', 'level', 'zone_name', 'is_active', 'created_at', 'last_name'];
-    if (!in_array($sortField, $allowedSortFields)) {
-        $sortField = 'name';
-    }
-
-    if (!in_array($sortDirection, ['asc', 'desc'])) {
-        $sortDirection = 'asc';
-    }
-
-    // Applica ordinamento
-    switch ($sortField) {
-        case 'zone_name':
-            $query->join('zones', 'users.zone_id', '=', 'zones.id')
-                  ->orderBy('zones.name', $sortDirection)
-                  ->select('users.*'); // Evita conflitti di campo
-            break;
-
-        case 'last_name':
-            // Ordina per cognome (ultima parola del nome)
-            $query->orderByRaw("SUBSTRING_INDEX(name, ' ', -1) {$sortDirection}");
-            break;
-
-        default:
-            $query->orderBy($sortField, $sortDirection);
-            break;
-    }
-
-    // Ordinamento secondario per consistenza
-    if ($sortField !== 'name') {
-        $query->orderBy('name', 'asc');
-    }
-
-    $referees = $query->paginate(20)->withQueryString();
-
-    // Get zones for filters
-    $zones = $isNationalAdmin
-        ? Zone::orderBy('name')->get()
-        : Zone::where('id', $user->zone_id)->get();
-
-    return view('admin.referees.index', compact('referees', 'zones', 'isNationalAdmin'));
-}
 
     /**
      * Show the form for creating a new referee.
@@ -172,63 +172,61 @@ public function index(Request $request): View
             abort(403, 'Non puoi creare arbitri in zone diverse dalla tua.');
         }
 
-    try {
-        DB::beginTransaction();
+        try {
+            DB::beginTransaction();
 
-        $refereeCode = $this->generateRefereeCode();
+            $refereeCode = $this->generateRefereeCode();
 
-        // ✅ CREATE USER senza 'notes'
-        $newUser = User::create([
-            'name' => $request->name,
-            'email' => $request->email,
-            'password' => Hash::make('arbitro123'),
-            'user_type' => 'referee',
-            'zone_id' => $request->zone_id,
-            'phone' => $request->phone,
-            'city' => $request->city,
-            'level' => $request->level,
-            'referee_code' => $refereeCode,
-            // ❌ RIMUOVI: 'notes' => $request->notes,
-            'is_active' => $request->boolean('is_active', true),
-            'email_verified_at' => now(),
-            'certified_date' => now(),
-        ]);
-
-        // ✅ Create referee extension se ci sono dati estesi O notes
-        $hasExtendedData = $request->filled(['address', 'postal_code', 'tax_code', 'notes']) ||
-                          !empty($request->qualifications) ||
-                          !empty($request->languages) ||
-                          $request->boolean('available_for_international');
-
-        if ($hasExtendedData) {
-            Referee::create([
-                'user_id' => $newUser->id,
-                'address' => $request->address,
-                'postal_code' => $request->postal_code,
-                'tax_code' => $request->tax_code,
-                'notes' => $request->notes, // ✅ Notes vanno qui
-                'qualifications' => $request->qualifications ?? [],
-                'languages' => $request->languages ?? ['it'],
-                'available_for_international' => $request->boolean('available_for_international', false),
-                'profile_completed_at' => now(),
+            // ✅ CREATE USER senza 'notes'
+            $newUser = User::create([
+                'name' => $request->name,
+                'email' => $request->email,
+                'password' => Hash::make('arbitro123'),
+                'user_type' => 'referee',
+                'zone_id' => $request->zone_id,
+                'phone' => $request->phone,
+                'city' => $request->city,
+                'level' => $request->level,
+                'referee_code' => $refereeCode,
+                // ❌ RIMUOVI: 'notes' => $request->notes,
+                'is_active' => $request->boolean('is_active', true),
+                'email_verified_at' => now(),
+                'certified_date' => now(),
             ]);
+
+            // ✅ Create referee extension se ci sono dati estesi O notes
+            $hasExtendedData = $request->filled(['address', 'postal_code', 'tax_code', 'notes']) ||
+                !empty($request->qualifications) ||
+                !empty($request->languages) ||
+                $request->boolean('available_for_international');
+
+            if ($hasExtendedData) {
+                Referee::create([
+                    'user_id' => $newUser->id,
+                    'address' => $request->address,
+                    'postal_code' => $request->postal_code,
+                    'tax_code' => $request->tax_code,
+                    'notes' => $request->notes, // ✅ Notes vanno qui
+                    'qualifications' => $request->qualifications ?? [],
+                    'languages' => $request->languages ?? ['it'],
+                    'available_for_international' => $request->boolean('available_for_international', false),
+                    'profile_completed_at' => now(),
+                ]);
+            }
+
+            DB::commit();
+
+            return redirect()
+                ->route('admin.referees.index')
+                ->with('success', "Arbitro {$newUser->name} creato con successo! Codice: {$refereeCode}");
+        } catch (\Exception $e) {
+            DB::rollback();
+
+            return redirect()
+                ->back()
+                ->withInput()
+                ->with('error', 'Errore durante la creazione dell\'arbitro: ' . $e->getMessage());
         }
-
-        DB::commit();
-
-        return redirect()
-            ->route('admin.referees.index')
-            ->with('success', "Arbitro {$newUser->name} creato con successo! Codice: {$refereeCode}");
-
-    } catch (\Exception $e) {
-        DB::rollback();
-
-        return redirect()
-            ->back()
-            ->withInput()
-            ->with('error', 'Errore durante la creazione dell\'arbitro: ' . $e->getMessage());
-    }
-
     }
 
     /**
@@ -291,7 +289,8 @@ public function index(Request $request): View
 
         // ✅ DEBUG INFO (remove after fix)
         if (config('app.debug')) {
-            \Log::info('RefereeLevelsHelper Debug',
+            \Log::info(
+                'RefereeLevelsHelper Debug',
                 RefereeLevelsHelper::debugLevel($referee->level ?? 'null')
             );
         }
@@ -352,58 +351,57 @@ public function index(Request $request): View
             abort(403, 'Non puoi spostare arbitri in zone diverse dalla tua.');
         }
 
-    try {
-        DB::beginTransaction();
+        try {
+            DB::beginTransaction();
 
-        // ✅ UPDATE USER senza 'notes'
-        $referee->update([
-            'name' => $request->name,
-            'email' => $request->email,
-            'phone' => $request->phone,
-            'city' => $request->city,
-            'zone_id' => $request->zone_id,
-            'level' => $request->level,
-            'referee_code' => $request->referee_code ?: $referee->referee_code,
-            // ❌ RIMUOVI: 'notes' => $request->notes,
-            'is_active' => $request->boolean('is_active', true),
-        ]);
+            // ✅ UPDATE USER senza 'notes'
+            $referee->update([
+                'name' => $request->name,
+                'email' => $request->email,
+                'phone' => $request->phone,
+                'city' => $request->city,
+                'zone_id' => $request->zone_id,
+                'level' => $request->level,
+                'referee_code' => $request->referee_code ?: $referee->referee_code,
+                // ❌ RIMUOVI: 'notes' => $request->notes,
+                'is_active' => $request->boolean('is_active', true),
+            ]);
 
-        // ✅ Handle referee extension data incluse le notes
-        $hasExtendedData = $request->filled(['address', 'postal_code', 'tax_code', 'notes']) ||
-                          !empty($request->qualifications) ||
-                          !empty($request->languages) ||
-                          $request->has('available_for_international');
+            // ✅ Handle referee extension data incluse le notes
+            $hasExtendedData = $request->filled(['address', 'postal_code', 'tax_code', 'notes']) ||
+                !empty($request->qualifications) ||
+                !empty($request->languages) ||
+                $request->has('available_for_international');
 
-        if ($hasExtendedData) {
-            $referee->referee()->updateOrCreate(
-                ['user_id' => $referee->id],
-                [
-                    'address' => $request->address,
-                    'postal_code' => $request->postal_code,
-                    'tax_code' => $request->tax_code,
-                    'notes' => $request->notes, // ✅ Notes vanno qui
-                    'qualifications' => $request->qualifications ?? [],
-                    'languages' => $request->languages ?? ['it'],
-                    'available_for_international' => $request->boolean('available_for_international', false),
-                    'profile_completed_at' => $referee->referee->profile_completed_at ?? now(),
-                ]
-            );
+            if ($hasExtendedData) {
+                $referee->referee()->updateOrCreate(
+                    ['user_id' => $referee->id],
+                    [
+                        'address' => $request->address,
+                        'postal_code' => $request->postal_code,
+                        'tax_code' => $request->tax_code,
+                        'notes' => $request->notes, // ✅ Notes vanno qui
+                        'qualifications' => $request->qualifications ?? [],
+                        'languages' => $request->languages ?? ['it'],
+                        'available_for_international' => $request->boolean('available_for_international', false),
+                        'profile_completed_at' => $referee->referee->profile_completed_at ?? now(),
+                    ]
+                );
+            }
+
+            DB::commit();
+
+            return redirect()
+                ->route('admin.referees.show', $referee)
+                ->with('success', "Arbitro \"{$referee->name}\" aggiornato con successo!");
+        } catch (\Exception $e) {
+            DB::rollback();
+
+            return redirect()
+                ->back()
+                ->withInput()
+                ->with('error', 'Errore durante l\'aggiornamento: ' . $e->getMessage());
         }
-
-        DB::commit();
-
-        return redirect()
-            ->route('admin.referees.show', $referee)
-            ->with('success', "Arbitro \"{$referee->name}\" aggiornato con successo!");
-
-    } catch (\Exception $e) {
-        DB::rollback();
-
-        return redirect()
-            ->back()
-            ->withInput()
-            ->with('error', 'Errore durante l\'aggiornamento: ' . $e->getMessage());
-    }
     }
 
     /**
@@ -461,7 +459,6 @@ public function index(Request $request): View
             return redirect()
                 ->route('admin.referees.index')
                 ->with('success', "Arbitro \"{$name}\" eliminato con successo!");
-
         } catch (\Exception $e) {
             DB::rollback();
 
@@ -496,51 +493,68 @@ public function index(Request $request): View
         }
     }
     // Per ADMIN - vede tutti
-public function allCurricula()
-{
-    $referees = User::where('user_type', 'referee')
-        ->orderBy('name')
-        ->paginate(20);
+    public function allCurricula()
+    {
+        $referees = User::where('user_type', 'referee')
+            ->orderBy('name')
+            ->paginate(20);
 
-    return view('admin.referees.curricula', compact('referees'));
-}
-
-// Per REFEREE - vede solo il suo
-public function myCurriculum()
-{
-    return $this->showCurriculum(auth()->id());
-}
-
-// Metodo comune
-public function showCurriculum($id)
-{
-    $referee = User::findOrFail($id);
-    $curriculumData = [];
-
-    // Raccogli dati per ogni anno
-    for ($year = date('Y'); $year >= 2015; $year--) {
-        if (Schema::hasTable("tournaments_{$year}")) {
-            $assignments = DB::table("assignments")
-                ->join("tournaments_{$year} as t", "assignments.tournament_id", "=", "t.id")
-                ->join("clubs as c", "t.club_id", "=", "c.id")
-                ->where("assignments.user_id", $id)
-                ->select("t.*", "assignments.role", "c.name as club_name")
-                ->orderBy("t.start_date", "desc")
-                ->get();
-
-            if ($assignments->count() > 0) {
-                // Prendi il livello dall'anno specifico
-                $levelColumn = "level_{$year}";
-                $level = $referee->$levelColumn ?? $referee->level;
-
-                $curriculumData[$year] = [
-                    'level' => $level,
-                    'assignments' => $assignments
-                ];
-            }
-        }
+        return view('admin.referees.curricula', compact('referees'));
     }
 
-    return view('referee.curriculum', compact('referee', 'curriculumData'));
-}
+    // Per REFEREE - vede solo il suo
+    public function myCurriculum()
+    {
+        return $this->showCurriculum(auth()->id());
+    }
+
+    // Metodo comune
+    public function showCurriculum($id)
+    {
+        $referee = User::findOrFail($id);
+        $curriculumData = [];
+
+        // Raccogli TUTTI i tornei da TUTTI gli anni
+        $allAssignments = collect();
+
+        for ($year = date('Y'); $year >= 2015; $year--) {
+            if (Schema::hasTable("tournaments_{$year}")) {
+                $yearAssignments = DB::table("assignments as a")
+                    ->join("tournaments_{$year} as t", "a.tournament_id", "=", "t.id")
+                    ->join("clubs as c", "t.club_id", "=", "c.id")
+                    ->where("a.user_id", $id)
+                    ->select(
+                        "t.*",
+                        "a.role",
+                        "a.assigned_at",
+                        "c.name as club_name",
+                        DB::raw("'{$year}' as year")
+                    )
+                    ->get();
+
+                foreach ($yearAssignments as $assignment) {
+                    $allAssignments->push($assignment);
+                }
+            }
+        }
+
+        // ORDINA PER DATA DECRESCENTE
+        $allAssignments = $allAssignments->sortByDesc('start_date');
+
+        // RAGGRUPPA PER ANNO
+        $groupedByYear = $allAssignments->groupBy('year');
+
+        foreach ($groupedByYear as $year => $assignments) {
+            $levelColumn = "level_{$year}";
+            $level = $referee->$levelColumn ?? $referee->level;
+
+            $curriculumData[$year] = [
+                'level' => $level,
+                'assignments' => $assignments,
+                'count' => $assignments->count()
+            ];
+        }
+
+        return view('referee.curriculum', compact('referee', 'curriculumData'));
+    }
 }

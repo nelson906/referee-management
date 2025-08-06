@@ -100,7 +100,15 @@
                                 <a href="{{ route('admin.documents.index') }}"
                                     class="px-2 py-1 rounded text-xs hover:bg-blue-800 hover:text-white font-medium whitespace-nowrap {{ request()->routeIs('admin.documents.*') ? 'bg-blue-800 text-white' : 'text-blue-100 hover:bg-blue-800 hover:text-white' }}">📁
                                     Documenti</a>
-                            </div>
+    {{-- @if(auth()->user()->hasRole('admin'))
+    <li class="nav-item">
+        <a href="{{ route('admin.referees.allCurricula') }}" class="nav-link">
+            <i class="nav-icon fas fa-file-alt"></i>
+            <p>Curricula Arbitri</p>
+        </a>
+    </li>
+@endif --}}
+                        </div>
                         </div>
 
                         {{-- User Menu --}}

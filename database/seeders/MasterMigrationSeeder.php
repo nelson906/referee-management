@@ -51,11 +51,11 @@ class MasterMigrationSeeder extends Seeder
         // 4. Esegui migrazione nell'ordine corretto (USER CENTRIC approach)
         $this->command->info('✅ Database verificato, procedo con migrazione USER CENTRIC...');
 
-        // $this->createZones();           // Manuale: SZR1-SZR7, CRC
-        // $this->createAdminUsers();      // ✅ AGGIUNTO: Crea admin per ogni zona
-        // $this->createTournamentTypes(); // Manuale: defaults con short_name
-        // $this->migrateArbitri();        // arbitri → users + referees
-        // $this->migrateCircoli();        // circoli → clubs
+        $this->createZones();           // Manuale: SZR1-SZR7, CRC
+        $this->createAdminUsers();      // ✅ AGGIUNTO: Crea admin per ogni zona
+        $this->createTournamentTypes(); // Manuale: defaults con short_name
+        $this->migrateArbitri();        // arbitri → users + referees
+        $this->migrateCircoli();        // circoli → clubs
         $this->migrateGare();           // gare_2025 → tournaments
         $this->migrateDisponibilita();  // gare_2025.Disponibili → availabilities
         $this->migrateAssegnazioni();   // gare_2025.TD+Arbitri+Osservatori → assignments

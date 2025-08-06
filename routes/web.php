@@ -12,6 +12,7 @@ use App\Http\Controllers\Admin\LetterheadController; // ← AGGIUNTO
 use App\Http\Controllers\Admin\StatisticsDashboardController; // ← AGGIUNTO
 use App\Http\Controllers\Admin\MonitoringController; // ← AGGIUNTO
 use App\Http\Controllers\Admin\NotificationController;
+use App\Http\Controllers\Admin\RefereeController;
 use App\Http\Controllers\Referee;
 use App\Http\Controllers\Reports;
 use App\Http\Controllers\DocumentController;
@@ -175,6 +176,12 @@ Route::middleware(['auth'])->group(function () {
         Route::post('referees/import', [Admin\RefereeController::class, 'import'])->name('referees.import');
         Route::get('referees/export', [Admin\RefereeController::class, 'export'])->name('referees.export');
         Route::get('referees/{referee}/availability', [Admin\RefereeController::class, 'availability'])->name('referees.availability');
+
+        // Curricula
+        Route::get('/admin/referees/curricula', [Admin\RefereeController::class, 'allCurricula'])
+            ->name('admin.referees.curricula');
+        Route::get('/admin/referee/{id}/curriculum', [Admin\RefereeController::class, 'showCurriculum'])
+            ->name('admin.referee.curriculum');
 
         // Club Management
         Route::resource('clubs', Admin\ClubController::class);

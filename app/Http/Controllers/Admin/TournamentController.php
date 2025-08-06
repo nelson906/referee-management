@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use Illuminate\Support\Facades\Log;
-
+use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\TournamentRequest;
 use App\Models\Tournament;
@@ -18,6 +18,13 @@ class TournamentController extends Controller
 {
     use CrudActions;
 
+  // PRIMA del metodo index(), aggiungi:
+protected function getTournamentsTable()
+{
+    $year = session('selected_year', date('Y'));
+    return "tournaments_{$year}";
+}
+
     /**
      * Display a listing of tournaments.
      */
@@ -27,7 +34,11 @@ class TournamentController extends Controller
         $isNationalAdmin = $user->user_type === 'national_admin' || $user->user_type === 'super_admin';
 
         // Base query - ✅ FIXED: tournamentType relationship
-        $query = Tournament::with(['tournamentType', 'zone', 'club', 'assignments']);
+    // USA LA TABELLA DELL'ANNO SELEZIONATO
+    $query = DB::table($this->getTournamentsTable())
+        ->join('clubs', $this->getTournamentsTable() . '.club_id', '=', 'clubs.id')
+        ->join('zones', 'clubs.zone_id', '=', 'zones.id')
+        ->select($this->getTournamentsTable() . '.*', 'clubs.name as club_name', 'zones.name as zone_name');
 
         // Filter by zone for zone admins
         if (!$isNationalAdmin && !in_array($user->user_type, ['super_admin'])) {
