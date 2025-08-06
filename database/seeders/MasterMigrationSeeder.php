@@ -1902,7 +1902,7 @@ private function buildTournamentData($gara): array
 // AGGIUNGI questo metodo per creare tabelle anno
 private function createTournamentTableForYear($year)
 {
-    $tableName = "tournaments_{$year}";
+    $tableName = "gare_{$year}";
 
     if (!Schema::hasTable($tableName)) {
         Schema::create($tableName, function (Blueprint $table) {

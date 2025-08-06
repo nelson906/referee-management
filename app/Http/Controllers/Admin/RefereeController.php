@@ -518,19 +518,12 @@ class RefereeController extends Controller
         $allAssignments = collect();
 
         for ($year = date('Y'); $year >= 2015; $year--) {
-            if (Schema::hasTable("tournaments_{$year}")) {
-                $yearAssignments = DB::table("assignments as a")
-                    ->join("tournaments_{$year} as t", "a.tournament_id", "=", "t.id")
-                    ->join("clubs as c", "t.club_id", "=", "c.id")
-                    ->where("a.user_id", $id)
-                    ->select(
-                        "t.*",
-                        "a.role",
-                        "a.assigned_at",
-                        "c.name as club_name",
-                        DB::raw("'{$year}' as year")
-                    )
-                    ->get();
+$yearAssignments = Assignment::with(['tournament', 'tournament.club'])
+    ->where('user_id', $id)
+    ->whereHas('tournament', function($q) use ($year) {
+        $q->whereYear('start_date', $year);
+    })
+    ->get();
 
                 foreach ($yearAssignments as $assignment) {
                     $allAssignments->push($assignment);

@@ -4,6 +4,8 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Carbon\Carbon;
@@ -94,6 +96,19 @@ use Carbon\Carbon;
 class Tournament extends Model
 {
     use HasFactory;
+
+    public function getTable()
+    {
+        $year = session('selected_year', date('Y'));
+
+        // Se esiste gare_YYYY, usa quella
+        if (Schema::hasTable("gare_{$year}")) {
+            return "gare_{$year}";
+        }
+
+        // Altrimenti usa tournaments (la VIEW)
+        return 'tournaments';
+    }
 
     protected $table = 'tournaments'; // tabella base
 

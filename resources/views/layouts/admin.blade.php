@@ -97,9 +97,12 @@
                                 <a href="{{ route('reports.dashboard') }}"
                                     class="px-2 py-1 rounded text-xs hover:bg-blue-800 hover:text-white font-medium whitespace-nowrap {{ request()->routeIs('reports.*') ? 'bg-blue-800 text-white' : 'text-blue-100 hover:bg-blue-800 hover:text-white' }}">📈
                                     Report</a>
-                                <a href="{{ route('admin.documents.index') }}"
+                                <a href="{{ route(name: 'admin.documents.index') }}"
                                     class="px-2 py-1 rounded text-xs hover:bg-blue-800 hover:text-white font-medium whitespace-nowrap {{ request()->routeIs('admin.documents.*') ? 'bg-blue-800 text-white' : 'text-blue-100 hover:bg-blue-800 hover:text-white' }}">📁
                                     Documenti</a>
+                                <a href="{{ route(name: 'admin.referees.curricula') }}"
+                                    class="px-2 py-1 rounded text-xs hover:bg-blue-800 hover:text-white font-medium whitespace-nowrap {{ request()->routeIs('admin.documents.*') ? 'bg-blue-800 text-white' : 'text-blue-100 hover:bg-blue-800 hover:text-white' }}">📁
+                                    Curricula Arbitri</a>
     {{-- @if(auth()->user()->hasRole('admin'))
     <li class="nav-item">
         <a href="{{ route('admin.referees.allCurricula') }}" class="nav-link">

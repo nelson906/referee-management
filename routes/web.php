@@ -168,6 +168,12 @@ Route::middleware(['auth'])->group(function () {
         Route::post('tournaments/{tournament}/send-assignment-with-convocation', [Admin\NotificationController::class, 'sendAssignmentWithConvocation'])
             ->name('tournaments.send-assignment-with-convocation');
 
+        // Curricula - DEVE ESSERE PRIMA DELLA RESOURCE!
+        Route::get('referees/curricula', [Admin\RefereeController::class, 'allCurricula'])
+            ->name('referees.curricula');
+        Route::get('referee/{id}/curriculum', [Admin\RefereeController::class, 'showCurriculum'])
+            ->name('referee.curriculum');
+
         // Referee Management
         Route::resource('referees', Admin\RefereeController::class);
         Route::post('referees/{referee}/toggle-active', [Admin\RefereeController::class, 'toggleActive'])->name('referees.toggle-active');
@@ -176,12 +182,6 @@ Route::middleware(['auth'])->group(function () {
         Route::post('referees/import', [Admin\RefereeController::class, 'import'])->name('referees.import');
         Route::get('referees/export', [Admin\RefereeController::class, 'export'])->name('referees.export');
         Route::get('referees/{referee}/availability', [Admin\RefereeController::class, 'availability'])->name('referees.availability');
-
-        // Curricula
-        Route::get('/admin/referees/curricula', [Admin\RefereeController::class, 'allCurricula'])
-            ->name('admin.referees.curricula');
-        Route::get('/admin/referee/{id}/curriculum', [Admin\RefereeController::class, 'showCurriculum'])
-            ->name('admin.referee.curriculum');
 
         // Club Management
         Route::resource('clubs', Admin\ClubController::class);
@@ -311,11 +311,6 @@ Route::middleware(['auth'])->group(function () {
             Route::get('/find-by-tournament/{tournament}', [NotificationController::class, 'findByTournament'])->name('find-by-tournament');
         });
 
-        // Curricula
-        Route::get('/admin/referees/curricula', [Admin\RefereeController::class, 'allCurricula'])
-            ->name('admin.referees.curricula');
-        Route::get('/admin/referee/{id}/curriculum', [Admin\RefereeController::class, 'showCurriculum'])
-            ->name('admin.referee.curriculum');
 
         // Settings
         Route::get('/settings', [Admin\SettingsController::class, 'index'])->name('settings');

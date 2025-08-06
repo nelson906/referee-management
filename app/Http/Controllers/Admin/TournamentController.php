@@ -18,13 +18,6 @@ class TournamentController extends Controller
 {
     use CrudActions;
 
-  // PRIMA del metodo index(), aggiungi:
-protected function getTournamentsTable()
-{
-    $year = session('selected_year', date('Y'));
-    return "tournaments_{$year}";
-}
-
     /**
      * Display a listing of tournaments.
      */
@@ -34,11 +27,7 @@ protected function getTournamentsTable()
         $isNationalAdmin = $user->user_type === 'national_admin' || $user->user_type === 'super_admin';
 
         // Base query - ✅ FIXED: tournamentType relationship
-    // USA LA TABELLA DELL'ANNO SELEZIONATO
-    $query = DB::table($this->getTournamentsTable())
-        ->join('clubs', $this->getTournamentsTable() . '.club_id', '=', 'clubs.id')
-        ->join('zones', 'clubs.zone_id', '=', 'zones.id')
-        ->select($this->getTournamentsTable() . '.*', 'clubs.name as club_name', 'zones.name as zone_name');
+    $query = Tournament::with(['club', 'zone', 'tournamentType']);
 
         // Filter by zone for zone admins
         if (!$isNationalAdmin && !in_array($user->user_type, ['super_admin'])) {
