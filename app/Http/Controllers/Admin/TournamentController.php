@@ -58,15 +58,9 @@ class TournamentController extends Controller
         }
 
         // Search
-        if ($request->has('search') && $request->search !== '') {
-            $search = $request->search;
-            $query->where(function ($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                    ->orWhereHas('club', function ($q2) use ($search) {
-                        $q2->where('name', 'like', "%{$search}%");
-                    });
-            });
-        }
+    if ($request->filled('search')) {
+        $query->where('name', 'like', '%' . $request->search . '%');
+    }
 
         // Order by start date descending
         $tournaments = $query->orderBy('start_date', 'desc')->paginate(20);
@@ -77,6 +71,7 @@ class TournamentController extends Controller
         // ✅ FIXED: Variable name from $categories to $tournamentTypes
         $tournamentTypes = TournamentType::active()->ordered()->get();
         $statuses = Tournament::STATUSES;
+    $tournaments = $query->paginate(20);
 
         // ✅ FIXED: compact() uses tournamentTypes instead of categories
         return view('admin.tournaments.index', compact(

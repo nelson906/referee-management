@@ -23,36 +23,18 @@
                         </thead>
                         <tbody>
                             @foreach($referees as $referee)
-                                @php
-                                    // Conta tornei totali
-                                    $totalTournaments = 0;
-                                    $lastTournament = null;
-                                    $lastDate = null;
+@php
+    $totalTournaments = Assignment::where('user_id', $referee->id)->count();
 
-                                    for ($year = date('Y'); $year >= 2015; $year--) {
-                                        if (Schema::hasTable("tournaments_{$year}")) {
-                                            $count = DB::table('assignments as a')
-                                                ->join("tournaments_{$year} as t", 'a.tournament_id', '=', 't.id')
-                                                ->where('a.user_id', $referee->id)
-                                                ->count();
+    $lastAssignment = Assignment::with('tournament')
+        ->where('user_id', $referee->id)
+        ->orderBy('assigned_at', 'desc')
+        ->first();
 
-                                            $totalTournaments += $count;
+    $lastTournament = $lastAssignment ? $lastAssignment->tournament->name : null;
+    $lastDate = $lastAssignment ? $lastAssignment->tournament->start_date : null;
+@endphp
 
-                                            if (!$lastTournament && $count > 0) {
-                                                $last = DB::table('assignments as a')
-                                                    ->join("tournaments_{$year} as t", 'a.tournament_id', '=', 't.id')
-                                                    ->where('a.user_id', $referee->id)
-                                                    ->orderBy('t.start_date', 'desc')
-                                                    ->first();
-
-                                                if ($last) {
-                                                    $lastTournament = $last->name;
-                                                    $lastDate = $last->start_date;
-                                                }
-                                            }
-                                        }
-                                    }
-                                @endphp
                                 <tr>
                                     <td>{{ $referee->name }}</td>
                                     <td>{{ $referee->referee_code }}</td>

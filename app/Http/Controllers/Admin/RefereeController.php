@@ -18,7 +18,7 @@ use Illuminate\View\View;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Schema;
-
+use App\Models\Assignment;
 class RefereeController extends Controller
 {
     /**
@@ -493,6 +493,46 @@ class RefereeController extends Controller
         }
     }
     // Per ADMIN - vede tutti
+public function showCurriculum($id)
+{
+    $referee = User::findOrFail($id);
+    $curriculumData = [];
+
+    for ($year = date('Y'); $year >= 2015; $year--) {
+        $tableName = "gare_{$year}";
+        if (!Schema::hasTable($tableName)) continue;
+
+        // LEGGI DIRETTAMENTE DAI CAMPI CSV!
+        $tornei = DB::table($tableName)
+            ->where(function($q) use ($referee) {
+                $q->where('TD', 'LIKE', "%{$referee->name}%")
+                  ->orWhere('Arbitri', 'LIKE', "%{$referee->name}%")
+                  ->orWhere('Osservatori', 'LIKE', "%{$referee->name}%");
+            })
+            ->get();
+
+        foreach ($tornei as $torneo) {
+            // Determina il ruolo dal CSV
+            if (str_contains($torneo->TD, $referee->name)) {
+                $torneo->role = 'Direttore di Torneo';
+            } elseif (str_contains($torneo->Arbitri, $referee->name)) {
+                $torneo->role = 'Arbitro';
+            } elseif (str_contains($torneo->Osservatori, $referee->name)) {
+                $torneo->role = 'Osservatore';
+            }
+        }
+
+        if ($tornei->count() > 0) {
+            $curriculumData[$year] = [
+                'level' => $referee->{"level_{$year}"} ?? $referee->level,
+                'assignments' => $tornei
+            ];
+        }
+    }
+
+    return view('referee.curriculum', compact('referee', 'curriculumData'));
+}
+
     public function allCurricula()
     {
         $referees = User::where('user_type', 'referee')
@@ -502,52 +542,8 @@ class RefereeController extends Controller
         return view('admin.referees.curricula', compact('referees'));
     }
 
-    // Per REFEREE - vede solo il suo
     public function myCurriculum()
     {
         return $this->showCurriculum(auth()->id());
-    }
-
-    // Metodo comune
-    public function showCurriculum($id)
-    {
-        $referee = User::findOrFail($id);
-        $curriculumData = [];
-
-        // Raccogli TUTTI i tornei da TUTTI gli anni
-        $allAssignments = collect();
-
-        for ($year = date('Y'); $year >= 2015; $year--) {
-$yearAssignments = Assignment::with(['tournament', 'tournament.club'])
-    ->where('user_id', $id)
-    ->whereHas('tournament', function($q) use ($year) {
-        $q->whereYear('start_date', $year);
-    })
-    ->get();
-
-                foreach ($yearAssignments as $assignment) {
-                    $allAssignments->push($assignment);
-                }
-            }
-        }
-
-        // ORDINA PER DATA DECRESCENTE
-        $allAssignments = $allAssignments->sortByDesc('start_date');
-
-        // RAGGRUPPA PER ANNO
-        $groupedByYear = $allAssignments->groupBy('year');
-
-        foreach ($groupedByYear as $year => $assignments) {
-            $levelColumn = "level_{$year}";
-            $level = $referee->$levelColumn ?? $referee->level;
-
-            $curriculumData[$year] = [
-                'level' => $level,
-                'assignments' => $assignments,
-                'count' => $assignments->count()
-            ];
-        }
-
-        return view('referee.curriculum', compact('referee', 'curriculumData'));
     }
 }

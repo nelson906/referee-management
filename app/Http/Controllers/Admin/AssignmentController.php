@@ -13,6 +13,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
 use Carbon\Carbon;
 use App\Services\DocumentGenerationService;
+use App\Models\Availability;
 
 class AssignmentController extends Controller
 {
@@ -324,17 +325,22 @@ class AssignmentController extends Controller
     /**
      * Get referees who declared availability for this tournament.
      */
-    private function getAvailableReferees(Tournament $tournament)
-    {
-        return User::with(['referee', 'zone'])
-            ->whereHas('availabilities', function ($q) use ($tournament) {
-                $q->where('tournament_id', $tournament->id);
-            })
-            ->where('user_type', 'referee')
-            ->where('is_active', true)
-            ->orderBy('name')
-            ->get();
-    }
+public function getAvailableReferees(Request $request)
+{
+    $tournamentId = $request->tournament_id;
+    $tournament = Tournament::findOrFail($tournamentId);
+
+    // SOLO arbitri con disponibilità per QUESTO torneo specifico
+    $availabilities = Availability::where('tournament_id', $tournamentId)
+        ->with(['user' => function($query) {
+            $query->where('user_type', 'referee')
+                  ->where('is_active', true);
+        }])
+        ->get();
+
+    // NON cercare in altri anni!
+    return response()->json($availabilities);
+}
 
     /**
      * Get zone referees who haven't declared availability.
