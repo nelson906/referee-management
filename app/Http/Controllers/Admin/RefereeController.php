@@ -499,33 +499,52 @@ public function showCurriculum($id)
     $curriculumData = [];
 
     for ($year = date('Y'); $year >= 2015; $year--) {
-        $tableName = "gare_{$year}";
-        if (!Schema::hasTable($tableName)) continue;
 
-        // LEGGI DIRETTAMENTE DAI CAMPI CSV!
-        $tornei = DB::table($tableName)
-            ->where(function($q) use ($referee) {
-                $q->where('TD', 'LIKE', "%{$referee->name}%")
-                  ->orWhere('Arbitri', 'LIKE', "%{$referee->name}%")
-                  ->orWhere('Osservatori', 'LIKE', "%{$referee->name}%");
-            })
-            ->get();
+        if ($year <= 2025) {
+            // ANNI 2015-2025: LEGGI DAI CAMPI CSV
+            $tableName = $year == date('Y') ? 'tournaments' : "tournaments_{$year}";
 
-        foreach ($tornei as $torneo) {
-            // Determina il ruolo dal CSV
-            if (str_contains($torneo->TD, $referee->name)) {
-                $torneo->role = 'Direttore di Torneo';
-            } elseif (str_contains($torneo->Arbitri, $referee->name)) {
-                $torneo->role = 'Arbitro';
-            } elseif (str_contains($torneo->Osservatori, $referee->name)) {
-                $torneo->role = 'Osservatore';
+            if (!Schema::hasTable($tableName)) continue;
+
+            $tornei = DB::table($tableName)
+                ->where(function($q) use ($referee) {
+                    $q->where('TD', 'LIKE', "%{$referee->name}%")
+                      ->orWhere('Arbitri', 'LIKE', "%{$referee->name}%")
+                      ->orWhere('Osservatori', 'LIKE', "%{$referee->name}%");
+                })
+                ->get();
+
+            // Aggiungi ruolo da CSV
+            foreach ($tornei as $torneo) {
+                if (str_contains($torneo->TD ?? '', $referee->name)) {
+                    $torneo->role = 'Direttore di Torneo';
+                } elseif (str_contains($torneo->Arbitri ?? '', $referee->name)) {
+                    $torneo->role = 'Arbitro';
+                } else {
+                    $torneo->role = 'Osservatore';
+                }
+            }
+
+        } else {
+            // ANNI 2026+: LEGGI DA ASSIGNMENTS
+            $assignments = Assignment::with('tournament')
+                ->where('user_id', $id)
+                ->whereYear('assigned_at', $year)
+                ->get();
+
+            $tornei = collect();
+            foreach ($assignments as $assignment) {
+                $torneo = $assignment->tournament;
+                $torneo->role = $assignment->role;
+                $tornei->push($torneo);
             }
         }
 
         if ($tornei->count() > 0) {
             $curriculumData[$year] = [
                 'level' => $referee->{"level_{$year}"} ?? $referee->level,
-                'assignments' => $tornei
+                'assignments' => $tornei,
+                'count' => $tornei->count()
             ];
         }
     }
