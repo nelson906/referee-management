@@ -986,42 +986,44 @@ class MasterMigrationSeeder extends Seeder
     /**
      * Migra TUTTI i tornei mantenendo i campi CSV
      */
-    private function migrateGare()
-    {
-        $this->command->info('🏆 Migrazione tornei multi-anno...');
+private function migrateGare()
+{
+    $this->command->info('🏆 Migrazione tornei multi-anno...');
 
-        $currentYear = date('Y');
+    $currentYear = date('Y');
 
-        // ANNI PASSATI: copia tabelle complete
-        for ($year = 2015; $year < $currentYear; $year++) {
-            $sourceTable = "gare_{$year}";
+    // MIGRA TUTTI GLI ANNI
+    for ($year = 2015; $year <= $currentYear; $year++) {
+        $sourceTable = "gare_{$year}";
 
-            if (!$this->tableExists('real', $sourceTable)) {
-                continue;
-            }
-
-            // FIX: Copia struttura e dati dalla connessione REAL
-            $destTable = "tournaments_{$year}";
-
-            // Prima crea la struttura
-            $columns = DB::connection('real')->select("SHOW CREATE TABLE {$sourceTable}")[0];
-            $createStatement = $columns->{'Create Table'};
-            $createStatement = str_replace($sourceTable, $destTable, $createStatement);
-            DB::statement($createStatement);
-
-            // Poi copia i dati
-            $data = DB::connection('real')->table($sourceTable)->get();
-            foreach ($data as $row) {
-                DB::table($destTable)->insert((array) $row);
-            }
-
-            $this->command->info("✅ Anno {$year}: copiati {$data->count()} record in {$destTable}");
+        if (!$this->tableExists('real', $sourceTable)) {
+            continue;
         }
 
-        // Anno corrente
-        $this->migrateCurrentYear($currentYear);
+        // Crea tournaments_YYYY
+        $destTable = "tournaments_{$year}";
+
+        // Copia struttura
+        $columns = DB::connection('real')->select("SHOW CREATE TABLE {$sourceTable}")[0];
+        $createStatement = $columns->{'Create Table'};
+        $createStatement = str_replace($sourceTable, $destTable, $createStatement);
+        DB::statement($createStatement);
+
+        // Copia dati
+        $data = DB::connection('real')->table($sourceTable)->get();
+        foreach ($data as $row) {
+            DB::table($destTable)->insert((array) $row);
+        }
+
+        $this->command->info("✅ Anno {$year}: copiati {$data->count()} record in {$destTable}");
+
+        // POPOLA ASSIGNMENTS E AVAILABILITIES PER OGNI ANNO!
+        $this->populateAssignmentsFromYear($year);
     }
 
+    // Popola anche tournaments principale per anno corrente
+    $this->populateMainTournaments($currentYear);
+}
     /**
      * Migra anno corrente in tournaments + popola assignments/availabilities
      */
@@ -1080,6 +1082,37 @@ class MasterMigrationSeeder extends Seeder
         // STEP 3: Popola assignments_2025 e availabilities_2025
         $this->populateAssignmentsFromYear($year);
     }
+
+    private function populateMainTournaments($year)
+{
+    $this->command->info("📅 Popolamento tournaments principale da tournaments_{$year}...");
+
+    // Disabilita foreign keys
+    DB::statement('SET FOREIGN_KEY_CHECKS=0');
+    DB::table('tournaments')->truncate();
+
+    // Copia da tournaments_YYYY a tournaments (solo campi base)
+    $tornei = DB::table("tournaments_{$year}")->get();
+
+    foreach ($tornei as $torneo) {
+        DB::table('tournaments')->insert([
+            'id' => $torneo->id,
+            'name' => $torneo->Nome_gara ?? "Torneo #{$torneo->id}",
+            'start_date' => $torneo->StartTime,
+            'end_date' => $torneo->EndTime,
+            'club_id' => $this->resolveClubForTournament((object)$torneo),
+            'zone_id' => $this->resolveZoneForTournament((object)$torneo, null),
+            'tournament_type_id' => $this->resolveTournamentType((object)$torneo),
+            'status' => 'open',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+    }
+
+    DB::statement('SET FOREIGN_KEY_CHECKS=1');
+
+    $this->command->info("✅ Popolati " . $tornei->count() . " tornei in tabella tournaments principale");
+}
     private function createYearlyTables($year)
     {
         // Crea assignments_YYYY
@@ -1385,7 +1418,7 @@ private function populateAssignmentsFromYear($year)
     /**
      * Trova user ID da nome completo (per parsing CSV)
      */
-private function findUserByFullName(string $fullName, int $year = null)
+private function findUserByFullName(string $fullName, int $year = null): ?int
 {
     if (empty($fullName)) {
         return null;
@@ -1397,7 +1430,7 @@ private function findUserByFullName(string $fullName, int $year = null)
 
     $cleanName = trim($fullName);
 
-    // LOGICA SPECIALE PRE-2021: Solo cognomi in zona SZR6
+    // PRE-2021: Solo cognomi in zona SZR6
     if ($year && $year < 2021) {
         $szr6 = DB::table('zones')->where('code', 'SZR6')->first();
 
@@ -1409,17 +1442,22 @@ private function findUserByFullName(string $fullName, int $year = null)
                 ->first();
 
             if ($user) {
-                $this->command->info("🔍 Match pre-2021 SZR6: '{$cleanName}' → '{$user->name}'");
-                return $user->id;
+                return $user->id; // RITORNA L'ID!
             }
         }
-
-        $this->command->warn("⚠️ Cognome non trovato in SZR6 (anno {$year}): '{$cleanName}'");
         return null;
     }
 
-    // POST-2021: Nome completo normale
-    return $this->smartNameInversion($cleanName);
+    // POST-2021: usa smartNameInversion ma RITORNA L'ID!
+    $correctedName = $this->smartNameInversion($cleanName);
+
+    // Cerca l'utente con il nome corretto
+    $user = DB::table('users')
+        ->where('name', $correctedName)
+        ->where('user_type', 'referee')
+        ->first();
+
+    return $user ? $user->id : null; // RITORNA L'ID O NULL!
 }
 
     /**
