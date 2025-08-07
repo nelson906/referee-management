@@ -16,6 +16,7 @@ return new class extends Migration
             $table->foreignId('assignment_id')->constrained('assignments')->nullable();
             $table->enum('recipient_type', ['referee', 'club', 'institutional']);
             $table->string('recipient_email')->nullable();
+            $table->string('recipient_name')->nullable();
             $table->string('subject');
             $table->text('body')->nullable();
             $table->string('template_used')->nullable();
@@ -26,6 +27,7 @@ return new class extends Migration
             $table->text('error_message')->nullable();
             $table->integer('retry_count')->default(0);
             $table->integer('priority')->default(0);
+            $table->foreignId('sender_id')->nullable()->constrained('users');
             $table->json('attachments')->nullable();
             $table->json('metadata')->nullable();
             $table->timestamps();

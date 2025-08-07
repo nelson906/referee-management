@@ -51,7 +51,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class Assignment extends Model
 {
     use HasFactory;
-
+    public function getTable()
+    {
+        $year = session('selected_year', date('Y'));
+        return "assignments_{$year}";
+    }
     protected $fillable = [
         'user_id',
         'tournament_id',

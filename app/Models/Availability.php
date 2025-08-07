@@ -42,7 +42,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class Availability extends Model
 {
     use HasFactory;
-
+    public function getTable()
+    {
+        $year = session('selected_year', date('Y'));
+        return "availabilities_{$year}";
+    }
     /**
      * The attributes that are mass assignable.
      *

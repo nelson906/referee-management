@@ -24,7 +24,9 @@ return new class extends Migration
             // Logo and Design Elements
             $table->string('logo_path')->nullable();
             $table->text('header_text')->nullable();
+            $table->text('header_content')->nullable(); // Compatibilità
             $table->text('footer_text')->nullable();
+            $table->text('footer_content')->nullable(); // Compatibilità
 
             // Contact Information (JSON)
             $table->json('contact_info')->nullable();
@@ -33,8 +35,8 @@ return new class extends Migration
             $table->json('settings')->nullable();
 
             // Status and Defaults
-            $table->boolean('is_active')->default(true)->index();
-            $table->boolean('is_default')->default(false)->index();
+            $table->boolean('is_active')->default(true);
+            $table->boolean('is_default')->default(false);
 
             // Audit Fields
             $table->foreignId('updated_by')->nullable()->constrained('users')->onDelete('set null');

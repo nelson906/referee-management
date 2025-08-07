@@ -57,8 +57,7 @@ class MasterMigrationSeeder extends Seeder
         $this->migrateArbitri();        // arbitri → users + referees
         $this->migrateCircoli();        // circoli → clubs
         $this->migrateGare();           // gare_2025 → tournaments
-        $this->migrateDisponibilita();  // gare_2025.Disponibili → availabilities
-        $this->migrateAssegnazioni();   // gare_2025.TD+Arbitri+Osservatori → assignments
+
         $this->migrateLetterheads();
         $this->migrateCommunications();
         $this->migrateInstitutionalEmails();
@@ -611,12 +610,6 @@ class MasterMigrationSeeder extends Seeder
         $this->command->info("✅ Migrati {$processedCount} arbitri (conflitti risolti: {$conflictCount}, GIOV saltati: {$giovSkipped})");
     }
 
-    /**
-     * Migra circoli (circoli → clubs)
-     */
-    /**
-     * 🔧 FIX: Gestione constraint UNIQUE per clubs (name, code)
-     */
 
     /**
      * Migra circoli con gestione conflict UNIQUE
@@ -990,124 +983,189 @@ class MasterMigrationSeeder extends Seeder
     /**
      * Migra tornei (gare_2025 → tournaments)
      */
-private function migrateGare()
-{
-    $this->command->info('🏆 Migrazione tornei multi-anno...');
+    /**
+     * Migra TUTTI i tornei mantenendo i campi CSV
+     */
+    private function migrateGare()
+    {
+        $this->command->info('🏆 Migrazione tornei multi-anno...');
 
-    $currentYear = date('Y'); // 2025
+        $currentYear = date('Y');
 
-    // STEP 1: Migra anni 2015-2024 in tournaments_YYYY
-    for ($year = 2015; $year < $currentYear; $year++) {
+        // ANNI PASSATI: copia tabelle complete
+        for ($year = 2015; $year < $currentYear; $year++) {
+            $sourceTable = "gare_{$year}";
+
+            if (!$this->tableExists('real', $sourceTable)) {
+                continue;
+            }
+
+            // FIX: Copia struttura e dati dalla connessione REAL
+            $destTable = "tournaments_{$year}";
+
+            // Prima crea la struttura
+            $columns = DB::connection('real')->select("SHOW CREATE TABLE {$sourceTable}")[0];
+            $createStatement = $columns->{'Create Table'};
+            $createStatement = str_replace($sourceTable, $destTable, $createStatement);
+            DB::statement($createStatement);
+
+            // Poi copia i dati
+            $data = DB::connection('real')->table($sourceTable)->get();
+            foreach ($data as $row) {
+                DB::table($destTable)->insert((array) $row);
+            }
+
+            $this->command->info("✅ Anno {$year}: copiati {$data->count()} record in {$destTable}");
+        }
+
+        // Anno corrente
+        $this->migrateCurrentYear($currentYear);
+    }
+
+    /**
+     * Migra anno corrente in tournaments + popola assignments/availabilities
+     */
+    private function migrateCurrentYear($year)
+    {
+        $this->command->info("📅 Migrazione anno corrente {$year}...");
+
         $sourceTable = "gare_{$year}";
-        $destTable = "tournaments_{$year}";
 
         if (!$this->tableExists('real', $sourceTable)) {
-            $this->command->info("⏭️ Tabella {$sourceTable} non trovata, skip");
-            continue;
+            $this->command->error("❌ Tabella {$sourceTable} non trovata");
+            return;
         }
 
-        try {
-            // Crea tabella tournaments_YYYY con TUTTA la struttura
-            DB::statement("CREATE TABLE IF NOT EXISTS {$destTable} LIKE {$sourceTable}");
-
-            // Copia TUTTI i dati (inclusi TD, Arbitri, Osservatori, Disponibili)
-            DB::statement("TRUNCATE TABLE {$destTable}");
-            DB::statement("INSERT INTO {$destTable} SELECT * FROM {$sourceTable}");
-
-            $count = DB::table($destTable)->count();
-            $this->command->info("✅ Anno {$year}: copiati {$count} tornei con TUTTI i campi CSV");
-
-        } catch (\Exception $e) {
-            $this->command->error("❌ Errore migrazione anno {$year}: " . $e->getMessage());
-        }
-    }
-
-    // STEP 2: Anno corrente (2025) va in tournaments principale
-    $this->migrateCurrentYearToMain($currentYear);
-
-    // STEP 3: DOPO aver migrato l'anno corrente, popola assignments/availabilities
-    $this->parseCurrentYearAssignmentsAndAvailabilities();
-}
-
-/**
- * Migra l'anno corrente in tournaments principale
- */
-private function migrateCurrentYearToMain($year)
-{
-    $this->command->info("📅 Anno {$year} (corrente): migrazione in tournaments principale...");
-
-    $sourceTable = "gare_{$year}";
-
-    if (!$this->tableExists('real', $sourceTable)) {
-        $this->command->error("❌ Tabella {$sourceTable} non trovata");
-        return;
-    }
-
-    try {
-        // Svuota tournaments
+        // FIX: Disabilita foreign key checks per poter svuotare
+        DB::statement('SET FOREIGN_KEY_CHECKS=0');
         DB::table('tournaments')->truncate();
+        DB::statement('SET FOREIGN_KEY_CHECKS=1');
 
-        // Copia da gare_2025 mappando i campi
         $gare = DB::connection('real')->table($sourceTable)->get();
 
         foreach ($gare as $gara) {
-            $tournamentData = $this->buildTournamentData($gara);
-
-            DB::table('tournaments')->insert($tournamentData);
+            DB::table('tournaments')->insert([
+                'id' => $gara->id,
+                'name' => $gara->Nome_gara ?? "Torneo #{$gara->id}",
+                'start_date' => $this->parseDate($gara->StartTime),
+                'end_date' => $this->parseDate($gara->EndTime),
+                'club_id' => $this->resolveClubForTournament($gara),
+                'zone_id' => $this->resolveZoneForTournament($gara, null),
+                'tournament_type_id' => $this->resolveTournamentType($gara),
+                'status' => 'open',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
         }
 
-        $this->command->info("✅ Migrati {$gare->count()} tornei in tabella tournaments principale");
+        $this->command->info("✅ Inseriti {$gare->count()} tornei in tournaments");
 
-    } catch (\Exception $e) {
-        $this->command->error("❌ Errore migrazione anno corrente: " . $e->getMessage());
+        // STEP 2: Crea anche tournaments_2025 CON I CAMPI CSV
+        $destTable = "tournaments_{$year}";
+
+        // Copia struttura completa
+        $columns = DB::connection('real')->select("SHOW CREATE TABLE {$sourceTable}")[0];
+        $createStatement = $columns->{'Create Table'};
+        $createStatement = str_replace($sourceTable, $destTable, $createStatement);
+        DB::statement($createStatement);
+
+        // Copia tutti i dati
+        $data = DB::connection('real')->table($sourceTable)->get();
+        foreach ($data as $row) {
+            DB::table($destTable)->insert((array) $row);
+        }
+
+        $this->command->info("✅ Creata anche {$destTable} con tutti i campi CSV");
+
+        // STEP 3: Popola assignments_2025 e availabilities_2025
+        $this->populateAssignmentsFromYear($year);
     }
-}
-
-/**
- * NUOVO METODO: Parsa assignments e availabilities SOLO dall'anno corrente
- */
-private function parseCurrentYearAssignmentsAndAvailabilities()
-{
-    $this->command->info("📋 Parsing assignments/availabilities per anno corrente...");
-
-    // Pulisci tabelle
-    DB::table('assignments')->truncate();
-    DB::table('availabilities')->truncate();
-
-    // Leggi da tournaments (che contiene solo anno corrente)
-    $tournaments = DB::table('tournaments')->get();
-
-    foreach ($tournaments as $tournament) {
-        // Parsa disponibilità se presenti
-        if (!empty($tournament->Disponibili)) {
-            $this->parseDisponibilitaForCurrent($tournament->Disponibili, $tournament->id);
+    private function createYearlyTables($year)
+    {
+        // Crea assignments_YYYY
+        $assignTable = "assignments_{$year}";
+        if (!Schema::hasTable($assignTable)) {
+            Schema::create($assignTable, function (Blueprint $table) {
+                $table->id();
+                $table->foreignId('tournament_id');
+                $table->foreignId('user_id');
+                $table->foreignId('assigned_by_id');
+                $table->string('role');
+                $table->timestamp('assigned_at')->nullable();
+                $table->timestamps();
+                $table->unique(['tournament_id', 'user_id', 'role']);
+            });
         }
 
-        // Parsa assegnazioni
-        if (!empty($tournament->TD)) {
-            $this->createAssignmentFromName($tournament->id, $tournament->TD, 'Direttore di Torneo');
+        // Crea availabilities_YYYY
+        $availTable = "availabilities_{$year}";
+        if (!Schema::hasTable($availTable)) {
+            Schema::create($availTable, function (Blueprint $table) {
+                $table->id();
+                $table->foreignId('user_id');
+                $table->foreignId('tournament_id');
+                $table->text('notes')->nullable();
+                $table->timestamps();
+                $table->unique(['user_id', 'tournament_id']);
+            });
         }
+    }
+    /**
+     * Popola assignments e availabilities dall'anno specificato
+     */
+    private function populateAssignmentsFromYear($year)
+    {
+        $this->command->info("📋 Popolamento assignments_{$year} e availabilities_{$year}...");
 
-        if (!empty($tournament->Arbitri)) {
-            $arbitri = explode(',', $tournament->Arbitri);
-            foreach ($arbitri as $arbitro) {
-                $this->createAssignmentFromName($tournament->id, trim($arbitro), 'Arbitro');
+        // Crea le tabelle se non esistono
+        $this->createYearlyTables($year);
+
+        $tornei = DB::table("tournaments_{$year}")->get();
+
+        foreach ($tornei as $torneo) {
+            // DISPONIBILITÀ in availabilities_YYYY
+            if (!empty($torneo->Disponibili)) {
+                $nomi = explode(',', $torneo->Disponibili);
+                foreach ($nomi as $nome) {
+                    $user = DB::table('users')
+                        ->where('name', 'LIKE', '%' . trim($nome) . '%')
+                        ->where('user_type', 'referee')
+                        ->first();
+
+                    if ($user) {
+                        DB::table("availabilities_{$year}")->insertOrIgnore([
+                            'user_id' => $user->id,
+                            'tournament_id' => $torneo->id,
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ]);
+                    }
+                }
+            }
+
+            // ASSEGNAZIONI
+            if (!empty($torneo->TD)) {
+                $this->createAssignmentFromName($torneo->id, $torneo->TD, 'Direttore di Torneo');
+            }
+
+            if (!empty($torneo->Arbitri)) {
+                $arbitri = explode(',', $torneo->Arbitri);
+                foreach ($arbitri as $arbitro) {
+                    $this->createAssignmentFromName($torneo->id, trim($arbitro), 'Arbitro');
+                }
+            }
+
+            if (!empty($torneo->Osservatori)) {
+                $osservatori = explode(',', $torneo->Osservatori);
+                foreach ($osservatori as $osservatore) {
+                    $this->createAssignmentFromName($torneo->id, trim($osservatore), 'Osservatore');
+                }
             }
         }
 
-        if (!empty($tournament->Osservatori)) {
-            $osservatori = explode(',', $tournament->Osservatori);
-            foreach ($osservatori as $osservatore) {
-                $this->createAssignmentFromName($tournament->id, trim($osservatore), 'Osservatore');
-            }
-        }
+        $this->stats['assignments'] = DB::table('assignments')->count();
+        $this->stats['availabilities'] = DB::table('availabilities')->count();
     }
-
-    $assignCount = DB::table('assignments')->count();
-    $availCount = DB::table('availabilities')->count();
-
-    $this->command->info("✅ Create {$assignCount} assignments e {$availCount} availabilities per anno corrente");
-}
 
     /**
      * Helper: costruisce i dati del torneo
@@ -1132,93 +1190,6 @@ private function parseCurrentYearAssignmentsAndAvailabilities()
             'created_at' => $this->parseDate($gara->created_at ?? null) ?? now(),
             'updated_at' => now(),
         ];
-    }
-
-    /**
-     * Migra disponibilità (parsing CSV da gare_2025.Disponibilità)
-     */
-    private function migrateDisponibilita()
-    {
-        $this->command->info('📅 Migrazione disponibilità multi-anno...');
-        $totalAvailabilities = 0;
-
-        // ITERA SU TUTTI GLI ANNI
-        for ($year = 2015; $year <= date('Y'); $year++) {
-            $tableName = "gare_{$year}";
-
-            if (!$this->tableExists('real', $tableName)) {
-                continue;
-            }
-
-            try {
-                $gare = DB::connection('real')
-                    ->table($tableName)
-                    ->whereNotNull('Disponibili')
-                    ->where('Disponibili', '!=', '')
-                    ->get();
-
-                $this->command->info("📅 Anno {$year}: trovati {$gare->count()} tornei con disponibilità");
-
-                foreach ($gare as $gara) {
-                    $count = $this->parseDisponibilitaCSV($gara->Disponibili, $gara->id);
-                    $totalAvailabilities += $count;
-
-                    if ($count > 0) {
-                        $this->command->info("  → Torneo #{$gara->id} ({$year}): {$count} disponibilità");
-                    }
-                }
-            } catch (\Exception $e) {
-                $this->command->error("❌ Errore disponibilità anno {$year}: {$e->getMessage()}");
-            }
-        }
-
-        $this->stats['disponibilita'] = $totalAvailabilities;
-        $this->command->info("✅ Migrate {$totalAvailabilities} disponibilità totali da tutti gli anni");
-    }
-
-    /**
-     * Migra assegnazioni (parsing CSV da TD + Arbitri + Osservatori)
-     */
-    private function migrateAssegnazioni()
-    {
-        $this->command->info('📋 Migrazione assegnazioni multi-anno...');
-        $totalAssignments = 0;
-
-        // ITERA SU TUTTI GLI ANNI
-        for ($year = 2015; $year <= date('Y'); $year++) {
-            $tableName = "gare_{$year}";
-
-            if (!$this->tableExists('real', $tableName)) {
-                continue;
-            }
-
-            try {
-                $gare = DB::connection('real')
-                    ->table($tableName)
-                    ->where(function ($query) {
-                        $query->whereNotNull('TD')
-                            ->orWhereNotNull('Arbitri')
-                            ->orWhereNotNull('Osservatori');
-                    })
-                    ->get();
-
-                $this->command->info("📅 Anno {$year}: trovati {$gare->count()} tornei con assegnazioni");
-
-                foreach ($gare as $gara) {
-                    $count = $this->parseAssegnazioniCSV($gara);
-                    $totalAssignments += $count;
-
-                    if ($count > 0) {
-                        $this->command->info("  → Torneo #{$gara->id} ({$year}): {$count} assegnazioni");
-                    }
-                }
-            } catch (\Exception $e) {
-                $this->command->error("❌ Errore assegnazioni anno {$year}: {$e->getMessage()}");
-            }
-        }
-
-        $this->stats['assegnazioni'] = $totalAssignments;
-        $this->command->info("✅ Migrate {$totalAssignments} assegnazioni totali da tutti gli anni");
     }
 
     // ========================================
@@ -1631,84 +1602,6 @@ private function parseCurrentYearAssignmentsAndAvailabilities()
     }
 
     /**
-     * Parsing CSV disponibilità (con contatore)
-     */
-    private function parseDisponibilitaCSV($disponibilitaString, $tournamentId): int
-    {
-        if (empty($disponibilitaString)) {
-            return 0;
-        }
-
-        $nomi = explode(',', $disponibilitaString);
-        $count = 0;
-
-        foreach ($nomi as $nomeCompleto) {
-        $userId = $this->findUserByFullName(trim($nomeCompleto), $year); // PASSA L'ANNO!
-            if ($userId) {
-                $success = $this->dryRunUpdateOrInsert(
-                    'availabilities',
-                    [
-                        'user_id' => $userId,
-                        'tournament_id' => $tournamentId,
-                    ],
-                    [
-                        'notes' => 'Migrato da CSV Disponibilità',
-                        'created_at' => now(),
-                        'updated_at' => now(),
-                    ],
-                    "Disponibilità per torneo #{$tournamentId}: " . trim($nomeCompleto)
-                );
-
-                if ($success) {
-                    $count++;
-                }
-            }
-        }
-
-        return $count;
-    }
-
-    /**
-     * Parsing CSV assegnazioni (con inversione intelligente nomi "Cognome Nome" → "Nome Cognome")
-     */
-    private function parseAssegnazioniCSV($gara): int
-    {
-        $count = 0;
-
-        // TD (Direttore di Torneo)
-        if (!empty($gara->TD)) {
-            $correctedName = $this->smartNameInversion($gara->TD);
-            if ($this->createAssignmentFromName($gara->id, $correctedName, 'Direttore di Torneo')) {
-                $count++;
-            }
-        }
-
-        // Arbitri (lista CSV)
-        if (!empty($gara->Arbitri)) {
-            $arbitri = explode(',', $gara->Arbitri);
-            foreach ($arbitri as $arbitro) {
-                $correctedName = $this->smartNameInversion(trim($arbitro));
-                if ($this->createAssignmentFromName($gara->id, $correctedName, 'Arbitro')) {
-                    $count++;
-                }
-            }
-        }
-
-        // Osservatori (lista CSV)
-        if (!empty($gara->Osservatori)) {
-            $osservatori = explode(',', $gara->Osservatori);
-            foreach ($osservatori as $osservatore) {
-                $correctedName = $this->smartNameInversion(trim($osservatore));
-                if ($this->createAssignmentFromName($gara->id, $correctedName, 'Osservatore')) {
-                    $count++;
-                }
-            }
-        }
-
-        return $count;
-    }
-
-    /**
      * Inversione intelligente nome con verifica su tabella users
      * Gestisce nomi/cognomi multipli e verifica contro database
      */
@@ -1979,17 +1872,17 @@ private function parseCurrentYearAssignmentsAndAvailabilities()
 
 
     // AGGIUNGI questo metodo per creare tabelle anno
-private function createTournamentTableForYear($year)
-{
-    $tableName = "tournaments_{$year}";
+    private function createTournamentTableForYear($year)
+    {
+        $tableName = "tournaments_{$year}";
 
-    if (!Schema::hasTable($tableName)) {
-        // COPIA STRUTTURA ESATTA da gare_YYYY con TUTTI i campi!
-        DB::statement("CREATE TABLE {$tableName} LIKE gare_{$year}");
+        if (!Schema::hasTable($tableName)) {
+            // COPIA STRUTTURA ESATTA da gare_YYYY con TUTTI i campi!
+            DB::statement("CREATE TABLE {$tableName} LIKE gare_{$year}");
 
-        $this->command->info("✅ Creata tabella {$tableName} con TUTTI i campi CSV");
+            $this->command->info("✅ Creata tabella {$tableName} con TUTTI i campi CSV");
+        }
     }
-}
 
     /**
      * Migra comunicazioni
