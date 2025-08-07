@@ -1113,59 +1113,65 @@ class MasterMigrationSeeder extends Seeder
     /**
      * Popola assignments e availabilities dall'anno specificato
      */
-    private function populateAssignmentsFromYear($year)
-    {
-        $this->command->info("📋 Popolamento assignments_{$year} e availabilities_{$year}...");
+private function populateAssignmentsFromYear($year)
+{
+    $this->command->info("📋 Popolamento assignments_{$year} e availabilities_{$year}...");
 
-        // Crea le tabelle se non esistono
-        $this->createYearlyTables($year);
+    // Crea le tabelle se non esistono
+    $this->createYearlyTables($year);
 
-        $tornei = DB::table("tournaments_{$year}")->get();
+    // Pulisci tabelle anno
+    DB::table("assignments_{$year}")->truncate();
+    DB::table("availabilities_{$year}")->truncate();
 
-        foreach ($tornei as $torneo) {
-            // DISPONIBILITÀ in availabilities_YYYY
-            if (!empty($torneo->Disponibili)) {
-                $nomi = explode(',', $torneo->Disponibili);
-                foreach ($nomi as $nome) {
-                    $user = DB::table('users')
-                        ->where('name', 'LIKE', '%' . trim($nome) . '%')
-                        ->where('user_type', 'referee')
-                        ->first();
+    $tornei = DB::table("tournaments_{$year}")->get();
 
-                    if ($user) {
-                        DB::table("availabilities_{$year}")->insertOrIgnore([
-                            'user_id' => $user->id,
-                            'tournament_id' => $torneo->id,
-                            'created_at' => now(),
-                            'updated_at' => now(),
-                        ]);
-                    }
-                }
-            }
+    foreach ($tornei as $torneo) {
+        // DISPONIBILITÀ
+        if (!empty($torneo->Disponibili)) {
+            $nomi = explode(',', $torneo->Disponibili);
+            foreach ($nomi as $nome) {
+                $userId = $this->findUserByFullName(trim($nome), $year); // PASSA L'ANNO!
 
-            // ASSEGNAZIONI
-            if (!empty($torneo->TD)) {
-                $this->createAssignmentFromName($torneo->id, $torneo->TD, 'Direttore di Torneo');
-            }
-
-            if (!empty($torneo->Arbitri)) {
-                $arbitri = explode(',', $torneo->Arbitri);
-                foreach ($arbitri as $arbitro) {
-                    $this->createAssignmentFromName($torneo->id, trim($arbitro), 'Arbitro');
-                }
-            }
-
-            if (!empty($torneo->Osservatori)) {
-                $osservatori = explode(',', $torneo->Osservatori);
-                foreach ($osservatori as $osservatore) {
-                    $this->createAssignmentFromName($torneo->id, trim($osservatore), 'Osservatore');
+                if ($userId) {
+                    DB::table("availabilities_{$year}")->insertOrIgnore([
+                        'user_id' => $userId,
+                        'tournament_id' => $torneo->id,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
                 }
             }
         }
 
-        $this->stats['assignments'] = DB::table('assignments')->count();
-        $this->stats['availabilities'] = DB::table('availabilities')->count();
+        // ASSEGNAZIONI - PASSA L'ANNO!
+        if (!empty($torneo->TD)) {
+            $this->createAssignmentFromName($torneo->id, $torneo->TD, 'Direttore di Torneo', $year);
+        }
+
+        if (!empty($torneo->Arbitri)) {
+            $arbitri = explode(',', $torneo->Arbitri);
+            foreach ($arbitri as $arbitro) {
+                $this->createAssignmentFromName($torneo->id, trim($arbitro), 'Arbitro', $year);
+            }
+        }
+
+        if (!empty($torneo->Osservatori)) {
+            $osservatori = explode(',', $torneo->Osservatori);
+            foreach ($osservatori as $osservatore) {
+                $this->createAssignmentFromName($torneo->id, trim($osservatore), 'Osservatore', $year);
+            }
+        }
     }
+
+    $assignCount = DB::table("assignments_{$year}")->count();
+    $availCount = DB::table("availabilities_{$year}")->count();
+
+    $this->stats['assignments'] = ($this->stats['assignments'] ?? 0) + $assignCount;
+    $this->stats['availabilities'] = ($this->stats['availabilities'] ?? 0) + $availCount;
+
+    $this->command->info("✅ Create {$assignCount} assignments e {$availCount} availabilities per anno {$year}");
+}
 
     /**
      * Helper: costruisce i dati del torneo
@@ -1379,102 +1385,84 @@ class MasterMigrationSeeder extends Seeder
     /**
      * Trova user ID da nome completo (per parsing CSV)
      */
-    private function findUserByFullName(string $fullName): ?int
-    {
-        if (empty($fullName)) {
-            return null;
-        }
-
-        if ($this->dryRun) {
-            return 999; // ID fittizio per dry-run
-        }
-
-        $cleanName = trim($fullName);
-        // LOGICA SPECIALE PRE-2021: Solo cognomi in zona SZR6
-        if ($year && $year < 2021) {
-            // Prima del 2021 erano solo COGNOMI
-            $szr6 = DB::table('zones')->where('code', 'SZR6')->first();
-
-            if ($szr6) {
-                // Cerca per cognome in zona SZR6
-                $user = DB::table('users')
-                    ->where('zone_id', $szr6->id)
-                    ->where('user_type', 'referee')
-                    ->where('name', 'LIKE', "% {$cleanName}") // Cognome alla fine
-                    ->first();
-
-                if ($user) {
-                    $this->command->info("🔍 Match pre-2021 SZR6: '{$cleanName}' → '{$user->name}'");
-                    return $user->id;
-                }
-            }
-
-            $this->command->warn("⚠️ Cognome non trovato in SZR6 (anno {$year}): '{$cleanName}'");
-            return null;
-        }
-
-        $user = DB::table('users')
-            ->where('name', $cleanName)
-            ->where('user_type', 'referee')
-            ->first();
-
-        if ($user) {
-            return $user->id;
-        }
-
-        $user = DB::table('users')
-            ->where('name', 'LIKE', "%{$cleanName}%")
-            ->where('user_type', 'referee')
-            ->first();
-
-        if ($user) {
-            $this->command->info("🔍 Match parziale: '{$cleanName}' → '{$user->name}'");
-            return $user->id;
-        }
-
-        $this->command->warn("⚠️ Utente non trovato: '{$cleanName}'");
+private function findUserByFullName(string $fullName, int $year = null)
+{
+    if (empty($fullName)) {
         return null;
     }
+
+    if ($this->dryRun) {
+        return 999;
+    }
+
+    $cleanName = trim($fullName);
+
+    // LOGICA SPECIALE PRE-2021: Solo cognomi in zona SZR6
+    if ($year && $year < 2021) {
+        $szr6 = DB::table('zones')->where('code', 'SZR6')->first();
+
+        if ($szr6) {
+            $user = DB::table('users')
+                ->where('zone_id', $szr6->id)
+                ->where('user_type', 'referee')
+                ->where('name', 'LIKE', "% {$cleanName}")
+                ->first();
+
+            if ($user) {
+                $this->command->info("🔍 Match pre-2021 SZR6: '{$cleanName}' → '{$user->name}'");
+                return $user->id;
+            }
+        }
+
+        $this->command->warn("⚠️ Cognome non trovato in SZR6 (anno {$year}): '{$cleanName}'");
+        return null;
+    }
+
+    // POST-2021: Nome completo normale
+    return $this->smartNameInversion($cleanName);
+}
 
     /**
      * Crea assegnazione da nome (per parsing CSV)
      */
-    private function createAssignmentFromName(int $tournamentId, string $fullName, string $role): bool
-    {
-        $userId = $this->findUserByFullName($fullName);
+private function createAssignmentFromName(int $tournamentId, string $fullName, string $role, int $year): bool
+{
+    $userId = $this->findUserByFullName($fullName, $year); // PASSA L'ANNO!
 
-        if (!$userId) {
-            return false;
-        }
-
-        if (!$this->dryRun) {
-            $existing = DB::table('assignments')
-                ->where('tournament_id', $tournamentId)
-                ->where('user_id', $userId)
-                ->where('role', $role)
-                ->first();
-
-            if ($existing) {
-                return true;
-            }
-        }
-
-        $success = $this->dryRunInsert(
-            'assignments',
-            [
-                'tournament_id' => $tournamentId,
-                'user_id' => $userId,
-                'assigned_by_id' => 1, // Default system user
-                'role' => $role,
-                'assigned_at' => now(),
-                'created_at' => now(),
-                'updated_at' => now(),
-            ],
-            "Assegnazione {$role} per torneo #{$tournamentId}: {$fullName}"
-        );
-
-        return $success;
+    if (!$userId) {
+        return false;
     }
+
+    $assignmentTable = "assignments_{$year}"; // USA TABELLA ANNO!
+
+    if (!$this->dryRun) {
+        $existing = DB::table($assignmentTable)
+            ->where('tournament_id', $tournamentId)
+            ->where('user_id', $userId)
+            ->where('role', $role)
+            ->first();
+
+        if ($existing) {
+            return true;
+        }
+    }
+
+    $success = $this->dryRunInsert(
+        $assignmentTable, // USA TABELLA ANNO!
+        [
+            'tournament_id' => $tournamentId,
+            'user_id' => $userId,
+            'assigned_by_id' => 1,
+            'role' => $role,
+            'assigned_at' => now(),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ],
+        "Assegnazione {$role} per torneo #{$tournamentId}: {$fullName}"
+    );
+
+    return $success;
+}
 
     // ========================================
     // METODI DI SUPPORTO PER MIGRAZIONE

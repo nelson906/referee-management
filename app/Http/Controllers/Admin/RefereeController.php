@@ -499,52 +499,37 @@ public function showCurriculum($id)
     $curriculumData = [];
 
     for ($year = date('Y'); $year >= 2015; $year--) {
+        // USA assignments_YYYY con JOIN a tournaments_YYYY
+        $assignmentTable = "assignments_{$year}";
+        $tournamentTable = "tournaments_{$year}";
 
-        if ($year <= 2025) {
-            // ANNI 2015-2025: LEGGI DAI CAMPI CSV
-            $tableName = $year == date('Y') ? 'tournaments' : "tournaments_{$year}";
-
-            if (!Schema::hasTable($tableName)) continue;
-
-            $tornei = DB::table($tableName)
-                ->where(function($q) use ($referee) {
-                    $q->where('TD', 'LIKE', "%{$referee->name}%")
-                      ->orWhere('Arbitri', 'LIKE', "%{$referee->name}%")
-                      ->orWhere('Osservatori', 'LIKE', "%{$referee->name}%");
-                })
-                ->get();
-
-            // Aggiungi ruolo da CSV
-            foreach ($tornei as $torneo) {
-                if (str_contains($torneo->TD ?? '', $referee->name)) {
-                    $torneo->role = 'Direttore di Torneo';
-                } elseif (str_contains($torneo->Arbitri ?? '', $referee->name)) {
-                    $torneo->role = 'Arbitro';
-                } else {
-                    $torneo->role = 'Osservatore';
-                }
-            }
-
-        } else {
-            // ANNI 2026+: LEGGI DA ASSIGNMENTS
-            $assignments = Assignment::with('tournament')
-                ->where('user_id', $id)
-                ->whereYear('assigned_at', $year)
-                ->get();
-
-            $tornei = collect();
-            foreach ($assignments as $assignment) {
-                $torneo = $assignment->tournament;
-                $torneo->role = $assignment->role;
-                $tornei->push($torneo);
-            }
+        if (!Schema::hasTable($assignmentTable) || !Schema::hasTable($tournamentTable)) {
+            continue;
         }
 
-        if ($tornei->count() > 0) {
+        $assignments = DB::table($assignmentTable . ' as a')
+            ->join($tournamentTable . ' as t', 'a.tournament_id', '=', 't.id')
+            ->leftJoin('clubs as c', 't.Circolo', '=', 'c.id')
+            ->where('a.user_id', $id)
+            ->select(
+                't.id',
+                't.Nome_gara as name',
+                't.StartTime as start_date',
+                't.EndTime as end_date',
+                'c.name as club_name',
+                'a.role'
+            )
+            ->orderBy('t.StartTime', 'desc')
+            ->get();
+
+        if ($assignments->count() > 0) {
+            $levelColumn = "level_{$year}";
+            $level = $referee->$levelColumn ?? $referee->level;
+
             $curriculumData[$year] = [
-                'level' => $referee->{"level_{$year}"} ?? $referee->level,
-                'assignments' => $tornei,
-                'count' => $tornei->count()
+                'level' => $level,
+                'assignments' => $assignments,
+                'count' => $assignments->count()
             ];
         }
     }
