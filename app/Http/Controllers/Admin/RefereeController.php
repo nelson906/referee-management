@@ -476,7 +476,7 @@ class RefereeController extends Controller
             }
         }
 
-        return view('admin.referees.curriculum', compact('referee', 'curriculumData'));
+        return view('referee.curriculum', compact('referee', 'curriculumData'));
     }
 
     public function allCurricula()
