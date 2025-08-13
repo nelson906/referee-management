@@ -36,19 +36,18 @@
                                 🏌️ Golf Admin
                             </h1>
                         </div>
-{{-- DOPO il logo/brand, PRIMA del menu --}}
-<div class="flex items-center ml-auto mr-4">
-    <label class="mr-2 text-sm">Anno:</label>
-    <select id="year-selector"
-            class="text-sm border-gray-300 rounded-md"
-            onchange="changeYear(this.value)">
-        @for($y = date('Y'); $y >= 2015; $y--)
-            <option value="{{ $y }}" {{ session('selected_year', date('Y')) == $y ? 'selected' : '' }}>
-                {{ $y }}
-            </option>
-        @endfor
-    </select>
-</div>
+                        {{-- DOPO il logo/brand, PRIMA del menu --}}
+                        <div class="flex items-center ml-auto mr-4">
+                            <label class="mr-2 text-sm">Anno:</label>
+                            <select id="yearSelector" class="form-control" onchange="changeYear(this.value)">
+                                @for ($year = date('Y'); $year >= 2015; $year--)
+                                    <option value="{{ $year }}"
+                                        {{ session('selected_year', date('Y')) == $year ? 'selected' : '' }}>
+                                        Anno {{ $year }}
+                                    </option>
+                                @endfor
+                            </select>
+                        </div>
 
                         {{-- Desktop Navigation Menu - DUE RIGHE --}}
                         <div class="ml-4">
@@ -103,7 +102,7 @@
                                 <a href="{{ route(name: 'admin.referees.curricula') }}"
                                     class="px-2 py-1 rounded text-xs hover:bg-blue-800 hover:text-white font-medium whitespace-nowrap {{ request()->routeIs('admin.documents.*') ? 'bg-blue-800 text-white' : 'text-blue-100 hover:bg-blue-800 hover:text-white' }}">📁
                                     Curricula Arbitri</a>
-    {{-- @if(auth()->user()->hasRole('admin'))
+                                {{-- @if (auth()->user()->hasRole('admin'))
     <li class="nav-item">
         <a href="{{ route('admin.referees.allCurricula') }}" class="nav-link">
             <i class="nav-icon fas fa-file-alt"></i>
@@ -111,14 +110,14 @@
         </a>
     </li>
 @endif --}}
-                        </div>
+                            </div>
                         </div>
 
                         {{-- User Menu --}}
                         <div class="flex items-center">
                             <div class="relative" x-data="{ userMenuOpen: false }">
                                 <button @click="userMenuOpen = !userMenuOpen"
-                                class="flex items-center max-w-xs text-sm text-white focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-blue-900">
+                                    class="flex items-center max-w-xs text-sm text-white focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-blue-900">
                                     <span class="mr-2">{{ Auth::user()->name ?? 'Admin' }}</span>
                                     <div class="h-8 w-8 rounded-full bg-blue-700 flex items-center justify-center">
                                         {{ strtoupper(substr(Auth::user()->name ?? 'A', 0, 1)) }}
@@ -187,8 +186,8 @@
         {{-- Sidebar laterale --}}
         <div x-show="sidebarOpen" x-transition:enter="transform transition ease-in-out duration-300"
             x-transition:enter-start="-translate-x-full" x-transition:enter-end="translate-x-0"
-            x-transition:leave="transform transition ease-in-out duration-300" x-transition:leave-start="translate-x-0"
-            x-transition:leave-end="-translate-x-full"
+            x-transition:leave="transform transition ease-in-out duration-300"
+            x-transition:leave-start="translate-x-0" x-transition:leave-end="-translate-x-full"
             class="fixed top-0 left-0 h-screen w-80 bg-blue-800 shadow-2xl z-50 md:hidden overflow-y-auto"
             style="display: none;">
 
@@ -373,21 +372,41 @@
 
     {{-- Page-specific scripts --}}
     @stack('scripts')
-<script>
-function changeYear(year) {
-    // Salva in sessione via AJAX
-    fetch('/api/set-year', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': '{{ csrf_token() }}'
-        },
-        body: JSON.stringify({ year: year })
-    }).then(() => {
-        window.location.reload(); // Ricarica per applicare il nuovo anno
-    });
-}
-</script>
+    <script>
+        function changeYear(year) {
+            // Salva in sessione via AJAX
+            fetch('/api/set-year', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                },
+                body: JSON.stringify({
+                    year: year
+                })
+            }).then(() => {
+                window.location.reload(); // Ricarica per applicare il nuovo anno
+            });
+        }
+    </script>
+    <script>
+        function changeYear(year) {
+            // Salva in sessione via AJAX
+            fetch('/admin/set-year', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                },
+                body: JSON.stringify({
+                    year: year
+                })
+            }).then(() => {
+                location.reload();
+            });
+        }
+    </script>
+
 </body>
 
 </html>

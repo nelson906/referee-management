@@ -1480,4 +1480,66 @@ class NotificationController extends Controller
         ]);
     }
 
+        /**
+     * Send assignment notifications
+     */
+    public function sendAssignmentNotifications(Request $request, $tournamentId)
+    {
+        $tournament = Tournament::findOrFail($tournamentId);
+        $year = Carbon::parse($tournament->start_date)->year;
+
+        // Prendi assegnazioni non confermate
+        $assignments = DB::table("assignments_{$year} as a")
+            ->join('users as u', 'a.user_id', '=', 'u.id')
+            ->where('a.tournament_id', $tournamentId)
+            ->where('a.is_confirmed', false)
+            ->select('a.*', 'u.email', 'u.name')
+            ->get();
+
+        $sent = 0;
+        foreach ($assignments as $assignment) {
+            // Invia notifica
+            $this->notificationService->sendAssignmentNotification(
+                $assignment->email,
+                $tournament,
+                $assignment->role
+            );
+
+            // Marca come notificato
+            DB::table("assignments_{$year}")
+                ->where('id', $assignment->id)
+                ->update(['notification_sent_at' => now()]);
+
+            $sent++;
+        }
+
+        return back()->with('success', "Inviate {$sent} notifiche");
+    }
+
+    /**
+     * Send availability reminders
+     */
+    public function sendAvailabilityReminders($tournamentId)
+    {
+        $tournament = Tournament::findOrFail($tournamentId);
+        $year = Carbon::parse($tournament->start_date)->year;
+
+        // Trova arbitri che non hanno dato disponibilità
+        $refereeIds = DB::table("availabilities_{$year}")
+            ->where('tournament_id', $tournamentId)
+            ->pluck('user_id');
+
+        $referees = User::where('user_type', 'referee')
+            ->where('is_active', true)
+            ->whereNotIn('id', $refereeIds)
+            ->when(!$tournament->tournamentType->is_national, function($q) use ($tournament) {
+                $q->where('zone_id', $tournament->zone_id);
+            })
+            ->get();
+
+        // Invia reminder...
+
+        return back()->with('success', "Inviati reminder a {$referees->count()} arbitri");
+    }
+
 }

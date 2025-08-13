@@ -27,7 +27,7 @@ class TournamentController extends Controller
         $isNationalAdmin = $user->user_type === 'national_admin' || $user->user_type === 'super_admin';
 
         // Base query - ✅ FIXED: tournamentType relationship
-    $query = Tournament::with(['club', 'zone', 'tournamentType']);
+        $query = Tournament::with(['club', 'zone', 'tournamentType']);
 
         // Filter by zone for zone admins
         if (!$isNationalAdmin && !in_array($user->user_type, ['super_admin'])) {
@@ -58,9 +58,9 @@ class TournamentController extends Controller
         }
 
         // Search
-    if ($request->filled('search')) {
-        $query->where('name', 'like', '%' . $request->search . '%');
-    }
+        if ($request->filled('search')) {
+            $query->where('name', 'like', '%' . $request->search . '%');
+        }
 
         // Order by start date descending
         $tournaments = $query->orderBy('start_date', 'desc')->paginate(20);
@@ -71,7 +71,7 @@ class TournamentController extends Controller
         // ✅ FIXED: Variable name from $categories to $tournamentTypes
         $tournamentTypes = TournamentType::active()->ordered()->get();
         $statuses = Tournament::STATUSES;
-    $tournaments = $query->paginate(20);
+        $tournaments = $query->paginate(20);
 
         // ✅ FIXED: compact() uses tournamentTypes instead of categories
         return view('admin.tournaments.index', compact(
@@ -323,6 +323,9 @@ class TournamentController extends Controller
         if ($user->user_type === 'admin' && $user->zone_id !== $tournament->zone_id) {
             abort(403, 'Non hai i permessi per visualizzare questo torneo.');
         }
+        // Forza l'anno in sessione basato sulla data del torneo
+        $year = Carbon::parse($tournament->start_date)->year;
+        session(['selected_year' => $year]);
 
         // ✅ FIXED: Load tournamentType relationship
         $tournament->load([

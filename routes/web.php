@@ -506,6 +506,12 @@ Route::get('/status', function () {
     ]);
 })->middleware('auth:sanctum');
 
+Route::post('/admin/set-year', function(Request $request) {
+    $request->validate(['year' => 'required|integer|min:2015|max:' . date('Y')]);
+    session(['selected_year' => $request->year]);
+    return response()->json(['success' => true]);
+})->middleware('auth');
+
 // =================================================================
 // 🚫 FALLBACK ROUTE
 // =================================================================

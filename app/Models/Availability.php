@@ -42,11 +42,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class Availability extends Model
 {
     use HasFactory;
-    public function getTable()
-    {
-        $year = session('selected_year', date('Y'));
-        return "availabilities_{$year}";
-    }
+
     /**
      * The attributes that are mass assignable.
      *
@@ -86,9 +82,17 @@ class Availability extends Model
     /**
      * Get the tournament for the availability.
      */
-    public function tournament(): BelongsTo
+    public function getTable()
     {
-        return $this->belongsTo(Tournament::class);
+        $year = session('selected_year', date('Y'));
+        return "availabilities_{$year}";
+    }
+
+    public function tournament()
+    {
+        $year = session('selected_year', date('Y'));
+        return $this->belongsTo(Tournament::class, 'tournament_id')
+            ->from("tournaments_{$year}");
     }
 
     /**

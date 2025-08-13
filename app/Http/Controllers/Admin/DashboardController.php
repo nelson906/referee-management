@@ -8,37 +8,60 @@ use App\Models\User;
 use App\Models\Assignment;
 use Illuminate\View\View;
 use Carbon\Carbon;
+use Illuminate\Http\Request;
+use DB;
 
 class DashboardController extends Controller
 {
     /**
      * Display the admin dashboard.
      */
-    public function index(): View
+    public function index(Request $request)
     {
+        $year = session('selected_year', date('Y'));
         $user = auth()->user();
-        $isNationalAdmin = $user->user_type === 'national_admin';
 
-        // Get statistics based on user access
-        $stats = $this->getStatistics($user, $isNationalAdmin);
+        // Statistiche per anno selezionato
+        $stats = [
+            'total_tournaments' => DB::table("tournaments_{$year}")->count(),
+            'open_tournaments' => DB::table("tournaments_{$year}")
+                ->where('status', 'open')
+                ->count(),
+            'total_assignments' => DB::table("assignments_{$year}")->count(),
+            'pending_assignments' => DB::table("assignments_{$year}")
+                ->where('is_confirmed', false)
+                ->count(),
+        ];
 
-        // Get alerts (unconfirmed assignments, tournaments needing referees, etc.)
-        $alerts = $this->getAlerts($user, $isNationalAdmin);
+        // Prossimi tornei
+        $upcomingTournaments = DB::table("tournaments_{$year}")
+            ->where('start_date', '>=', now())
+            ->when($user->user_type === 'admin', function($q) use ($user) {
+                $q->where('zone_id', $user->zone_id);
+            })
+            ->orderBy('start_date')
+            ->limit(10)
+            ->get();
 
-        // Get tournaments that need referees
-        $tournamentsNeedingReferees = $this->getTournamentsNeedingReferees($user, $isNationalAdmin);
-
-        // Get recent assignments
-        $recentAssignments = $this->getRecentAssignments($user, $isNationalAdmin);
+        // Tornei che necessitano arbitri
+        $tournamentsNeedingReferees = DB::table("tournaments_{$year} as t")
+            ->leftJoin(
+                DB::raw("(SELECT tournament_id, COUNT(*) as count FROM assignments_{$year} GROUP BY tournament_id) as a"),
+                't.id', '=', 'a.tournament_id'
+            )
+            ->where('t.status', 'open')
+            ->whereRaw('COALESCE(a.count, 0) < t.required_referees')
+            ->select('t.*', DB::raw('COALESCE(a.count, 0) as assigned_count'))
+            ->get();
 
         return view('admin.dashboard', compact(
-            'isNationalAdmin',
             'stats',
-            'alerts',
+            'upcomingTournaments',
             'tournamentsNeedingReferees',
-            'recentAssignments'
+            'year'
         ));
     }
+
 
     /**
      * Get statistics for the dashboard.

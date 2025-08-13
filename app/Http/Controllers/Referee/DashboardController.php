@@ -105,9 +105,9 @@ class DashboardController extends Controller
         $assignmentsByCategory = $user->assignments()
             ->join('tournaments', 'assignments.tournament_id', '=', 'tournaments.id')
             ->join('tournament_types', 'tournaments.tournament_type_id', '=', 'tournament_types.id')
-            ->select('tournament_types.name', DB::raw('count(*) as total'))
-            ->whereYear('assignments.created_at', Carbon::now()->year)
-            ->groupBy('tournament_types.name')
+            ->select('tournament_types.short_name', DB::raw('count(*) as total'))
+            ->whereYear('selected_year', Carbon::now()->year)
+            ->groupBy('tournament_types.short_name')
             ->pluck('total', 'name')
             ->toArray();
 

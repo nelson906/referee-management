@@ -51,11 +51,6 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class Assignment extends Model
 {
     use HasFactory;
-    public function getTable()
-    {
-        $year = session('selected_year', date('Y'));
-        return "assignments_{$year}";
-    }
     protected $fillable = [
         'user_id',
         'tournament_id',
@@ -100,10 +95,19 @@ class Assignment extends Model
     /**
      * Get the tournament for the assignment.
      */
-    public function tournament(): BelongsTo
+    public function getTable()
     {
-        return $this->belongsTo(Tournament::class);
+        $year = session('selected_year', date('Y'));
+        return "assignments_{$year}";
     }
+
+    public function tournament()
+    {
+        $year = session('selected_year', date('Y'));
+        return $this->belongsTo(Tournament::class, 'tournament_id')
+            ->from("tournaments_{$year}");
+    }
+
 
     /**
      * Get the user who made the assignment.

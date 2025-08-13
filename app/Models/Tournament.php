@@ -97,18 +97,6 @@ class Tournament extends Model
 {
     use HasFactory;
 
-    public function getTable()
-    {
-        $year = session('selected_year', date('Y'));
-
-        // Se esiste gare_YYYY, usa quella
-        if (Schema::hasTable("gare_{$year}")) {
-            return "gare_{$year}";
-        }
-
-        // Altrimenti usa tournaments (la VIEW)
-        return 'tournaments';
-    }
 
     protected $table = 'tournaments'; // tabella base
 
@@ -165,6 +153,27 @@ class Tournament extends Model
         self::STATUS_COMPLETED => 'Completato',
     ];
 
+    public function getTable()
+    {
+        $year = session('selected_year', date('Y'));
+        return "tournaments_{$year}";
+    }
+
+    // Relazioni che puntano alle tabelle corrette
+    public function assignments()
+    {
+        $year = session('selected_year', date('Y'));
+        return $this->hasMany(Assignment::class, 'tournament_id')
+            ->from("assignments_{$year}");
+    }
+
+    public function availabilities()
+    {
+        $year = session('selected_year', date('Y'));
+        return $this->hasMany(Availability::class, 'tournament_id')
+            ->from("availabilities_{$year}");
+    }
+
     /**
      * Get the club that hosts the tournament.
      */
@@ -203,22 +212,6 @@ class Tournament extends Model
     public function documentsLastUpdatedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'documents_last_updated_by');
-    }
-
-    /**
-     * Get the availabilities for the tournament.
-     */
-    public function availabilities(): HasMany
-    {
-        return $this->hasMany(Availability::class);
-    }
-
-    /**
-     * Get the assignments for the tournament.
-     */
-    public function assignments(): HasMany
-    {
-        return $this->hasMany(Assignment::class);
     }
 
     /**

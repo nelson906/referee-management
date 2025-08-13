@@ -19,101 +19,32 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Schema;
 use App\Models\Assignment;
+
 class RefereeController extends Controller
 {
     /**
-     * Display a listing of referees.
+     * List referees with filters
      */
-    public function index(Request $request): View
+    public function index(Request $request)
     {
-        $user = auth()->user();
-        $isNationalAdmin = $user->user_type === 'national_admin' || $user->user_type === 'super_admin';
+        $year = session('selected_year', date('Y'));
 
-        $query = User::where('user_type', 'referee')
-            ->with(['zone', 'referee'])
-            ->withCount(['assignments', 'availabilities']);
+        $referees = User::where('user_type', 'referee')
+            ->when($request->zone_id, function($q) use ($request) {
+                $q->where('zone_id', $request->zone_id);
+            })
+            ->when($request->level, function($q) use ($request) {
+                $q->where('level', $request->level);
+            })
+            ->withCount([
+                'assignments' => function($q) use ($year) {
+                    // Count personalizzato per anno
+                    $q->from("assignments_{$year}");
+                }
+            ])
+            ->paginate(20);
 
-        // Filter by zone for non-national admins
-        if (!$isNationalAdmin) {
-            $query->where('zone_id', $user->zone_id);
-        }
-
-        // Apply search filter
-        if ($request->filled('search')) {
-            $search = $request->search;
-            $query->where(function ($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                    ->orWhere('email', 'like', "%{$search}%")
-                    ->orWhere('referee_code', 'like', "%{$search}%");
-            });
-        }
-
-        // Apply zone filter
-        if ($request->filled('zone_id')) {
-            $query->where('zone_id', $request->zone_id);
-        }
-
-        // Apply level filter with helper normalization
-        if ($request->filled('level')) {
-            $normalizedLevel = RefereeLevelsHelper::normalize($request->level);
-            $query->where('level', $normalizedLevel);
-        }
-
-        // ✅ APPLY STATUS FILTER - DEFAULT ATTIVI
-        if ($request->filled('status')) {
-            // Se l'utente ha specificato uno status, usalo
-            $query->where('is_active', $request->status === 'active');
-        } elseif (!$request->has('status')) {
-            // ✅ DEFAULT: mostra solo arbitri attivi se non specificato
-            $query->where('is_active', true);
-        }
-        // Se status = 'all' o '', mostra tutti (non aggiunge filtro)
-
-        // GESTIONE ORDINAMENTO
-        $sortField = $request->get('sort', 'name');
-        $sortDirection = $request->get('direction', 'asc');
-
-        // Validazione campi ordinamento
-        $allowedSortFields = ['name', 'email', 'level', 'zone_name', 'is_active', 'created_at', 'last_name'];
-        if (!in_array($sortField, $allowedSortFields)) {
-            $sortField = 'name';
-        }
-
-        if (!in_array($sortDirection, ['asc', 'desc'])) {
-            $sortDirection = 'asc';
-        }
-
-        // Applica ordinamento
-        switch ($sortField) {
-            case 'zone_name':
-                $query->join('zones', 'users.zone_id', '=', 'zones.id')
-                    ->orderBy('zones.name', $sortDirection)
-                    ->select('users.*'); // Evita conflitti di campo
-                break;
-
-            case 'last_name':
-                // Ordina per cognome (ultima parola del nome)
-                $query->orderByRaw("SUBSTRING_INDEX(name, ' ', -1) {$sortDirection}");
-                break;
-
-            default:
-                $query->orderBy($sortField, $sortDirection);
-                break;
-        }
-
-        // Ordinamento secondario per consistenza
-        if ($sortField !== 'name') {
-            $query->orderBy('name', 'asc');
-        }
-
-        $referees = $query->paginate(20)->withQueryString();
-
-        // Get zones for filters
-        $zones = $isNationalAdmin
-            ? Zone::orderBy('name')->get()
-            : Zone::where('id', $user->zone_id)->get();
-
-        return view('admin.referees.index', compact('referees', 'zones', 'isNationalAdmin'));
+        return view('admin.referees.index', compact('referees', 'year'));
     }
 
     /**
@@ -492,50 +423,61 @@ class RefereeController extends Controller
             abort(403, 'Non sei autorizzato ad accedere a questo arbitro.');
         }
     }
-    // Per ADMIN - vede tutti
-public function showCurriculum($id)
-{
-    $referee = User::findOrFail($id);
-    $curriculumData = [];
 
-    for ($year = date('Y'); $year >= 2015; $year--) {
-        // USA assignments_YYYY con JOIN a tournaments_YYYY
-        $assignmentTable = "assignments_{$year}";
-        $tournamentTable = "tournaments_{$year}";
+    /**
+     * Show referee curriculum
+     */
+    public function showCurriculum($id)
+    {
+        $referee = User::findOrFail($id);
+        $curriculumData = [];
 
-        if (!Schema::hasTable($assignmentTable) || !Schema::hasTable($tournamentTable)) {
-            continue;
+        for ($year = date('Y'); $year >= 2015; $year--) {
+            $assignmentTable = "assignments_{$year}";
+            $tournamentTable = "tournaments_{$year}";
+
+            if (!Schema::hasTable($assignmentTable) || !Schema::hasTable($tournamentTable)) {
+                continue;
+            }
+
+            $assignments = DB::table($assignmentTable . ' as a')
+                ->join($tournamentTable . ' as t', 'a.tournament_id', '=', 't.id')
+                ->leftJoin('clubs as c', 't.club_id', '=', 'c.id')
+                ->leftJoin('zones as z', 't.zone_id', '=', 'z.id')
+                ->where('a.user_id', $id)
+                ->select(
+                    't.id',
+                    't.name',
+                    't.start_date',
+                    't.end_date',
+                    'c.name as club_name',
+                    'z.name as zone_name',
+                    'a.role',
+                    'a.is_confirmed'
+                )
+                ->orderBy('t.start_date', 'desc')
+                ->get();
+
+            if ($assignments->count() > 0) {
+                $levelColumn = "level_{$year}";
+                $level = $referee->$levelColumn ?? $referee->level ?? 'N/D';
+
+                $curriculumData[$year] = [
+                    'year' => $year,
+                    'level' => $level,
+                    'assignments' => $assignments,
+                    'total' => $assignments->count(),
+                    'by_role' => [
+                        'td' => $assignments->where('role', 'Direttore di Torneo')->count(),
+                        'arbitro' => $assignments->where('role', 'Arbitro')->count(),
+                        'osservatore' => $assignments->where('role', 'Osservatore')->count(),
+                    ]
+                ];
+            }
         }
 
-        $assignments = DB::table($assignmentTable . ' as a')
-            ->join($tournamentTable . ' as t', 'a.tournament_id', '=', 't.id')
-            ->leftJoin('clubs as c', 't.Circolo', '=', 'c.id')
-            ->where('a.user_id', $id)
-            ->select(
-                't.id',
-                't.Nome_gara as name',
-                't.StartTime as start_date',
-                't.EndTime as end_date',
-                'c.name as club_name',
-                'a.role'
-            )
-            ->orderBy('t.StartTime', 'desc')
-            ->get();
-
-        if ($assignments->count() > 0) {
-            $levelColumn = "level_{$year}";
-            $level = $referee->$levelColumn ?? $referee->level;
-
-            $curriculumData[$year] = [
-                'level' => $level,
-                'assignments' => $assignments,
-                'count' => $assignments->count()
-            ];
-        }
+        return view('admin.referees.curriculum', compact('referee', 'curriculumData'));
     }
-
-    return view('referee.curriculum', compact('referee', 'curriculumData'));
-}
 
     public function allCurricula()
     {

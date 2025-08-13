@@ -24,76 +24,67 @@ class AssignmentController extends Controller
     {
         $this->documentService = $documentService;
     }
-
     /**
-     * Display a listing of assignments.
+     * Display assignments for a tournament
      */
-    public function index(Request $request): View
+    public function index(Request $request, $tournamentId = null)
     {
-        $user = auth()->user();
-        $isNationalAdmin = $user->user_type === 'national_admin';
-
-        $query = Assignment::with([
-            'user:id,name,email,level,referee_code,zone_id',
-            'tournament:id,name,start_date,end_date,club_id,tournament_type_id',
-            'tournament.club:id,name',
-            'tournament.tournamentType:id,name',
-            'assignedBy:id,name'
-        ]);
-
-        // Filter by zone for non-national admins
-        if (!$isNationalAdmin && $user->user_type !== 'super_admin') {
-            $query->whereHas('tournament', function ($q) use ($user) {
-                $q->where('zone_id', $user->zone_id);
-            });
+        // Se c'è un torneo specifico, imposta l'anno
+        if ($tournamentId) {
+            $tournament = Tournament::findOrFail($tournamentId);
+            $year = Carbon::parse($tournament->start_date)->year;
+            session(['selected_year' => $year]);
         }
 
-        // Apply filters
-        if ($request->filled('tournament_id')) {
-            $query->where('tournament_id', $request->tournament_id);
-        }
+        $year = session('selected_year', date('Y'));
 
-        if ($request->filled('user_id')) {
-            $query->where('user_id', $request->user_id);
-        }
-
-        if ($request->filled('status')) {
-            if ($request->status === 'confirmed') {
-                $query->where('is_confirmed', true);
-            } elseif ($request->status === 'unconfirmed') {
-                $query->where('is_confirmed', false);
-            }
-        }
-
-        $assignments = $query
-            ->join('tournaments', 'assignments.tournament_id', '=', 'tournaments.id')
-            ->select('assignments.*')  // IMPORTANTE: seleziona solo da assignments
-            ->orderBy('tournaments.start_date', 'desc')
-            ->orderBy('assignments.created_at', 'desc')
+        // Query diretta alla tabella corretta
+        $assignments = DB::table("assignments_{$year} as a")
+            ->join("tournaments_{$year} as t", 'a.tournament_id', '=', 't.id')
+            ->join('users as u', 'a.user_id', '=', 'u.id')
+            ->select(
+                'a.*',
+                't.name as tournament_name',
+                't.start_date',
+                'u.name as referee_name'
+            )
+            ->when($tournamentId, function($q) use ($tournamentId) {
+                $q->where('a.tournament_id', $tournamentId);
+            })
+            ->orderBy('t.start_date', 'desc')
             ->paginate(20);
 
-        // Get data for filters
-        $tournaments = Tournament::with('club')
-            ->when(!$isNationalAdmin && $user->user_type !== 'super_admin', function ($q) use ($user) {
-                $q->where('zone_id', $user->zone_id);
-            })
-            ->orderBy('start_date', 'desc')
-            ->get();
+        return view('admin.assignments.index', compact('assignments', 'year'));
+    }
 
-        $referees = User::where('user_type', 'referee')
-            ->where('is_active', true)
-            ->when(!$isNationalAdmin && $user->user_type !== 'super_admin', function ($q) use ($user) {
-                $q->where('zone_id', $user->zone_id);
-            })
-            ->orderBy('name')
-            ->get();
+    /**
+     * Store a new assignment
+     */
+    public function store(Request $request)
+    {
+        $request->validate([
+            'tournament_id' => 'required|exists:tournaments,id',
+            'user_id' => 'required|exists:users,id',
+            'role' => 'required|in:Direttore di Torneo,Arbitro,Osservatore'
+        ]);
 
-        return view('admin.assignments.index', compact(
-            'assignments',
-            'tournaments',
-            'referees',
-            'isNationalAdmin'
-        ));
+        // Trova l'anno del torneo
+        $tournament = Tournament::findOrFail($request->tournament_id);
+        $year = Carbon::parse($tournament->start_date)->year;
+
+        // Inserisci nella tabella corretta
+        DB::table("assignments_{$year}")->insert([
+            'tournament_id' => $request->tournament_id,
+            'user_id' => $request->user_id,
+            'assigned_by_id' => auth()->id(),
+            'role' => $request->role,
+            'assigned_at' => now(),
+            'is_confirmed' => false,
+            'created_at' => now(),
+            'updated_at' => now()
+        ]);
+
+        return back()->with('success', 'Assegnazione creata con successo');
     }
 
     /**
@@ -176,44 +167,6 @@ class AssignmentController extends Controller
         ));
     }
 
-    /**
-     * Store a newly created assignment.
-     */
-    public function store(Request $request): RedirectResponse
-    {
-        $request->validate([
-            'tournament_id' => 'required|exists:tournaments,id',
-            'user_id' => 'required|exists:users,id',
-            'role' => 'required|in:Arbitro,Direttore di Torneo,Osservatore',
-            'notes' => 'nullable|string|max:500',
-        ]);
-
-        $tournament = Tournament::findOrFail($request->tournament_id);
-        $this->checkTournamentAccess($tournament);
-
-        $referee = User::findOrFail($request->user_id);
-
-        // NUOVO: Controlla se arbitro già assegnato
-        if ($tournament->assignments()->where('user_id', $referee->id)->exists()) {
-            return redirect()->back()
-                ->with('error', "L'arbitro {$referee->name} è già assegnato a questo torneo con un altro ruolo.");
-        }
-
-        // Create assignment
-        $assignment = Assignment::create([
-            'tournament_id' => $tournament->id,
-            'user_id' => $referee->id,
-            'role' => $request->role,
-            'notes' => $request->notes,
-            'assigned_at' => now(),
-            'assigned_by_id' => auth()->id(),
-            'is_confirmed' => true, // SEMPRE confermato
-        ]);
-
-        return redirect()
-            ->route('admin.assignments.create', ['tournament_id' => $tournament->id])
-            ->with('success', "Arbitro {$referee->name} assegnato con successo come {$request->role}!");
-    }
 
     /**
      * Display the specified assignment.
@@ -269,31 +222,19 @@ class AssignmentController extends Controller
     }
 
     /**
-     * Update destroy method to redirect back to tournament assignment if coming from there.
+     * Delete assignment
      */
-    public function destroy(Assignment $assignment): RedirectResponse
+    public function destroy($tournamentId, $userId)
     {
-        $this->checkAssignmentAccess($assignment);
+        $tournament = Tournament::findOrFail($tournamentId);
+        $year = Carbon::parse($tournament->start_date)->year;
 
-        $tournamentId = $assignment->tournament_id;
-        $tournamentName = $assignment->tournament->name;
-        $refereeName = $assignment->user->name;
+        DB::table("assignments_{$year}")
+            ->where('tournament_id', $tournamentId)
+            ->where('user_id', $userId)
+            ->delete();
 
-        $assignment->delete();
-
-        // Check if we came from tournament assignment page
-        $referer = request()->headers->get('referer');
-        if ($referer && str_contains($referer, '/assign')) {
-            return redirect()
-                ->route('admin.assignments.assign-referees', $tournamentId)
-                ->with('success', "{$refereeName} rimosso dal comitato di gara di {$tournamentName}.");
-        }
-
-        // Default redirect to assignments list
-        return redirect()
-            ->route('admin.assignments.index')
-            ->with('success', "Assegnazione di {$refereeName} al torneo {$tournamentName} rimossa con successo.");
-    }
+        return back()->with('success', 'Assegnazione rimossa');
 
 
     /**
