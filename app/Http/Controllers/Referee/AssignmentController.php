@@ -78,10 +78,10 @@ class AssignmentController extends Controller
                      ->whereYear('start_date', $year);
                 })->count(),
         ];
-
-        // Anni disponibili per il filtro
+        $assignment = new Assignment();
+        $tableName = $assignment->getTable();        // Anni disponibili per il filtro
         $availableYears = Assignment::where('user_id', $user->id)
-            ->join('tournaments', 'assignments.tournament_id', '=', 'tournaments.id')
+            ->join('tournaments', $tableName .'.tournament_id', '=', 'tournaments.id')
             ->selectRaw('YEAR(tournaments.start_date) as year')
             ->distinct()
             ->orderBy('year', 'desc')
