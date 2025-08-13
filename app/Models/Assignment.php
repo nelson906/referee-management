@@ -77,7 +77,15 @@ class Assignment extends Model
         self::ROLE_OBSERVER => 'Osservatore',
     ];
 
-    /**
+     /**
+     * Get the tournament for the assignment.
+     */
+    public function getTable()
+    {
+        $year = session('selected_year', date('Y'));
+        return "assignments_{$year}";
+    }
+   /**
      * Get the referee (user) for the assignment.
      */
     public function user(): BelongsTo
@@ -92,14 +100,6 @@ class Assignment extends Model
     return $this->belongsTo(User::class, foreignKey: 'user_id'); // Stesso user
     }
 
-    /**
-     * Get the tournament for the assignment.
-     */
-    public function getTable()
-    {
-        $year = session('selected_year', date('Y'));
-        return "assignments_{$year}";
-    }
 
     public function tournament()
     {

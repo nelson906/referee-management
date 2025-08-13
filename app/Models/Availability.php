@@ -54,6 +54,11 @@ class Availability extends Model
         'notes',
         'submitted_at',
     ];
+    public function getTable()
+    {
+        $year = session('selected_year', date('Y'));
+        return "availabilities_{$year}";
+    }
 
     /**
      * The attributes that should be cast.
@@ -82,11 +87,6 @@ class Availability extends Model
     /**
      * Get the tournament for the availability.
      */
-    public function getTable()
-    {
-        $year = session('selected_year', date('Y'));
-        return "availabilities_{$year}";
-    }
 
     public function tournament()
     {

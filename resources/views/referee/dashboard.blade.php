@@ -86,16 +86,18 @@
                         <div>
                             <p class="text-sm font-medium text-gray-900">{{ $assignment->tournament->name ?? 'Torneo N/A' }}</p>
                             <p class="text-sm text-gray-600">
-                                {{ $assignment->tournament->start_date ? $assignment->tournament->start_date->format('d/m/Y') : 'Data N/A' }}
-                                @if($assignment->tournament->club)
-                                    - {{ $assignment->tournament->club->name }}
-                                @endif
+                                {{ $assignment->tournament->start_date ? \Carbon\Carbon::parse($assignment->tournament->start_date)->format('d/m/Y') : 'Data N/A' }}
+                                    {{-- {{ $tournament->start_date ? \Carbon\Carbon::parse(time: $assignment->tournament->start_date)->format('d/m/Y') : 'Data N/A' }} --}}
+                                    @if ($tournament->club_name)
+                                        - {{ $tournament->club_name }}
+                                    @endif
                             </p>
                         </div>
                         <div class="text-right">
-                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ $assignment->is_confirmed ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800' }}">
-                                {{ $assignment->is_confirmed ? 'Confermato' : 'Da Confermare' }}
-                            </span>
+                                <span
+                                    class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ (property_exists($assignment, 'is_confirmed') && $assignment->is_confirmed) ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800' }}">
+                                    {{ (property_exists($assignment, 'is_confirmed') && $assignment->is_confirmed) ? 'Confermato' : 'Da Confermare' }}
+                                </span>
                         </div>
                     </div>
                 @empty
@@ -115,7 +117,7 @@
                         <div>
                             <p class="text-sm font-medium text-gray-900">{{ $tournament->name }}</p>
                             <p class="text-sm text-gray-600">
-                                Scadenza: {{ $tournament->availability_deadline ? $tournament->availability_deadline->format('d/m/Y') : 'N/A' }}
+                                Scadenza: {{ $tournament->availability_deadline ? \Carbon\Carbon::parse($tournament->availability_deadline)->format('d/m/Y') : 'N/A' }}
                             </p>
                         </div>
                         <div>

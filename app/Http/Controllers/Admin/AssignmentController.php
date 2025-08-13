@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Admin;
 
 use Illuminate\Support\Facades\DB;
-
 use App\Http\Controllers\Controller;
 use App\Models\Assignment;
 use App\Models\Tournament;
@@ -235,7 +234,7 @@ class AssignmentController extends Controller
             ->delete();
 
         return back()->with('success', 'Assegnazione rimossa');
-
+    }
 
     /**
      * Check if user can access the tournament.
@@ -414,7 +413,7 @@ $assignedReferees = $tournament->assignments()
         $assignedCount = 0;
         $errors = [];
 
-        \DB::beginTransaction();
+        DB::beginTransaction();
         try {
             // Process the referees array
             foreach ($request->referees as $key => $refereeData) {
@@ -449,7 +448,7 @@ $assignedReferees = $tournament->assignments()
                 $assignedCount++;
             }
 
-            \DB::commit();
+            DB::commit();
 
             $message = "{$assignedCount} arbitri assegnati con successo al torneo {$tournament->name}.";
             if (!empty($errors)) {
@@ -460,7 +459,7 @@ $assignedReferees = $tournament->assignments()
                 ->route('admin.assignments.assign-referees', $tournament)
                 ->with('success', $message);
         } catch (\Exception $e) {
-            \DB::rollback();
+            DB::rollback();
 
             return redirect()->back()
                 ->with('error', 'Errore durante l\'assegnazione degli arbitri. Riprova.');

@@ -9,7 +9,7 @@ use App\Models\User;
 use App\Models\Assignment;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
-use DB;
+use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 
 class ReportController extends Controller

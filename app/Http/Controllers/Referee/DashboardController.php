@@ -3,18 +3,36 @@
 namespace App\Http\Controllers\Referee;
 
 use App\Http\Controllers\Controller;
+use App\Models\Assignment;
 use App\Models\Tournament;
+use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Request;
 
 class DashboardController extends Controller
 {
     /**
      * Display the referee dashboard.
      */
-    public function index()
-    {
-        $user = auth()->user();
+public function index(Request $request)
+{
+    $year = session('selected_year', date('Y'));
+    $user = auth()->user();
+    $isNationalAdmin = in_array($user->user_type, ['national_admin', 'super_admin']);
+
+    // USA I MODEL!
+    // $stats = [
+    //     'total_tournaments' => Tournament::count(),
+    //     'open_tournaments' => Tournament::where('status', 'open')->count(),
+    //     'completed_tournaments' => Tournament::where('status', 'completed')->count(),
+    //     'total_assignments' => Assignment::count(),
+    //     'pending_assignments' => Assignment::where('is_confirmed', false)->count(),
+    //     'active_referees' => User::where('user_type', 'referee')
+    //         ->where('is_active', true)
+    //         ->when(!$isNationalAdmin, fn($q) => $q->where('zone_id', $user->zone_id))
+    //         ->count(),
+    // ];
         $isNationalReferee = in_array($user->level, ['nazionale', 'internazionale']);
 
         // Get referee statistics (usando un try-catch per evitare errori)
@@ -36,7 +54,7 @@ class DashboardController extends Controller
 
         // Upcoming assignments
         $upcomingAssignments = $user->assignments()
-            ->with(['tournament.club', 'tournament.zone', 'tournament.tournamentCategory'])
+            ->with(['tournament.club', 'tournament.zone', 'tournament.tournamentType'])
             ->whereHas('tournament', function ($q) {
                 $q->where('start_date', '>=', Carbon::today());
             })
@@ -102,19 +120,28 @@ class DashboardController extends Controller
         }
 
         // Assignments by tournament type - semplificato
-        $assignmentsByCategory = $user->assignments()
-            ->join('tournaments', 'assignments.tournament_id', '=', 'tournaments.id')
-            ->join('tournament_types', 'tournaments.tournament_type_id', '=', 'tournament_types.id')
-            ->select('tournament_types.short_name', DB::raw('count(*) as total'))
-            ->whereYear('selected_year', Carbon::now()->year)
-            ->groupBy('tournament_types.short_name')
-            ->pluck('total', 'name')
-            ->toArray();
+// Assignments by tournament type - semplificato
+$assignmentsByCategory = [];
+$assignments = $user->assignments()
+    ->with('tournament.tournamentType')
+    ->whereHas('tournament', function($q) {
+        $q->whereYear('start_date', Carbon::now()->year);
+    })
+    ->get();
 
+foreach ($assignments as $assignment) {
+    if ($assignment->tournament && $assignment->tournament->tournamentType) {
+        $typeName = $assignment->tournament->tournamentType->short_name ?? 'Altri';
+        if (!isset($assignmentsByCategory[$typeName])) {
+            $assignmentsByCategory[$typeName] = 0;
+        }
+        $assignmentsByCategory[$typeName]++;
+    }
+}
         // Calendar events for the next 3 months - semplificato
         $calendarEvents = [];
         $calendarAssignments = $user->assignments()
-            ->with(['tournament.club', 'tournament.tournamentCategory'])
+            ->with(['tournament.club', 'tournament.tournamentType'])
             ->whereHas('tournament', function ($q) {
                 $q->whereBetween('start_date', [Carbon::today(), Carbon::today()->addMonths(3)]);
             })
@@ -142,5 +169,5 @@ class DashboardController extends Controller
             'assignmentsByCategory',
             'calendarEvents'
         ));
-    }
+}
 }
