@@ -138,11 +138,9 @@
                                 </p>
                             </div>
                             <div class="text-right">
-                                <span
-                                    class="text-sm {{ $tournament->assignments()->count() < ($tournament->tournamentType->max_referees ?? 1) ? 'text-red-600 font-semibold' : 'text-gray-900' }}">
-                                    {{ $tournament->assignments()->count() }} /
-                                    {{ $tournament->tournamentType->max_referees ?? 1 }}
-                                </span>
+<span class="text-sm {{ $tournament->assigned_count < ($tournament->required_referees ?? 2) ? 'text-red-600 font-semibold' : 'text-gray-900' }}">
+    {{ $tournament->assigned_count ?? 0 }} / {{ $tournament->required_referees ?? 2 }}
+</span>
                             </div>
                         </div>
                     @empty

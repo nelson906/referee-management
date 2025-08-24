@@ -78,23 +78,24 @@ public function index(Request $request)
         ->get();
 
     // Tornei che necessitano arbitri
-    $tournamentsNeedingReferees = DB::table("tournaments_{$year} as t")
-        ->leftJoin(
-            DB::raw("(SELECT tournament_id, COUNT(*) as count FROM assignments_{$year} GROUP BY tournament_id) as a"),
-            't.id', '=', 'a.tournament_id'
-        )
-        ->leftJoin('tournament_types as tt', 't.tournament_type_id', '=', 'tt.id')
-        ->leftJoin('clubs as c', 't.club_id', '=', 'c.id')
-        ->where('t.status', 'open')
-        ->whereRaw('COALESCE(a.count, 0) < COALESCE(tt.min_referees, 2)')
-        ->select(
-            't.*',
-            DB::raw('COALESCE(a.count, 0) as assigned_count'),
-            DB::raw('COALESCE(tt.min_referees, 2) as required_referees'),
-            'c.name as club_name'
-        )
-        ->limit(10)
-        ->get();
+$tournamentsNeedingReferees = DB::table("tournaments_{$year} as t")
+    ->leftJoin(
+        DB::raw("(SELECT tournament_id, COUNT(*) as count FROM assignments_{$year} GROUP BY tournament_id) as a"),
+        't.id', '=', 'a.tournament_id'
+    )
+    ->leftJoin('tournament_types as tt', 't.tournament_type_id', '=', 'tt.id')
+    ->leftJoin('clubs as c', 't.club_id', '=', 'c.id')
+    ->where('t.status', 'open')
+    ->whereRaw('COALESCE(a.count, 0) < COALESCE(tt.min_referees, 2)')
+    ->select(
+        't.*',
+        DB::raw('COALESCE(a.count, 0) as assigned_count'),
+        DB::raw('COALESCE(tt.min_referees, 2) as required_referees'),
+        'tt.max_referees',  // Aggiungi questo
+        'c.name as club_name'
+    )
+    ->limit(10)
+    ->get();
 
     // Alerts
     $alerts = [];
@@ -147,18 +148,10 @@ public function index(Request $request)
     $recentActivities = [];
 
     // Ultime assegnazioni
-    $recentAssignments = DB::table("assignments_{$year} as a")
-        ->join('users as u', 'a.user_id', '=', 'u.id')
-        ->join("tournaments_{$year} as t", 'a.tournament_id', '=', 't.id')
-        ->select(
-            'u.name as referee_name',
-            't.name as tournament_name',
-            'a.role',
-            'a.created_at'
-        )
-        ->orderBy('a.created_at', 'desc')
-        ->limit(5)
-        ->get();
+$recentAssignments = Assignment::with('tournament', 'user')
+    ->orderBy('created_at', 'desc')
+    ->limit(5)
+    ->get();
 
     foreach ($recentAssignments as $assignment) {
         $recentActivities[] = [
@@ -177,6 +170,7 @@ public function index(Request $request)
         'isNationalAdmin',
         'alerts',
         'recentActivities',
+        'recentAssignments',
     ));
 }
 
