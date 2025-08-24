@@ -10,7 +10,7 @@ use Illuminate\View\View;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use App\Traits\YearAwareTables;
+use App\Http\Traits\YearAwareTables;
 
 class DashboardController extends Controller
 {
@@ -20,46 +20,154 @@ class DashboardController extends Controller
      */
 public function index(Request $request)
 {
-            $tables = $this->getYearTables();
-
-
     $year = session('selected_year', date('Y'));
     $user = auth()->user();
+
     $isNationalAdmin = in_array($user->user_type, ['national_admin', 'super_admin']);
 
-    // USA I MODEL!
+    // STATISTICHE COMPLETE
     $stats = [
-        'total_tournaments' => Tournament::count(),
-        'open_tournaments' => Tournament::where('status', 'open')->count(),
-        'completed_tournaments' => Tournament::where('status', 'completed')->count(),
-        'total_assignments' => Assignment::count(),
-        'pending_assignments' => Assignment::where('is_confirmed', false)->count(),
-        'active_referees' => User::where('user_type', 'referee')
-            ->where('is_active', true)
-            ->when(!$isNationalAdmin, fn($q) => $q->where('zone_id', $user->zone_id))
+        // Tornei
+        'total_tournaments' => DB::table("tournaments_{$year}")->count(),
+        'open_tournaments' => DB::table("tournaments_{$year}")
+            ->where('status', 'open')
             ->count(),
+        'completed_tournaments' => DB::table("tournaments_{$year}")
+            ->where('status', 'completed')
+            ->count(),
+
+        // Assegnazioni
+        'total_assignments' => DB::table("assignments_{$year}")->count(),
+        'pending_assignments' => DB::table("assignments_{$year}")
+            ->where('is_confirmed', false)
+            ->count(),
+        'confirmed_assignments' => DB::table("assignments_{$year}")
+            ->where('is_confirmed', true)
+            ->count(),
+
+        // Arbitri
+        'active_referees' => DB::table('users')
+            ->where('user_type', 'referee')
+            ->where('is_active', true)
+            ->when(!$isNationalAdmin, function($q) use ($user) {
+                $q->where('zone_id', $user->zone_id);
+            })
+            ->count(),
+
+        'total_referees' => DB::table('users')
+            ->where('user_type', 'referee')
+            ->when(!$isNationalAdmin, function($q) use ($user) {
+                $q->where('zone_id', $user->zone_id);
+            })
+            ->count(),
+
+        // Disponibilità
+        'total_availabilities' => DB::table("availabilities_{$year}")->count(),
     ];
 
-    // Prossimi tornei CON RELAZIONI
-    $upcomingTournaments = Tournament::with(['club', 'zone'])
-        ->where('start_date', '>=', now())
-        ->when($user->user_type === 'admin', fn($q) => $q->where('zone_id', $user->zone_id))
-        ->orderBy('start_date')
+    // Prossimi tornei
+    $upcomingTournaments = DB::table("tournaments_{$year} as t")
+        ->leftJoin('clubs as c', 't.club_id', '=', 'c.id')
+        ->where('t.start_date', '>=', now())
+        ->when($user->user_type === 'admin', function($q) use ($user) {
+            $q->where('t.zone_id', $user->zone_id);
+        })
+        ->select('t.*', 'c.name as club_name')
+        ->orderBy('t.start_date')
         ->limit(10)
         ->get();
 
     // Tornei che necessitano arbitri
-    $tournamentsNeedingReferees = Tournament::with(['club', 'assignments', 'tournamentType'])
-        ->where('status', 'open')
-        ->get()
-        ->filter(function($tournament) {
-            $assigned = $tournament->assignments->count();
-            $required = $tournament->tournamentType->min_referees ?? 2;
-            return $assigned < $required;
-        })
-        ->take(10);
+    $tournamentsNeedingReferees = DB::table("tournaments_{$year} as t")
+        ->leftJoin(
+            DB::raw("(SELECT tournament_id, COUNT(*) as count FROM assignments_{$year} GROUP BY tournament_id) as a"),
+            't.id', '=', 'a.tournament_id'
+        )
+        ->leftJoin('tournament_types as tt', 't.tournament_type_id', '=', 'tt.id')
+        ->leftJoin('clubs as c', 't.club_id', '=', 'c.id')
+        ->where('t.status', 'open')
+        ->whereRaw('COALESCE(a.count, 0) < COALESCE(tt.min_referees, 2)')
+        ->select(
+            't.*',
+            DB::raw('COALESCE(a.count, 0) as assigned_count'),
+            DB::raw('COALESCE(tt.min_referees, 2) as required_referees'),
+            'c.name as club_name'
+        )
+        ->limit(10)
+        ->get();
 
+    // Alerts
     $alerts = [];
+
+    // Alert tornei urgenti
+    $urgentTournaments = DB::table("tournaments_{$year}")
+        ->whereNotExists(function($q) use ($year) {
+            $q->from("assignments_{$year}")
+              ->whereRaw("assignments_{$year}.tournament_id = tournaments_{$year}.id");
+        })
+        ->where('status', 'open')
+        ->where('start_date', '<=', now()->addDays(7))
+        ->count();
+
+    if ($urgentTournaments > 0) {
+        $alerts[] = [
+            'type' => 'warning',
+            'title' => 'Tornei Urgenti',
+            'message' => "Ci sono {$urgentTournaments} tornei che iniziano entro 7 giorni senza arbitri assegnati",
+            'icon' => 'exclamation'
+        ];
+    }
+
+    // Alert assegnazioni non confermate
+    if ($stats['pending_assignments'] > 0) {
+        $alerts[] = [
+            'type' => 'info',
+            'title' => 'Conferme in Attesa',
+            'message' => "Ci sono {$stats['pending_assignments']} assegnazioni in attesa di conferma",
+            'icon' => 'clock'
+        ];
+    }
+
+    // Alert deadline disponibilità
+    $deadlineToday = DB::table("tournaments_{$year}")
+        ->where('availability_deadline', '=', now()->toDateString())
+        ->where('status', 'open')
+        ->count();
+
+    if ($deadlineToday > 0) {
+        $alerts[] = [
+            'type' => 'info',
+            'title' => 'Deadline Oggi',
+            'message' => "{$deadlineToday} tornei hanno la deadline per le disponibilità oggi",
+            'icon' => 'calendar'
+        ];
+    }
+
+    // Attività recenti
+    $recentActivities = [];
+
+    // Ultime assegnazioni
+    $recentAssignments = DB::table("assignments_{$year} as a")
+        ->join('users as u', 'a.user_id', '=', 'u.id')
+        ->join("tournaments_{$year} as t", 'a.tournament_id', '=', 't.id')
+        ->select(
+            'u.name as referee_name',
+            't.name as tournament_name',
+            'a.role',
+            'a.created_at'
+        )
+        ->orderBy('a.created_at', 'desc')
+        ->limit(5)
+        ->get();
+
+    foreach ($recentAssignments as $assignment) {
+        $recentActivities[] = [
+            'type' => 'assignment',
+            'message' => "{$assignment->referee_name} assegnato come {$assignment->role} a {$assignment->tournament_name}",
+            'time' => $assignment->created_at
+        ];
+    }
+
 
     return view('admin.dashboard', compact(
         'stats',
@@ -67,7 +175,8 @@ public function index(Request $request)
         'tournamentsNeedingReferees',
         'year',
         'isNationalAdmin',
-        'alerts'
+        'alerts',
+        'recentActivities',
     ));
 }
 
