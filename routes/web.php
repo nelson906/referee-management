@@ -169,7 +169,7 @@ Route::middleware(['auth'])->group(function () {
             ->name('tournaments.send-assignment-with-convocation');
 
         // Curricula - DEVE ESSERE PRIMA DELLA RESOURCE!
-        Route::get('referees/curricula', [Admin\RefereeController::class, 'allCurricula'])
+        Route::get('referees/curricula', [Admin\RefereeController::class, 'curricula'])
             ->name('referees.curricula');
         Route::get('referee/{id}/curriculum', [Admin\RefereeController::class, 'showCurriculum'])
             ->name('referee.curriculum');
@@ -182,6 +182,11 @@ Route::middleware(['auth'])->group(function () {
         Route::post('referees/import', [Admin\RefereeController::class, 'import'])->name('referees.import');
         Route::get('referees/export', [Admin\RefereeController::class, 'export'])->name('referees.export');
         Route::get('referees/{referee}/availability', [Admin\RefereeController::class, 'availability'])->name('referees.availability');
+    // Referees routes
+    Route::get('/referees', [RefereeController::class, 'index'])->name('referees.index');
+    Route::get('/referees/curricula', [RefereeController::class, 'curricula'])->name('referees.curricula');
+    Route::get('/referees/{id}/curriculum', [RefereeController::class, 'showCurriculum'])->name('referees.curriculum');
+    Route::get('/referees/{id}/curriculum/print', [RefereeController::class, 'printCurriculum'])->name('referees.curriculum.print');
 
         // Club Management
         Route::resource('clubs', Admin\ClubController::class);

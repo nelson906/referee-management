@@ -430,68 +430,217 @@ class RefereeController extends Controller
     /**
      * Show referee curriculum
      */
-    public function showCurriculum($id)
-    {
-        $referee = User::findOrFail($id);
-        $curriculumData = [];
+public function showCurriculum($id)
+{
+    $referee = User::findOrFail($id);
 
-        for ($year = date('Y'); $year >= 2015; $year--) {
-            $assignmentTable = "assignments_{$year}";
-            $tournamentTable = "tournaments_{$year}";
+    // Controllo accesso per zona
+    $user = auth()->user();
+    if (!in_array($user->user_type, ['national_admin', 'super_admin'])) {
+        if ($referee->zone_id != $user->zone_id) {
+            abort(403, 'Non autorizzato a vedere questo curriculum');
+        }
+    }
 
-            if (!Schema::hasTable($assignmentTable) || !Schema::hasTable($tournamentTable)) {
-                continue;
-            }
+    // Genera dati curriculum
+    $curriculumResult = $this->generateCurriculumData($referee);
+    $curriculumData = $curriculumResult['data'];
+    $totalStats = $curriculumResult['stats'];
 
-            $assignments = DB::table($assignmentTable . ' as a')
-                ->join($tournamentTable . ' as t', 'a.tournament_id', '=', 't.id')
-                ->leftJoin('clubs as c', 't.club_id', '=', 'c.id')
-                ->leftJoin('zones as z', 't.zone_id', '=', 'z.id')
-                ->where('a.user_id', $id)
-                ->select(
-                    't.id',
-                    't.name',
-                    't.start_date',
-                    't.end_date',
-                    'c.name as club_name',
-                    'z.name as zone_name',
-                    'a.role',
-                    'a.is_confirmed'
-                )
+    // IMPORTANTE: Usa sempre layout admin per gli admin!
+    $layout = 'layouts.admin';
+
+    return view('referee.curriculum', compact('referee', 'curriculumData', 'totalStats', 'layout'));
+}
+
+public function printCurriculum($id)
+{
+    $referee = User::findOrFail($id);
+
+    // Controllo accesso
+    $user = auth()->user();
+    if (!in_array($user->user_type, ['national_admin', 'super_admin'])) {
+        if ($referee->zone_id != $user->zone_id) {
+            abort(403);
+        }
+    }
+
+    // Genera dati curriculum
+    $curriculumResult = $this->generateCurriculumData($referee);
+    $curriculumData = $curriculumResult['data'];
+    $totalStats = $curriculumResult['stats'];
+
+    // Vista speciale per stampa
+    return view('referee.curriculum-print', compact('referee', 'curriculumData', 'totalStats'));
+}
+// app/Http/Controllers/Admin/RefereeController.php
+
+public function curricula(Request $request)
+{
+    $user = auth()->user();
+    $selectedYear = $request->get('year', session('selected_year', date('Y')));
+    session(['selected_year' => $selectedYear]);
+
+    $query = User::where('user_type', 'referee');
+
+    // Limita per zona se non è national/super admin
+    if (!in_array($user->user_type, ['national_admin', 'super_admin'])) {
+        $query->where('zone_id', $user->zone_id);
+    }
+
+    // Ricerca per nome
+    if ($request->filled('search')) {
+        $search = $request->search;
+        $query->where(function($q) use ($search) {
+            $q->where('name', 'LIKE', "%{$search}%")
+              ->orWhere('email', 'LIKE', "%{$search}%")
+              ->orWhere('fiscal_code', 'LIKE', "%{$search}%");
+        });
+    }
+
+    // Aggiungi conteggio tornei per l'anno selezionato
+    $referees = $query->get()->map(function($referee) use ($selectedYear) {
+        // Conta tornei per l'anno selezionato
+        $assignmentsTable = "assignments_{$selectedYear}";
+        $tournamentsTable = "tournaments_{$selectedYear}";
+
+        if (Schema::hasTable($assignmentsTable)) {
+            $tournamentsCount = DB::table($assignmentsTable)
+                ->where('user_id', $referee->id)
+                ->count();
+
+            // Ultimo torneo
+            $lastTournament = DB::table($assignmentsTable . ' as a')
+                ->join($tournamentsTable . ' as t', 'a.tournament_id', '=', 't.id')
+                ->where('a.user_id', $referee->id)
                 ->orderBy('t.start_date', 'desc')
-                ->get();
+                ->select('t.name', 't.start_date')
+                ->first();
 
-            if ($assignments->count() > 0) {
-                $levelColumn = "level_{$year}";
-                $level = $referee->$levelColumn ?? $referee->level ?? 'N/D';
-
-                $curriculumData[$year] = [
-                    'year' => $year,
-                    'level' => $level,
-                    'assignments' => $assignments,
-                    'total' => $assignments->count(),
-                    'by_role' => [
-                        'td' => $assignments->where('role', 'Direttore di Torneo')->count(),
-                        'arbitro' => $assignments->where('role', 'Arbitro')->count(),
-                        'osservatore' => $assignments->where('role', 'Osservatore')->count(),
-                    ]
-                ];
-            }
+            $referee->tournaments_count = $tournamentsCount;
+            $referee->last_tournament = $lastTournament;
+        } else {
+            $referee->tournaments_count = 0;
+            $referee->last_tournament = null;
         }
 
-        return view('admin.referees.curriculum', compact('referee', 'curriculumData'));
-    }
-    public function allCurricula()
-    {
-        $referees = User::where('user_type', 'referee')
-            ->orderBy('name')
-            ->paginate(20);
+        return $referee;
+    });
 
-        return view('admin.referees.curricula', compact('referees'));
+    // Pagina manualmente
+    $perPage = 20;
+    $page = $request->get('page', 1);
+    $referees = new \Illuminate\Pagination\LengthAwarePaginator(
+        $referees->forPage($page, $perPage),
+        $referees->count(),
+        $perPage,
+        $page,
+        ['path' => $request->url()]
+    );
+
+    $zones = Zone::all();
+    $availableYears = $this->getAvailableYears();
+
+    return view('admin.referees.curricula', compact(
+        'referees',
+        'zones',
+        'selectedYear',
+        'availableYears'
+    ));
+}
+
+private function getAvailableYears()
+{
+    $years = [];
+    for ($year = date('Y'); $year >= 2015; $year--) {
+        if (Schema::hasTable("assignments_{$year}")) {
+            $years[] = $year;
+        }
     }
+    return $years;
+}
 
     public function myCurriculum()
     {
         return $this->showCurriculum(auth()->id());
     }
+
+    /**
+ * Genera i dati del curriculum per un arbitro
+ */
+private function generateCurriculumData($referee)
+{
+    $curriculumData = [];
+
+    // Raccogli dati da tutti gli anni
+    for ($year = date('Y'); $year >= 2015; $year--) {
+        $assignmentTable = "assignments_{$year}";
+        $tournamentTable = "tournaments_{$year}";
+
+        if (!Schema::hasTable($assignmentTable) || !Schema::hasTable($tournamentTable)) {
+            continue;
+        }
+
+        // Query diretta alle tabelle anno
+        $assignments = DB::table($assignmentTable . ' as a')
+            ->join($tournamentTable . ' as t', 'a.tournament_id', '=', 't.id')
+            ->leftJoin('clubs as c', 't.club_id', '=', 'c.id')
+            ->leftJoin('zones as z', 't.zone_id', '=', 'z.id')
+            ->where('a.user_id', $referee->id)
+            ->select(
+                't.id',
+                't.name',
+                't.start_date',
+                't.end_date',
+                'c.name as club_name',
+                'z.name as zone_name',
+                'a.role',
+                'a.is_confirmed'
+            )
+            ->orderBy('t.start_date', 'desc')
+            ->get();
+
+        if ($assignments->count() > 0) {
+            // Livello arbitro per quell'anno
+            $levelColumn = "level_{$year}";
+            $level = $referee->$levelColumn ?? $referee->level ?? 'N/D';
+
+            $curriculumData[$year] = [
+                'year' => $year,
+                'level' => $level,
+                'assignments' => $assignments,
+                'total' => $assignments->count(),
+                'by_role' => [
+                    'td' => $assignments->where('role', 'Direttore di Torneo')->count(),
+                    'arbitro' => $assignments->where('role', 'Arbitro')->count(),
+                    'osservatore' => $assignments->where('role', 'Osservatore')->count(),
+                ]
+            ];
+        }
+    }
+
+    // Calcola statistiche totali
+    $totalStats = [
+        'total_tournaments' => 0,
+        'total_td' => 0,
+        'total_arbitro' => 0,
+        'total_osservatore' => 0,
+        'years_active' => count($curriculumData),
+        'first_year' => !empty($curriculumData) ? min(array_keys($curriculumData)) : null,
+        'last_year' => !empty($curriculumData) ? max(array_keys($curriculumData)) : null,
+    ];
+
+    foreach ($curriculumData as $yearData) {
+        $totalStats['total_tournaments'] += $yearData['total'];
+        $totalStats['total_td'] += $yearData['by_role']['td'];
+        $totalStats['total_arbitro'] += $yearData['by_role']['arbitro'];
+        $totalStats['total_osservatore'] += $yearData['by_role']['osservatore'];
+    }
+
+    return [
+        'data' => $curriculumData,
+        'stats' => $totalStats
+    ];
+}
+
 }

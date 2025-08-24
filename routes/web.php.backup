@@ -169,7 +169,7 @@ Route::middleware(['auth'])->group(function () {
             ->name('tournaments.send-assignment-with-convocation');
 
         // Curricula - DEVE ESSERE PRIMA DELLA RESOURCE!
-        Route::get('referees/curricula', [Admin\RefereeController::class, 'allCurricula'])
+        Route::get('referees/curricula', [Admin\RefereeController::class, 'curricula'])
             ->name('referees.curricula');
         Route::get('referee/{id}/curriculum', [Admin\RefereeController::class, 'showCurriculum'])
             ->name('referee.curriculum');

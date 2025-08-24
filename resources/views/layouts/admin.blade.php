@@ -104,7 +104,7 @@
                                     Curricula Arbitri</a>
                                 {{-- @if (auth()->user()->hasRole('admin'))
     <li class="nav-item">
-        <a href="{{ route('admin.referees.allCurricula') }}" class="nav-link">
+        <a href="{{ route('admin.referees.curricula') }}" class="nav-link">
             <i class="nav-icon fas fa-file-alt"></i>
             <p>Curricula Arbitri</p>
         </a>
