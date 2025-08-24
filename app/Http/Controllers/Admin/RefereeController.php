@@ -22,6 +22,8 @@ use App\Models\Assignment;
 
 class RefereeController extends Controller
 {
+
+
     /**
      * List referees with filters
      */
@@ -46,6 +48,7 @@ class RefereeController extends Controller
 
         return view('admin.referees.index', compact('referees', 'year'));
     }
+
 
     /**
      * Show the form for creating a new referee.
@@ -476,9 +479,8 @@ class RefereeController extends Controller
             }
         }
 
-        return view('referee.curriculum', compact('referee', 'curriculumData'));
+        return view('admin.referees.curriculum', compact('referee', 'curriculumData'));
     }
-
     public function allCurricula()
     {
         $referees = User::where('user_type', 'referee')

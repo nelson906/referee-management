@@ -17,6 +17,11 @@ use App\Models\Availability;
 class AssignmentController extends Controller
 {
 
+    protected function getAssignmentTable()
+    {
+        $year = session('selected_year', date('Y'));
+        return "assignments_{$year}";
+    }
     protected $documentService;
 
     public function __construct(DocumentGenerationService $documentService)
@@ -85,6 +90,23 @@ class AssignmentController extends Controller
 
         return back()->with('success', 'Assegnazione creata con successo');
     }
+
+    /**
+     * Delete assignment
+     */
+    public function destroy($tournamentId, $userId)
+    {
+        $tournament = Tournament::findOrFail($tournamentId);
+        $year = Carbon::parse($tournament->start_date)->year;
+
+        DB::table("assignments_{$year}")
+            ->where('tournament_id', $tournamentId)
+            ->where('user_id', $userId)
+            ->delete();
+
+        return back()->with('success', 'Assegnazione rimossa');
+    }
+
 
     /**
      * Show the form for creating a new assignment.
@@ -221,22 +243,6 @@ class AssignmentController extends Controller
     }
 
     /**
-     * Delete assignment
-     */
-    public function destroy($tournamentId, $userId)
-    {
-        $tournament = Tournament::findOrFail($tournamentId);
-        $year = Carbon::parse($tournament->start_date)->year;
-
-        DB::table("assignments_{$year}")
-            ->where('tournament_id', $tournamentId)
-            ->where('user_id', $userId)
-            ->delete();
-
-        return back()->with('success', 'Assegnazione rimossa');
-    }
-
-    /**
      * Check if user can access the tournament.
      */
     private function checkTournamentAccess(Tournament $tournament): void
@@ -265,22 +271,22 @@ class AssignmentController extends Controller
     /**
      * Get referees who declared availability for this tournament.
      */
-public function getAvailableReferees(Request $request)
-{
-    $tournamentId = $request->tournament_id;
-    $tournament = Tournament::findOrFail($tournamentId);
+    public function getAvailableReferees(Request $request)
+    {
+        $tournamentId = $request->tournament_id;
+        $tournament = Tournament::findOrFail($tournamentId);
 
-    // SOLO arbitri con disponibilità per QUESTO torneo specifico
-    $availabilities = Availability::where('tournament_id', $tournamentId)
-        ->with(['user' => function($query) {
-            $query->where('user_type', 'referee')
-                  ->where('is_active', true);
-        }])
-        ->get();
+        // SOLO arbitri con disponibilità per QUESTO torneo specifico
+        $availabilities = Availability::where('tournament_id', $tournamentId)
+            ->with(['user' => function ($query) {
+                $query->where('user_type', 'referee')
+                    ->where('is_active', true);
+            }])
+            ->get();
 
-    // NON cercare in altri anni!
-    return response()->json($availabilities);
-}
+        // NON cercare in altri anni!
+        return response()->json($availabilities);
+    }
 
     /**
      * Get zone referees who haven't declared availability.
@@ -328,16 +334,16 @@ public function getAvailableReferees(Request $request)
         $tournament->load(['club', 'zone', 'tournamentType']);
 
         // Get currently assigned referees - CORRETTO ✅
-$assignedReferees = $tournament->assignments()
-    ->with('user')
-    ->get()
-    ->map(function($assignment) {
-        // Aggiungi i dati user all'assignment per retrocompatibilità
-        $assignment->name = $assignment->user->name;
-        $assignment->referee_code = $assignment->user->referee_code;
-        $assignment->level = $assignment->user->level;
-        return $assignment;
-    });
+        $assignedReferees = $tournament->assignments()
+            ->with('user')
+            ->get()
+            ->map(function ($assignment) {
+                // Aggiungi i dati user all'assignment per retrocompatibilità
+                $assignment->name = $assignment->user->name;
+                $assignment->referee_code = $assignment->user->referee_code;
+                $assignment->level = $assignment->user->level;
+                return $assignment;
+            });
         $assignedRefereeIds = $assignedReferees->pluck('user_id')->toArray();
 
         // Get available referees - CORRETTO ✅

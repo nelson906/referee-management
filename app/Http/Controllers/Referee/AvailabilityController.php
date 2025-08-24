@@ -23,124 +23,74 @@ use Illuminate\Support\Str;
 
 class AvailabilityController extends Controller
 {
+
     /**
-     * Show availabilities for a tournament
+     * Show referee's availabilities
      */
-    public function index(Request $request)
+    public function index()
     {
         $user = auth()->user();
-        $isNationalReferee = RefereeLevelsHelper::canAccessNationalTournaments($user->level);
+        $year = session('selected_year', date('Y'));
 
-        // Get filter parameters
-        $zoneId = $request->get('zone_id');
-        $typeId = $request->get('type_id');
-        $month = $request->get('month');
+        // Disponibilità dell'arbitro per l'anno selezionato
+        $availabilities = DB::table("availabilities_{$year} as a")
+            ->join("tournaments_{$year} as t", 'a.tournament_id', '=', 't.id')
+            ->leftJoin('clubs as c', 't.club_id', '=', 'c.id')
+            ->where('a.user_id', $user->id)
+            ->select(
+                'a.*',
+                't.name as tournament_name',
+                't.start_date',
+                't.end_date',
+                'c.name as club_name'
+            )
+            ->orderBy('t.start_date', 'desc')
+            ->get();
 
-        // ✅ SEMPLIFICATO: Base query - TUTTE le gare dell'anno
-        $query = Tournament::with(['tournamentType', 'zone', 'club'])
-            ->whereYear('start_date', Carbon::now()->year); // Solo gare dell'anno corrente
-        // ✅ CORRETTO: Logica zone precisa
-if ($isNationalReferee) {
-    if ($zoneId) {
-        $query->where('zone_id', $zoneId);
-    } else {
-        $query->where(function ($q) use ($user) {
-            $q->where('zone_id', $user->zone_id) // Propria zona
-              ->orWhereHas('tournamentType', function ($q2) {
-                  $q2->where('is_national', true); // Tutte le gare nazionali
-              });
-        });
+        return view('referee.availabilities.index', compact('availabilities', 'year'));
     }
-} else {
-    $query->where('zone_id', $user->zone_id);
-}
-
-        // Apply filters
-        if ($typeId) {
-            $query->where('tournament_type_id', $typeId);
-        }
-
-        if ($month) {
-            $startOfMonth = Carbon::parse($month)->startOfMonth();
-            $endOfMonth = Carbon::parse($month)->endOfMonth();
-            $query->whereBetween('start_date', [$startOfMonth, $endOfMonth]);
-        }
-
-        // Order by start date
-        $query->orderBy('start_date');
-
-        // ✅ CORRETTO: Paginazione semplice che punta ai tornei prossimi
-        $currentPage = $request->get('page', null);
-
-        // Se non è specificata una pagina, trova quella con tornei prossimi a oggi
-if (!$currentPage) {
-    $tournamentsBeforeToday = (clone $query)->where('start_date', '<', Carbon::today())->count();
-    if ($tournamentsBeforeToday > 0) {
-        $targetPage = ceil($tournamentsBeforeToday / 10);
-        if ($targetPage > 1) {
-            return redirect()->route('referee.availability.index', array_merge(
-                $request->only(['zone_id', 'type_id', 'month']),
-                ['page' => $targetPage]
-            ));
-        }
-    }
-}
-
-        // Paginazione
-        $tournaments = $query->paginate(10, ['*'], 'page', $currentPage)->appends($request->query());
-
-        // Get user's availabilities
-        $userAvailabilities = $user->availabilities()->pluck('tournament_id')->toArray();
-
-        // ✅ SEMPLIFICATO: Aggiungi solo info essenziali
-        $tournaments->getCollection()->transform(function ($tournament) use ($userAvailabilities) {
-            $tournament->user_has_availability = in_array($tournament->id, $userAvailabilities);
-            $tournament->days_until_deadline = $this->getDaysUntilDeadline($tournament);
-            return $tournament;
-        });
-
-        // Get filter options
-        $zones = $this->getAccessibleZones($user, $isNationalReferee);
-        $types = TournamentType::select('id', 'name', 'short_name')->orderBy('name')->get();
-
-        return view('referee.availability.index', compact(
-            'tournaments',
-            'userAvailabilities',
-            'zones',
-            'types',
-            'zoneId',
-            'typeId',
-            'month'
-        ));
-    }
-
 
     /**
-     * Store manual availability
+     * Store availability for tournament
      */
     public function store(Request $request)
     {
         $request->validate([
-            'tournament_id' => 'required|exists:tournaments,id',
-            'user_ids' => 'required|array',
-            'user_ids.*' => 'exists:users,id'
+            'tournament_id' => 'required|integer',
+            'available' => 'required|boolean'
         ]);
 
-        $tournament = Tournament::findOrFail($request->tournament_id);
+        // Determina l'anno dal torneo
+        $tournament = DB::table("tournaments_{$request->year}")
+            ->where('id', $request->tournament_id)
+            ->first();
+
+        if (!$tournament) {
+            return back()->with('error', 'Torneo non trovato');
+        }
+
         $year = Carbon::parse($tournament->start_date)->year;
 
-        foreach ($request->user_ids as $userId) {
+        if ($request->available) {
+            // Aggiungi disponibilità
             DB::table("availabilities_{$year}")->insertOrIgnore([
-                'user_id' => $userId,
+                'user_id' => auth()->id(),
                 'tournament_id' => $request->tournament_id,
-                'notes' => 'Inserita manualmente da admin',
+                'notes' => $request->notes,
                 'created_at' => now(),
                 'updated_at' => now()
             ]);
+        } else {
+            // Rimuovi disponibilità
+            DB::table("availabilities_{$year}")
+                ->where('user_id', auth()->id())
+                ->where('tournament_id', $request->tournament_id)
+                ->delete();
         }
 
-        return back()->with('success', 'Disponibilità aggiunte');
+        return back()->with('success', 'Disponibilità aggiornata');
     }
+
 
 
     /**

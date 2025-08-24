@@ -261,36 +261,57 @@ class AssignmentMigrationService
     /**
      * Trova utente per nome completo (post-2020)
      */
-    private function findUserByFullName($fullName)
-    {
-        // Prima cerca match diretto
+private function findUserByFullName($fullName)
+{
+    $fullName = trim($fullName);
+
+    // 1. Match esatto
+    $user = DB::table('users')
+        ->where('name', $fullName)
+        ->where('user_type', 'referee')
+        ->first();
+    if ($user) return $user;
+
+    $parts = explode(' ', $fullName);
+    $count = count($parts);
+
+    // 2. Gestisci 3+ parti
+    if ($count >= 3) {
+        // "Grippa Alberto Maria" → "Alberto Maria Grippa"
+        $lastFirst = implode(' ', array_slice($parts, 1)) . ' ' . $parts[0];
         $user = DB::table('users')
-            ->where('name', $fullName)
+            ->where('name', $lastFirst)
             ->where('user_type', 'referee')
             ->first();
-
         if ($user) return $user;
 
-        // Prova inversione Cognome Nome -> Nome Cognome
-        $parts = explode(' ', $fullName);
-        if (count($parts) == 2) {
-            $inverted = $parts[1] . ' ' . $parts[0];
-            $user = DB::table('users')
-                ->where('name', $inverted)
-                ->where('user_type', 'referee')
-                ->first();
-
-            if ($user) return $user;
-        }
-
-        // Prova match parziale
+        // "Alberto Maria Grippa" → "Grippa Alberto Maria"
+        $firstLast = $parts[$count-1] . ' ' . implode(' ', array_slice($parts, 0, -1));
         $user = DB::table('users')
-            ->where('name', 'LIKE', "%{$fullName}%")
+            ->where('name', $firstLast)
             ->where('user_type', 'referee')
             ->first();
-
-        return $user;
+        if ($user) return $user;
     }
+
+    // 3. Nomi doppi (esistente)
+    if ($count == 2) {
+        $inverted = $parts[1] . ' ' . $parts[0];
+        $user = DB::table('users')
+            ->where('name', $inverted)
+            ->where('user_type', 'referee')
+            ->first();
+        if ($user) return $user;
+    }
+
+    // 4. Match parziale
+    $user = DB::table('users')
+        ->where('name', 'LIKE', "%{$fullName}%")
+        ->where('user_type', 'referee')
+        ->first();
+
+    return $user;
+}
 
     /**
      * Stampa statistiche anno

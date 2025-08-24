@@ -17,6 +17,11 @@ use App\Http\Traits\CrudActions;
 class TournamentController extends Controller
 {
     use CrudActions;
+    protected function getTournamentsTable()
+    {
+        $year = session('selected_year', date('Y'));
+        return "tournaments_{$year}";
+    }
 
     /**
      * Display a listing of tournaments.
@@ -28,6 +33,8 @@ class TournamentController extends Controller
 
         // Base query - ✅ FIXED: tournamentType relationship
         $query = Tournament::with(['club', 'zone', 'tournamentType']);
+        $selectedYear = session('selected_year', date('Y'));
+        $query->whereYear('start_date', $selectedYear);
 
         // Filter by zone for zone admins
         if (!$isNationalAdmin && !in_array($user->user_type, ['super_admin'])) {
@@ -315,58 +322,55 @@ class TournamentController extends Controller
     /**
      * Display the specified tournament for admin view
      */
-    public function show(Tournament $tournament)
-    {
-        $user = auth()->user();
+public function show(Tournament $tournament)
+{
+    $user = auth()->user();
 
-        // Check permissions (zone admin can only see their zone tournaments)
-        if ($user->user_type === 'admin' && $user->zone_id !== $tournament->zone_id) {
-            abort(403, 'Non hai i permessi per visualizzare questo torneo.');
-        }
-        // Forza l'anno in sessione basato sulla data del torneo
-        $year = Carbon::parse($tournament->start_date)->year;
-        session(['selected_year' => $year]);
-
-        // ✅ FIXED: Load tournamentType relationship
-        $tournament->load([
-            'tournamentType',
-            'zone',
-            'club',
-            'assignments.user',
-            'availabilities.user'
-        ]);
-        // Ottieni gli arbitri assegnati
-        $assignedReferees = $tournament->assignments()
-            ->with('user')
-            ->get();
-
-        $availableReferees = $tournament->availabilities()
-            ->with('user')
-            ->get();
-
-        // Get statistics
-        $stats = [
-            'total_assignments' => $tournament->assignments()->count(),
-            'total_availabilities' => $tournament->availabilities()->count(),
-            'total_referees' => $tournament->availabilities()->count(),
-            'assigned_referees' => $tournament->assignments()->count(),
-            // ✅ FIXED: Use tournamentType relationship
-            'required_referees' => $tournament->required_referees ?? $tournament->tournamentType->min_referees ?? 1,
-            'max_referees' => $tournament->max_referees ?? $tournament->tournamentType->max_referees ?? 4,
-            'days_until_deadline' => $tournament->days_until_deadline,
-            'is_editable' => method_exists($tournament, 'isEditable') ? $tournament->isEditable() : true,
-        ];
-
-        $assignedReferees = $tournament->assignedReferees;
-        $availableReferees = $tournament->availabilities()->with('user')->get();
-
-        return view('admin.tournaments.show', compact(
-            'tournament',
-            'assignedReferees', // ← AGGIUNGI QUESTO
-            'availableReferees',  // ← AGGIUNGI
-            'stats'               // ← AGGIUNGI
-        ));
+    // Check permissions
+    if ($user->user_type === 'admin' && $user->zone_id !== $tournament->zone_id) {
+        abort(403, 'Non hai i permessi per visualizzare questo torneo.');
     }
+
+    // UNICA MODIFICA: Imposta l'anno per i Model dinamici
+    $year = \Carbon\Carbon::parse($tournament->start_date)->year;
+    session(['selected_year' => $year]);
+
+    // Ora le relazioni funzioneranno con le tabelle corrette
+    $tournament->load([
+        'tournamentType',
+        'zone',
+        'club',
+        'assignments.user',
+        'availabilities.user'
+    ]);
+
+    // Ottieni gli arbitri assegnati
+    $assignedReferees = $tournament->assignments()
+        ->with('user')
+        ->get();
+
+    $availableReferees = $tournament->availabilities()
+        ->with('user')
+        ->get();
+
+    // Statistics
+    $stats = [
+        'total_assignments' => $assignedReferees->count(),
+        'total_availabilities' => $availableReferees->count(),
+        'assigned_referees' => $assignedReferees->count(),
+        'required_referees' => $tournament->tournamentType->min_referees ?? 2,
+        'days_until_deadline' => $tournament->availability_deadline
+            ? now()->diffInDays($tournament->availability_deadline, false)
+            : null,
+    ];
+
+    return view('admin.tournaments.show', compact(
+        'tournament',
+        'assignedReferees',
+        'availableReferees',
+        'stats'
+    ));
+}
 
 
     /**

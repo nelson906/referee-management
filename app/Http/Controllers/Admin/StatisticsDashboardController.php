@@ -99,8 +99,8 @@ class StatisticsDashboardController extends Controller
         // Statistiche riepilogo
         $stats = [
             'total' => $query->count(),
-            'by_status' => $query->clone()->select('is_available', DB::raw('count(*) as count'))
-                ->groupBy('is_available')->pluck('count', 'is_available'),
+            // 'by_status' => $query->clone()->select('is_available', DB::raw('count(*) as count'))
+            //     ->groupBy('is_available')->pluck('count', 'is_available'),
             'by_zone' => $isNationalAdmin ? $this->getAvailabilityByZone($year, $month) : [],
             'by_level' => $this->getAvailabilityByLevel($user, $isNationalAdmin, $year, $month),
             'conversion_rate' => $this->getAvailabilityConversionRate($user, $isNationalAdmin, $year, $month),
@@ -175,7 +175,7 @@ class StatisticsDashboardController extends Controller
             'by_level' => $this->getAssignmentsByLevel($user, $isNationalAdmin, $year),
             'workload' => $this->getWorkloadStats($user, $isNationalAdmin, $year),
             'totale_assegnazioni' => Assignment::count(),
-            'per_zona' => Assignment::join('zones', 'assignments.assigned_by_id', '=', 'zones.id')
+            'per_zona' => Assignment::join('zones', "assignments_{$year}.assigned_by_id", '=', 'zones.id')
                 ->selectRaw('zones.name, COUNT(*) as totale')
                 ->orderBy('zones.name')
                 ->groupBy('zones.name')
@@ -252,7 +252,7 @@ class StatisticsDashboardController extends Controller
             'per_stato' => Tournament::selectRaw('status, COUNT(*) as totale')
                 ->groupBy('status')
                 ->pluck('totale', 'status'),
-            'per_zona' => Tournament::join('clubs', 'tournaments.club_id', '=', 'clubs.id')
+            'per_zona' => Tournament::join('clubs', "tournaments_{$year}.club_id", '=', 'clubs.id')
                 ->join('zones', 'clubs.zone_id', '=', 'zones.id')
                 ->selectRaw('zones.name, COUNT(*) as totale')
                 ->orderBy('zones.name')

@@ -1480,7 +1480,8 @@ class NotificationController extends Controller
         ]);
     }
 
-        /**
+
+    /**
      * Send assignment notifications
      */
     public function sendAssignmentNotifications(Request $request, $tournamentId)

@@ -9,6 +9,13 @@ use Illuminate\View\View;
 
 class AssignmentController extends Controller
 {
+    protected function getAssignmentTable()
+    {
+        $year = session('selected_year', date('Y'));
+        return "assignments_{$year}";
+    }
+
+
     /**
      * Display the referee's assignments.
      */
@@ -22,7 +29,7 @@ class AssignmentController extends Controller
         // Query base per le assegnazioni dell'arbitro
         $query = Assignment::where('user_id', $user->id)
             ->with(['tournament.club', 'tournament.zone'])
-            ->whereHas('tournament', function($q) use ($year) {
+            ->whereHas('tournament', function ($q) use ($year) {
                 $q->whereYear('start_date', $year);
             });
 
@@ -30,11 +37,11 @@ class AssignmentController extends Controller
         if ($request->filled('status')) {
             $status = $request->status;
             if ($status === 'upcoming') {
-                $query->whereHas('tournament', function($q) {
+                $query->whereHas('tournament', function ($q) {
                     $q->where('start_date', '>=', now());
                 });
             } elseif ($status === 'completed') {
-                $query->whereHas('tournament', function($q) {
+                $query->whereHas('tournament', function ($q) {
                     $q->where('end_date', '<', now());
                 });
             } elseif ($status === 'confirmed') {
@@ -45,43 +52,43 @@ class AssignmentController extends Controller
         }
 
         // Ordina per data torneo
-        $assignments = $query->orderBy(function($query) {
-                return $query->select('start_date')
-                    ->from('tournaments')
-                    ->whereColumn('tournaments.id', 'assignments.tournament_id');
-            }, 'desc')
+        $assignments = $query->orderBy(function ($query) {
+            return $query->select('start_date')
+                ->from('tournaments')
+                ->whereColumn('tournaments.id', 'assignments.tournament_id');
+        }, 'desc')
             ->paginate(15)
             ->withQueryString();
 
         // Statistiche per l'anno corrente
         $stats = [
             'total' => Assignment::where('user_id', $user->id)
-                ->whereHas('tournament', function($q) use ($year) {
+                ->whereHas('tournament', function ($q) use ($year) {
                     $q->whereYear('start_date', $year);
                 })->count(),
 
             'confirmed' => Assignment::where('user_id', $user->id)
                 ->where('is_confirmed', true)
-                ->whereHas('tournament', function($q) use ($year) {
+                ->whereHas('tournament', function ($q) use ($year) {
                     $q->whereYear('start_date', $year);
                 })->count(),
 
             'upcoming' => Assignment::where('user_id', $user->id)
-                ->whereHas('tournament', function($q) use ($year) {
+                ->whereHas('tournament', function ($q) use ($year) {
                     $q->where('start_date', '>=', now())
-                     ->whereYear('start_date', $year);
+                        ->whereYear('start_date', $year);
                 })->count(),
 
             'completed' => Assignment::where('user_id', $user->id)
-                ->whereHas('tournament', function($q) use ($year) {
+                ->whereHas('tournament', function ($q) use ($year) {
                     $q->where('end_date', '<', now())
-                     ->whereYear('start_date', $year);
+                        ->whereYear('start_date', $year);
                 })->count(),
         ];
         $assignment = new Assignment();
         $tableName = $assignment->getTable();        // Anni disponibili per il filtro
         $availableYears = Assignment::where('user_id', $user->id)
-            ->join('tournaments', $tableName .'.tournament_id', '=', 'tournaments.id')
+            ->join('tournaments', $tableName . '.tournament_id', '=', 'tournaments.id')
             ->selectRaw('YEAR(tournaments.start_date) as year')
             ->distinct()
             ->orderBy('year', 'desc')

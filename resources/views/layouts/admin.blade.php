@@ -389,23 +389,6 @@
             });
         }
     </script>
-    <script>
-        function changeYear(year) {
-            // Salva in sessione via AJAX
-            fetch('/admin/set-year', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
-                },
-                body: JSON.stringify({
-                    year: year
-                })
-            }).then(() => {
-                location.reload();
-            });
-        }
-    </script>
 
 </body>
 

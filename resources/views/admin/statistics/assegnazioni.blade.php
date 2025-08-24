@@ -14,7 +14,7 @@
                 </div>
             </div>
 
-            <div class="md:w-3/12 px-4">
+            <div class="md: px-4">
                 <div class="bg-white rounded-lg shadow-md">
                     <div class="p-6">
                         <h5>Media Arbitri per Torneo</h5>
@@ -23,7 +23,7 @@
                 </div>
             </div>
 
-            <div class="md:w-3/12 px-4">
+            <div class="md: px-4">
                 <div class="bg-white rounded-lg shadow-md">
                     <div class="p-6">
                         <h5>Tornei Designati</h5>
