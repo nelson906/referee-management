@@ -46,10 +46,10 @@ class AssignmentMigrationService
             $this->printYearStats($year);
 
             // Cleanup tabella temporanea
-            // if ($this->confirmCleanup($year)) {
-            //     DB::statement("DROP TABLE IF EXISTS {$sourceTable}");
-            //     echo "✅ Tabella temporanea {$sourceTable} eliminata\n";
-            // }
+            if ($this->confirmCleanup($year)) {
+                DB::statement("DROP TABLE IF EXISTS {$sourceTable}");
+                echo "✅ Tabella temporanea {$sourceTable} eliminata\n";
+            }
 
             return true;
 
@@ -155,70 +155,55 @@ class AssignmentMigrationService
         $fullName = trim($fullName);
         if (empty($fullName)) return;
 
-        // // LOGICA SPECIALE PRE-2021
-        // if ($year <= 2020) {
-        //     // Solo cognomi in zona SZR6
-        //     if ($zona != 'SZR6') {
-        //         return; // Skip se non è SZR6
-        //     }
+        // LOGICA SPECIALE PRE-2021
+        if ($year <= 2020) {
+            // Solo cognomi in zona SZR6
+            if ($zona != 'SZR6') {
+                return; // Skip se non è SZR6
+            }
 
-        //     // Cerca per cognome
-        //     $user = DB::table('users')
-        //         ->where('zone_id', 6) // SZR6 ha id=6
-        //         ->where('user_type', 'referee')
-        //         ->where(function($q) use ($fullName) {
-        //             $q->where('name', 'LIKE', "% {$fullName}")
-        //               ->orWhere('name', 'LIKE', "{$fullName} %");
-        //         })
-        //         ->first();
+            // Cerca per cognome
+            $user = DB::table('users')
+                ->where('zone_id', 6) // SZR6 ha id=6
+                ->where('user_type', 'referee')
+                ->where(function($q) use ($fullName) {
+                    $q->where('name', 'LIKE', "% {$fullName}")
+                      ->orWhere('name', 'LIKE', "{$fullName} %");
+                })
+                ->first();
 
-        //     if ($user) {
-        //         $this->stats[$year]['cognomi_only']++;
-        //         echo "  🔍 Match cognome SZR6 ({$year}): '{$fullName}' → '{$user->name}'\n";
-        //     }
-        // } else {
+            if ($user) {
+                $this->stats[$year]['cognomi_only']++;
+                echo "  🔍 Match cognome SZR6 ({$year}): '{$fullName}' → '{$user->name}'\n";
+            }
+        } else {
             // POST-2020: Nome completo
             $user = $this->findUserByFullName($fullName);
-        // }
+        }
 
         if (!$user) {
             return;
         }
-        $zona_id = (int)substr($zona, -1);
 
-    try {
-        // Prima controlla se esiste già
-        $exists = DB::table("assignments_{$year}")
-            ->where('tournament_id', $tournamentId)
-            ->where('user_id', $user->id)
-            ->where('role', $role)
-            ->exists();
+        try {
+            DB::table("assignments_{$year}")->insertOrIgnore([
+                'tournament_id' => $tournamentId,
+                'user_id' => $user->id,
+                'assigned_by_id' => 1,
+                'role' => $role,
+                'assigned_at' => now(),
+                'is_confirmed' => true, // Tornei passati sono confermati
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
 
-        if ($exists) {
-            $this->stats[$year]['duplicates'] = ($this->stats[$year]['duplicates'] ?? 0) + 1;
-            echo "\n  ⚠️ Duplicato saltato: Torneo {$tournamentId}, User {$user->id}, Role {$role}\n";
-            return;
+            $this->stats[$year]['assignments']++;
+
+        } catch (\Exception $e) {
+            $this->stats[$year]['errors']++;
         }
-
-        // Ora inserisci
-        DB::table("assignments_{$year}")->insert([
-            'tournament_id' => $tournamentId,
-            'user_id' => $user->id,
-            'assigned_by_id' => $zona_id ?: 1,
-            'role' => $role,
-            'assigned_at' => now(),
-            'is_confirmed' => true,
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
-
-        $this->stats[$year]['assignments']++;
-
-    } catch (\Exception $e) {
-        $this->stats[$year]['errors']++;
-        echo "\n❌ Errore: " . $e->getMessage() . "\n";
     }
-    }
+
     /**
      * Processa availabilities da campo Disponibili
      */
@@ -276,83 +261,59 @@ class AssignmentMigrationService
     /**
      * Trova utente per nome completo (post-2020)
      */
-private function findUserByFullName($fullName)
-{
-    $fullName = trim($fullName);
-
-    // 1. Match esatto
-    $user = DB::table('users')
-        ->where('name', $fullName)
-        ->where('user_type', 'referee')
-        ->first();
-    if ($user) return $user;
-
-    $parts = explode(' ', $fullName);
-    $count = count($parts);
-
-    // 2. Gestisci 3+ parti
-    if ($count >= 3) {
-        // "Grippa Alberto Maria" → "Alberto Maria Grippa"
-        $lastFirst = implode(' ', array_slice($parts, 1)) . ' ' . $parts[0];
+    private function findUserByFullName($fullName)
+    {
+        // Prima cerca match diretto
         $user = DB::table('users')
-            ->where('name', $lastFirst)
+            ->where('name', $fullName)
             ->where('user_type', 'referee')
             ->first();
+
         if ($user) return $user;
 
-        // "Alberto Maria Grippa" → "Grippa Alberto Maria"
-        $firstLast = $parts[$count-1] . ' ' . implode(' ', array_slice($parts, 0, -1));
+        // Prova inversione Cognome Nome -> Nome Cognome
+        $parts = explode(' ', $fullName);
+        if (count($parts) == 2) {
+            $inverted = $parts[1] . ' ' . $parts[0];
+            $user = DB::table('users')
+                ->where('name', $inverted)
+                ->where('user_type', 'referee')
+                ->first();
+
+            if ($user) return $user;
+        }
+
+        // Prova match parziale
         $user = DB::table('users')
-            ->where('name', $firstLast)
+            ->where('name', 'LIKE', "%{$fullName}%")
             ->where('user_type', 'referee')
             ->first();
-        if ($user) return $user;
+
+        return $user;
     }
-
-    // 3. Nomi doppi (esistente)
-    if ($count == 2) {
-        $inverted = $parts[1] . ' ' . $parts[0];
-        $user = DB::table('users')
-            ->where('name', $inverted)
-            ->where('user_type', 'referee')
-            ->first();
-        if ($user) return $user;
-    }
-
-    // 4. Match parziale
-    $user = DB::table('users')
-        ->where('name', 'LIKE', "%{$fullName}%")
-        ->where('user_type', 'referee')
-        ->first();
-
-    return $user;
-}
 
     /**
      * Stampa statistiche anno
      */
-private function printYearStats($year)
-{
-    $stats = $this->stats[$year];
+    private function printYearStats($year)
+    {
+        $stats = $this->stats[$year];
 
-    // Conta record reali nel DB
-    $realCount = DB::table("assignments_{$year}")->count();
+        echo "\n";
+        echo "┌─────────────────────────────────────┐\n";
+        echo "│      STATISTICHE ANNO {$year}         │\n";
+        echo "├─────────────────────────────────────┤\n";
+        echo "│ Assignments creati:    " . str_pad($stats['assignments'], 10, ' ', STR_PAD_LEFT) . " │\n";
+        echo "│ Availabilities create: " . str_pad($stats['availabilities'], 10, ' ', STR_PAD_LEFT) . " │\n";
 
-    echo "\n";
-    echo "┌─────────────────────────────────────┐\n";
-    echo "│      STATISTICHE ANNO {$year}         │\n";
-    echo "├─────────────────────────────────────┤\n";
-    echo "│ Assignments processati:" . str_pad($stats['assignments'], 10, ' ', STR_PAD_LEFT) . " │\n";
-    echo "│ Record nel DB:         " . str_pad($realCount, 10, ' ', STR_PAD_LEFT) . " │\n";
-    echo "│ Duplicati ignorati:    " . str_pad($stats['duplicates'] ?? 0, 10, ' ', STR_PAD_LEFT) . " │\n";
-    echo "│ Errori:                " . str_pad($stats['errors'], 10, ' ', STR_PAD_LEFT) . " │\n";
-    echo "└─────────────────────────────────────┘\n";
+        if ($year <= 2020) {
+            echo "│ Match solo cognome:    " . str_pad($stats['cognomi_only'], 10, ' ', STR_PAD_LEFT) . " │\n";
+        }
 
-    if ($realCount < $stats['assignments']) {
-        $diff = $stats['assignments'] - $realCount;
-        echo "⚠️  {$diff} assignment erano duplicati e sono stati ignorati\n";
+        echo "│ Errori:                " . str_pad($stats['errors'], 10, ' ', STR_PAD_LEFT) . " │\n";
+        echo "└─────────────────────────────────────┘\n";
     }
-}
+
     private function confirmCleanup($year)
     {
         echo "\n⚠️  Eliminare tabella temporanea gare_{$year}? (y/n): ";

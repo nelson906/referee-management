@@ -10,7 +10,7 @@ use Illuminate\View\View;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use App\Http\Traits\YearAwareTables;
+use App\Traits\YearAwareTables;
 
 class DashboardController extends Controller
 {

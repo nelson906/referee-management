@@ -12,7 +12,7 @@ use App\Models\Club;
 use App\Models\Zone;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
-use App\Http\Traits\CrudActions;
+use App\Traits\CrudActions;
 
 class TournamentController extends Controller
 {

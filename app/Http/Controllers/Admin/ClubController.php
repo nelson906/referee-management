@@ -8,7 +8,7 @@ use App\Models\Zone;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
-use App\Http\Traits\CrudActions;
+use App\Traits\CrudActions;
 
 class ClubController extends Controller
 {

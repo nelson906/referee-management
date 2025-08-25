@@ -5,19 +5,18 @@
 @section('content')
 <div class="container mx-auto px-4 py-8">
     {{-- Header --}}
-<x-table-header
-    title="Gestione Assegnazioni"
-    description="Gestisci le assegnazioni degli arbitri ai tornei"
-    :create-route="route('admin.assignments.create')"
-    create-text="👤 Assegna Singolo Arbitro"
-    create-color="blue"
-    :secondary-route="route('admin.tournaments.index')"
-    secondary-text="🏌️ Assegna per Torneo"
-    secondary-color="green"
-/>
+    <x-table-header
+        title="Gestione Assegnazioni"
+        description="Gestisci le assegnazioni degli arbitri ai tornei"
+        :create-route="route('admin.assignments.create')"
+        create-text="👤 Assegna Singolo Arbitro"
+        create-color="blue"
+        :secondary-route="route('admin.tournaments.index')"
+        secondary-text="🌏 Assegna per Torneo"
+        secondary-color="green"
+    />
 
-
-{{-- Alert Messages --}}
+    {{-- Alert Messages --}}
     @if(session('success'))
         <div class="bg-green-100 border-l-4 border-green-500 text-green-700 p-4 mb-6" role="alert">
             <p class="font-bold">Successo!</p>
@@ -32,9 +31,29 @@
         </div>
     @endif
 
+    {{-- Year Selector --}}
+    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+        <div class="flex items-center justify-between">
+            <div>
+                <h3 class="text-sm font-medium text-blue-800">Anno Selezionato</h3>
+                <p class="text-blue-600">Stai visualizzando le assegnazioni per l'anno {{ $year }}</p>
+            </div>
+            <div class="flex space-x-2">
+                @foreach([2023, 2024, 2025] as $availableYear)
+                    <a href="{{ request()->fullUrlWithQuery(['year' => $availableYear]) }}"
+                       class="px-3 py-1 rounded text-sm {{ $year == $availableYear ? 'bg-blue-600 text-white' : 'bg-white text-blue-600 border border-blue-300 hover:bg-blue-50' }}">
+                        {{ $availableYear }}
+                    </a>
+                @endforeach
+            </div>
+        </div>
+    </div>
+
     {{-- Filters --}}
     <div class="bg-white shadow rounded-lg p-6 mb-6">
         <form method="GET" action="{{ route('admin.assignments.index') }}" class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <input type="hidden" name="year" value="{{ $year }}">
+
             {{-- Tournament Filter --}}
             <div>
                 <label for="tournament_id" class="block text-sm font-medium text-gray-700 mb-1">Torneo</label>
@@ -42,7 +61,7 @@
                     <option value="">Tutti i tornei</option>
                     @foreach($tournaments as $tournament)
                         <option value="{{ $tournament->id }}" {{ request('tournament_id') == $tournament->id ? 'selected' : '' }}>
-                            {{ $tournament->name }} - {{ $tournament->club->name }}
+                            {{ $tournament->name }} - {{ $tournament->club_name }}
                         </option>
                     @endforeach
                 </select>
@@ -61,22 +80,12 @@
                 </select>
             </div>
 
-            {{-- Status Filter --}}
-            {{-- <div>
-                <label for="status" class="block text-sm font-medium text-gray-700 mb-1">Stato</label>
-                <select name="status" id="status" class="w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
-                    <option value="">Tutti gli stati</option>
-                    <option value="confirmed" {{ request('status') == 'confirmed' ? 'selected' : '' }}>Confermato</option>
-                    <option value="unconfirmed" {{ request('status') == 'unconfirmed' ? 'selected' : '' }}>Da confermare</option>
-                </select>
-            </div> --}}
-
             {{-- Submit Button --}}
-            <div class="flex items-end space-x-2">
+            <div class="flex items-end space-x-2 md:col-span-2">
                 <button type="submit" class="flex-1 bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 transition duration-200">
                     Filtra
                 </button>
-                <a href="{{ route('admin.assignments.index') }}"
+                <a href="{{ route('admin.assignments.index', ['year' => $year]) }}"
                    class="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50 transition duration-200">
                     Reset
                 </a>
@@ -109,109 +118,109 @@
                     </th>
                 </tr>
             </thead>
-            <tbody class="bg-white divide-y divide-gray-200">
-                @forelse($assignments as $assignment)
-                <tr class="hover:bg-gray-50 transition-colors duration-150">
-                    <td class="px-6 py-4">
-                        <div class="flex items-center">
-                            <div>
-                                <div class="text-sm font-medium text-gray-900">
-                                    {{ $assignment->user->name }}
-                                </div>
-                                <div class="text-sm text-gray-500">
-                                    {{ $assignment->user->referee_code }} - {{ ucfirst($assignment->user->level) }}
-                                </div>
-                            </div>
-                        </div>
-                    </td>
-                    <td class="px-6 py-4">
-                        <div class="text-sm font-medium text-gray-900">
-                            {{ $assignment->tournament->name }}
-                        </div>
-                        <div class="text-sm text-gray-500">
-                            {{ $assignment->tournament->club->name }} - {{ $assignment->tournament->start_date->format('d/m/Y') }}
-                        </div>
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap">
-                        <div class="text-sm text-gray-900">{{ $assignment->role }}</div>
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap">
-                        <div class="text-sm text-gray-900">
-                            {{ $assignment->assigned_at->format('d/m/Y H:i') }}
-                        </div>
-                        @if($assignment->assignedBy)
-                            <div class="text-xs text-gray-500">
-                                da {{ $assignment->assignedBy->name }}
-                            </div>
-                        @endif
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-center">
-<span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-green-100 text-green-800">
-    ✅ Assegnato
-</span>
-                    </td>
-                    <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <div class="flex items-center justify-end space-x-2">
-                            <a href="{{ route('admin.assignments.show', $assignment) }}"
-                               class="text-indigo-600 hover:text-indigo-900"
-                               title="Visualizza">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                          d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                          d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
-                                </svg>
-                            </a>
+<tbody class="bg-white divide-y divide-gray-200">
+    @forelse($assignments as $assignment)
+    <tr class="hover:bg-gray-50 transition-colors duration-150">
+        <td class="px-6 py-4">
+            <div class="flex items-center">
+                <div>
+                    <div class="text-sm font-medium text-gray-900">
+                        {{ $assignment->referee_name }}
+                    </div>
+                    <div class="text-sm text-gray-500">
+                        {{ $assignment->user->referee_code ?? 'N/A' }} - {{ ucfirst($assignment->user->level ?? 'N/A') }}
+                    </div>
+                </div>
+            </div>
+        </td>
+        <td class="px-6 py-4">
+            <div class="text-sm font-medium text-gray-900">
+                {{ $assignment->tournament_name }}
+            </div>
+            <div class="text-sm text-gray-500">
+                {{ $assignment->club_name }} -
+                {{ $assignment->tournament_start_date ? Carbon\Carbon::parse($assignment->tournament_start_date)->format('d/m/Y') : 'N/A' }}
+            </div>
+        </td>
+        <td class="px-6 py-4 whitespace-nowrap">
+            <div class="text-sm text-gray-900">{{ $assignment->role }}</div>
+        </td>
+        <td class="px-6 py-4 whitespace-nowrap">
+            <div class="text-sm text-gray-900">
+                {{ $assignment->assigned_at ? Carbon\Carbon::parse($assignment->assigned_at)->format('d/m/Y H:i') : 'N/A' }}
+            </div>
+            @if($assignment->assignedBy)
+                <div class="text-xs text-gray-500">
+                    da {{ $assignment->assignedBy->name }}
+                </div>
+            @endif
+        </td>
+        <td class="px-6 py-4 whitespace-nowrap text-center">
+            <span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium {{ $assignment->is_confirmed ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800' }}">
+                {{ $assignment->is_confirmed ? '✅ Confermato' : '⏳ Da confermare' }}
+            </span>
+        </td>
+        <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+            <div class="flex items-center justify-end space-x-2">
+                <a href="{{ route('admin.assignments.show', $assignment) }}"
+                   class="text-indigo-600 hover:text-indigo-900"
+                   title="Visualizza">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                              d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                    </svg>
+                </a>
 
-                            @if(!$assignment->is_confirmed && $assignment->tournament->status === 'assigned')
-                                <form action="{{ route('admin.assignments.confirm', $assignment) }}"
-                                      method="POST"
-                                      class="inline">
-                                    @csrf
-                                    <button type="submit"
-                                            class="text-green-600 hover:text-green-900"
-                                            title="Conferma"
-                                            onclick="return confirm('Confermare questa assegnazione?')">
-                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                        </svg>
-                                    </button>
-                                </form>
-                            @endif
+                @if(!$assignment->is_confirmed)
+                    <form action="{{ route('admin.assignments.confirm', $assignment) }}"
+                          method="POST"
+                          class="inline">
+                        @csrf
+                        <button type="submit"
+                                class="text-green-600 hover:text-green-900"
+                                title="Conferma"
+                                onclick="return confirm('Confermare questa assegnazione?')">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                      d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                        </button>
+                    </form>
+                @endif
 
-                            @if($assignment->tournament->status !== 'completed')
-                                <form action="{{ route('admin.assignments.destroy', $assignment) }}"
-                                      method="POST"
-                                      class="inline"
-                                      onsubmit="return confirm('Sei sicuro di voler rimuovere questa assegnazione?');">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button type="submit"
-                                            class="text-red-600 hover:text-red-900"
-                                            title="Rimuovi">
-                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                                        </svg>
-                                    </button>
-                                </form>
-                            @endif
-                        </div>
-                    </td>
-                </tr>
-                @empty
-                <tr>
-                    <td colspan="6" class="px-6 py-12 text-center">
-                        <svg class="mx-auto h-12 w-12 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"></path>
+                <form action="{{ route('admin.assignments.destroy', [$assignment->tournament_id, $assignment->user_id]) }}"
+                      method="POST"
+                      class="inline"
+                      onsubmit="return confirm('Sei sicuro di voler rimuovere questa assegnazione?');">
+                    @csrf
+                    @method('DELETE')
+                    <button type="submit"
+                            class="text-red-600 hover:text-red-900"
+                            title="Rimuovi">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
                         </svg>
-                        <p class="text-gray-500">Nessuna assegnazione trovata</p>
-                        <p class="text-sm text-gray-400 mt-1">Prova a modificare i filtri di ricerca</p>
-                    </td>
-                </tr>
-                @endforelse
-            </tbody>
+                    </button>
+                </form>
+            </div>
+        </td>
+    </tr>
+    @empty
+    <tr>
+        <td colspan="6" class="px-6 py-12 text-center">
+            <svg class="mx-auto h-12 w-12 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"></path>
+            </svg>
+            <p class="text-gray-500">Nessuna assegnazione trovata per l'anno {{ $year }}</p>
+            <p class="text-sm text-gray-400 mt-1">Prova a modificare i filtri di ricerca o seleziona un anno diverso</p>
+        </td>
+    </tr>
+    @endforelse
+</tbody>
+
         </table>
     </div>
 

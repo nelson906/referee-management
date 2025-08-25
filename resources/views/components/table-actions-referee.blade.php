@@ -70,10 +70,7 @@
         </form>
     @endif
 
-    {{-- Elimina (solo se non ha assegnazioni attive) --}}
-    @unless($referee->assignments()->whereHas('tournament', function($q) {
-        $q->whereIn('status', ['open', 'closed', 'assigned']);
-    })->exists())
+    {{-- Elimina  --}}
         <form action="{{ route('admin.referees.destroy', $referee) }}"
               method="POST"
               class="inline"
@@ -89,5 +86,4 @@
                 </svg>
             </button>
         </form>
-    @endunless
 </div>

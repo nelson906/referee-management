@@ -27,27 +27,80 @@ class RefereeController extends Controller
     /**
      * List referees with filters
      */
-    public function index(Request $request)
-    {
-        $year = session('selected_year', date('Y'));
+public function index(Request $request)
+{
+    $user = auth()->user();
+    $isNationalAdmin = $user->user_type === 'national_admin' || $user->user_type === 'super_admin';
 
-        $referees = User::where('user_type', 'referee')
-            ->when($request->zone_id, function($q) use ($request) {
-                $q->where('zone_id', $request->zone_id);
-            })
-            ->when($request->level, function($q) use ($request) {
-                $q->where('level', $request->level);
-            })
-            ->withCount([
-                'assignments' => function($q) use ($year) {
-                    // Count personalizzato per anno
-                    $q->from("assignments_{$year}");
-                }
-            ])
-            ->paginate(20);
+    // Query base
+    $query = User::where('user_type', 'referee');
 
-        return view('admin.referees.index', compact('referees', 'year'));
+    // ✅ FILTRO ZONA: Admin zonali vedono solo la loro zona
+    if (!$isNationalAdmin) {
+        $query->where('zone_id', $user->zone_id);
     }
+
+    // ✅ FILTRO STATUS con default 'active'
+    $status = $request->get('status', 'active');
+    if ($status === 'active') {
+        $query->where('is_active', true);
+    } elseif ($status === 'inactive') {
+        $query->where('is_active', false);
+    }
+    // Se status === 'all' non applica filtri
+
+    // ✅ RICERCA
+    if ($request->filled('search')) {
+        $search = $request->search;
+        $query->where(function($q) use ($search) {
+            $q->where('name', 'LIKE', "%{$search}%")
+              ->orWhere('email', 'LIKE', "%{$search}%")
+              ->orWhere('referee_code', 'LIKE', "%{$search}%");
+        });
+    }
+
+    // ✅ FILTRO LIVELLO
+    if ($request->filled('level')) {
+        $query->where('level', $request->level);
+    }
+
+    // ✅ FILTRO ZONA (solo per CRC/SuperAdmin)
+    if ($request->filled('zone_id') && $isNationalAdmin) {
+        $query->where('zone_id', $request->zone_id);
+    }
+
+    // ✅ ORDINAMENTO
+    $sortField = $request->get('sort', 'name');
+    $sortDirection = $request->get('direction', 'asc');
+
+    switch ($sortField) {
+        case 'zone_name':
+            $query->leftJoin('zones', 'users.zone_id', '=', 'zones.id')
+                  ->orderBy('zones.name', $sortDirection)
+                  ->select('users.*');
+            break;
+        case 'last_name':
+            $query->orderByRaw("SUBSTRING_INDEX(name, ' ', -1) {$sortDirection}");
+            break;
+        default:
+            $query->orderBy($sortField, $sortDirection);
+            break;
+    }
+
+    // Ordinamento secondario per consistenza
+    if ($sortField !== 'name') {
+        $query->orderBy('name', 'asc');
+    }
+
+    $referees = $query->paginate(20)->withQueryString();
+
+    // ✅ ZONE per filtro - solo per CRC/SuperAdmin
+    $zones = $isNationalAdmin
+        ? Zone::orderBy('name')->get()
+        : Zone::where('id', $user->zone_id)->get();
+
+    return view('admin.referees.index', compact('referees', 'zones', 'isNationalAdmin'));
+}
 
 
     /**
@@ -360,47 +413,53 @@ class RefereeController extends Controller
     /**
      * Remove the specified referee.
      */
-    public function destroy(User $referee): RedirectResponse
-    {
-        if (!$referee->isReferee()) {
-            abort(404, 'Arbitro non trovato.');
-        }
-
-        $this->checkRefereeAccess($referee);
-
-        // Check if referee has active assignments
-        if ($referee->assignments()->whereHas('tournament', function ($q) {
-            $q->whereIn('status', ['open', 'closed', 'assigned']);
-        })->exists()) {
-            return redirect()
-                ->route('admin.referees.index')
-                ->with('error', 'Impossibile eliminare un arbitro con assegnazioni attive.');
-        }
-
-        $name = $referee->name;
-
-        try {
-            DB::beginTransaction();
-
-            // ✅ Delete referee extension if exists (cascade will handle this, but be explicit)
-            $referee->referee()?->delete();
-
-            // ✅ Delete user (main record)
-            $referee->delete();
-
-            DB::commit();
-
-            return redirect()
-                ->route('admin.referees.index')
-                ->with('success', "Arbitro \"{$name}\" eliminato con successo!");
-        } catch (\Exception $e) {
-            DB::rollback();
-
-            return redirect()
-                ->route('admin.referees.index')
-                ->with('error', 'Errore durante l\'eliminazione: ' . $e->getMessage());
-        }
+public function destroy(User $referee): RedirectResponse
+{
+    if (!$referee->isReferee()) {
+        abort(404, 'Arbitro non trovato.');
     }
+
+    $this->checkRefereeAccess($referee);
+
+    $name = $referee->name;
+
+    try {
+        DB::beginTransaction();
+
+        // ✅ ELIMINA PRIMA LE ASSEGNAZIONI (CASCADE DELETE)
+        $assignmentsDeleted = $referee->assignments()->delete();
+
+        // ✅ ELIMINA ANCHE LE DISPONIBILITÀ
+        $availabilitiesDeleted = $referee->availabilities()->delete();
+
+        // ✅ ELIMINA DATI ESTESI REFEREE SE ESISTONO
+        $referee->referee()?->delete();
+
+        // ✅ ELIMINA L'UTENTE ARBITRO
+        $referee->delete();
+
+        DB::commit();
+
+        $message = "Arbitro \"{$name}\" eliminato con successo!";
+        if ($assignmentsDeleted > 0) {
+            $message .= " Rimosse anche {$assignmentsDeleted} assegnazioni.";
+        }
+        if ($availabilitiesDeleted > 0) {
+            $message .= " Rimosse {$availabilitiesDeleted} disponibilità.";
+        }
+
+        return redirect()
+            ->route('admin.referees.index')
+            ->with('success', $message);
+
+    } catch (\Exception $e) {
+        DB::rollback();
+
+        return redirect()
+            ->route('admin.referees.index')
+            ->with('error', 'Errore durante l\'eliminazione: ' . $e->getMessage());
+    }
+}
 
     /**
      * Generate unique referee code.

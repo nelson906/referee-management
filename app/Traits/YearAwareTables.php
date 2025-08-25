@@ -1,7 +1,7 @@
 <?php
 
 // app/Traits/YearAwareTables.php
-namespace App\Http\Traits;
+namespace App\Traits;
 
 trait YearAwareTables
 {

@@ -28,13 +28,13 @@ class MasterMigrationSeeder extends Seeder
     {
         // Controlla se è abilitata la modalità dry-run
         // $this->dryRun = env('MIGRATION_DRY_RUN', false) ||
-        //$this->command->confirm('Eseguire in modalità DRY-RUN (solo simulazione)?', false);
+        $this->command->confirm('Eseguire in modalità DRY-RUN (solo simulazione)?', false);
 
         // if ($this->dryRun) {
-        //     //$this->command->info('🧪 MODALITÀ DRY-RUN ATTIVATA - Nessuna modifica al database');
+        //     $this->command->info('🧪 MODALITÀ DRY-RUN ATTIVATA - Nessuna modifica al database');
         // }
 
-        //$this->command->info('🚀 Inizio MasterMigrationSeeder - Migrazione Unificata...');
+        $this->command->info('🚀 Inizio MasterMigrationSeeder - Migrazione Unificata...');
         $this->setupMockCommand();
 
         // 1. Setup connessione database reale
@@ -42,7 +42,7 @@ class MasterMigrationSeeder extends Seeder
 
         // 2. Verifica database
         if (!$this->checkRealDatabase()) {
-            //$this->command->error('❌ Impossibile connettersi al database Sql1466239_4');
+            $this->command->error('❌ Impossibile connettersi al database Sql1466239_4');
             return;
         }
 
@@ -50,7 +50,7 @@ class MasterMigrationSeeder extends Seeder
         $this->initializeStats();
 
         // 4. Esegui migrazione nell'ordine corretto (USER CENTRIC approach)
-        //$this->command->info('✅ Database verificato, procedo con migrazione USER CENTRIC...');
+        $this->command->info('✅ Database verificato, procedo con migrazione USER CENTRIC...');
 
         $this->call(ZoneSeeder::class);
         $this->call(TournamentTypeSeeder::class);
@@ -73,7 +73,7 @@ class MasterMigrationSeeder extends Seeder
         // 6. Chiudi connessione
         $this->closeRealDatabaseConnection();
 
-        //$this->command->info('✅ MasterMigrationSeeder completato!');
+        $this->command->info('✅ MasterMigrationSeeder completato!');
     }
 
     /**
@@ -88,6 +88,7 @@ class MasterMigrationSeeder extends Seeder
             'database' => 'Sql1466239_4', // Database reale
             'username' => config('database.connections.mysql.username'),
             'password' => config('database.connections.mysql.password'),
+            'unix_socket' => config('database.connections.mysql.unix_socket'),
             'charset' => 'utf8mb4',
             'collation' => 'utf8mb4_unicode_ci',
             'prefix' => '',
@@ -97,7 +98,7 @@ class MasterMigrationSeeder extends Seeder
 
         config(['database.connections.real' => $realDbConfig]);
 
-        //$this->command->info("🔗 Connessione al database reale Sql1466239_4 configurata");
+        $this->command->info("🔗 Connessione al database reale Sql1466239_4 configurata");
     }
 
     /**
@@ -112,15 +113,15 @@ class MasterMigrationSeeder extends Seeder
             $requiredTables = ['arbitri', 'circoli', 'gare_2025'];
             foreach ($requiredTables as $table) {
                 if (!$this->tableExists('real', $table)) {
-                    //$this->command->error("❌ Tabella '{$table}' non trovata in Sql1466239_4");
+                    $this->command->error("❌ Tabella '{$table}' non trovata in Sql1466239_4");
                     return false;
                 }
             }
 
-            //$this->command->info('✅ Database Sql1466239_4 verificato');
+            $this->command->info('✅ Database Sql1466239_4 verificato');
             return true;
         } catch (\Exception $e) {
-            //$this->command->error('❌ Errore connessione Sql1466239_4: ' . $e->getMessage());
+            $this->command->error('❌ Errore connessione Sql1466239_4: ' . $e->getMessage());
             return false;
         }
     }
@@ -131,10 +132,10 @@ class MasterMigrationSeeder extends Seeder
     private function createZones()
     {
         if (Zone::count() > 0) {
-            //$this->command->info('✅ Zone already exist (' . Zone::count() . ' found)');
+            $this->command->info('✅ Zone already exist (' . Zone::count() . ' found)');
             return;
         }
-        //$this->command->info('📍 Creazione zones...');
+        $this->command->info('📍 Creazione zones...');
 
         $zones = [
             ['code' => 'SZR1', 'name' => 'Sezione Zonale Regole 1', 'description' => 'Piemonte-Valle d\'Aosta-Liguria', 'is_national' => false],
@@ -165,7 +166,7 @@ class MasterMigrationSeeder extends Seeder
         }
 
         $this->stats['zones'] = count($zones);
-        //$this->command->info("✅ Create {$this->stats['zones']} zone");
+        $this->command->info("✅ Create {$this->stats['zones']} zone");
     }
 
     /**
@@ -174,7 +175,7 @@ class MasterMigrationSeeder extends Seeder
      */
     private function createAdminUsers()
     {
-        //$this->command->info('👤 Creazione utenti admin zonali e nazionali...');
+        $this->command->info('👤 Creazione utenti admin zonali e nazionali...');
 
         // Controlla se esistono già admin
         $existingAdmins = DB::table('users')
@@ -182,7 +183,7 @@ class MasterMigrationSeeder extends Seeder
             ->count();
 
         if ($existingAdmins > 0) {
-            //$this->command->info("✅ Admin già esistenti ({$existingAdmins} trovati)");
+            $this->command->info("✅ Admin già esistenti ({$existingAdmins} trovati)");
             return;
         }
 
@@ -203,6 +204,8 @@ class MasterMigrationSeeder extends Seeder
 
             $adminData = [
                 'name' => $adminName,
+                'first_name' => 'Amministratore',
+                'last_name' => $zone->name,
                 'email' => $email,
                 'password' => bcrypt($this->generateAdminPassword($zone->code)),
                 'user_type' => $userType,
@@ -223,9 +226,9 @@ class MasterMigrationSeeder extends Seeder
                 $createdCount++;
 
                 if (!$this->dryRun) {
-                    //$this->command->info("  ✅ {$adminName}");
-                    //$this->command->line("     Email: {$email}");
-                    //$this->command->line("     Password temporanea: " . $this->getReadablePassword($zone->code));
+                    $this->command->info("  ✅ {$adminName}");
+                    $this->command->line("     Email: {$email}");
+                    $this->command->line("     Password temporanea: " . $this->getReadablePassword($zone->code));
                 }
             }
         }
@@ -234,10 +237,10 @@ class MasterMigrationSeeder extends Seeder
         $this->createSuperAdmin();
 
         $this->stats['admin_users'] = $createdCount;
-        //$this->command->info("✅ Creati {$createdCount} admin users");
+        $this->command->info("✅ Creati {$createdCount} admin users");
 
         if (!$this->dryRun) {
-            //$this->command->warn("⚠️  IMPORTANTE: Cambiare le password temporanee al primo accesso!");
+            $this->command->warn("⚠️  IMPORTANTE: Cambiare le password temporanee al primo accesso!");
         }
     }
 
@@ -252,15 +255,17 @@ class MasterMigrationSeeder extends Seeder
                 ->first();
 
             if ($existingSuperAdmin) {
-                //$this->command->info("✅ Super Admin già esistente: {$existingSuperAdmin->name}");
+                $this->command->info("✅ Super Admin già esistente: {$existingSuperAdmin->name}");
                 return;
             }
         }
 
         $superAdminData = [
             'name' => 'Super Amministratore FIG',
+            'first_name' => 'Super',
+            'last_name' => 'Amministratore FIG',
             'email' => 'superadmin@federgolf.it',
-            'password' => bcrypt('password'),
+            'password' => bcrypt('SuperAdmin@Golf2024!'),
             'user_type' => 'super_admin',
             'zone_id' => null, // Super admin non è limitato a una zona
             'email_verified_at' => now(),
@@ -276,9 +281,9 @@ class MasterMigrationSeeder extends Seeder
         );
 
         if ($success && !$this->dryRun) {
-            //$this->command->info("  ✅ Super Amministratore FIG");
-            //$this->command->line("     Email: superadmin@federgolf.it");
-            //$this->command->line("     Password temporanea: SuperAdmin@Golf2024!");
+            $this->command->info("  ✅ Super Amministratore FIG");
+            $this->command->line("     Email: superadmin@federgolf.it");
+            $this->command->line("     Password temporanea: SuperAdmin@Golf2024!");
         }
     }
 
@@ -306,10 +311,10 @@ class MasterMigrationSeeder extends Seeder
     private function createTournamentTypes()
     {
         if (TournamentType::count() > 0) {
-            //$this->command->info('✅ TournamentType already exist (' . TournamentType::count() . ' found)');
+            $this->command->info('✅ TournamentType already exist (' . TournamentType::count() . ' found)');
             return;
         }
-        //$this->command->info('🏆 Creazione tournament types da dati reali (gare_2025.tipo)...');
+        $this->command->info('🏆 Creazione tournament types da dati reali (gare_2025.tipo)...');
 
         // SEMPRE leggi i tipi reali dal database Sql1466239_4
         try {
@@ -320,10 +325,10 @@ class MasterMigrationSeeder extends Seeder
                 ->where('tipo', '!=', '')
                 ->pluck('tipo');
 
-            //$this->command->info("🔍 Trovati {$tipiReali->count()} tipi reali di torneo: " . $tipiReali->implode(', '));
+            $this->command->info("🔍 Trovati {$tipiReali->count()} tipi reali di torneo: " . $tipiReali->implode(', '));
         } catch (\Exception $e) {
-            //$this->command->error("❌ Errore lettura tipi torneo: {$e->getMessage()}");
-            //$this->command->info("🔄 Fallback a tipi di default...");
+            $this->command->error("❌ Errore lettura tipi torneo: {$e->getMessage()}");
+            $this->command->info("🔄 Fallback a tipi di default...");
             $tipiReali = collect(['T18', 'GN-72', 'CI']); // Tipi di default
         }
 
@@ -343,7 +348,7 @@ class MasterMigrationSeeder extends Seeder
         }
 
         $this->stats['tournament_types'] = $createdCount;
-        //$this->command->info("✅ Creati {$createdCount} tournament types da dati reali");
+        $this->command->info("✅ Creati {$createdCount} tournament types da dati reali");
     }
 
     /**
@@ -530,14 +535,14 @@ class MasterMigrationSeeder extends Seeder
      */
     private function migrateArbitri()
     {
-        //$this->command->info('👥 Migrazione arbitri (approccio USER CENTRIC)...');
+        $this->command->info('👥 Migrazione arbitri (approccio USER CENTRIC)...');
 
         // SEMPRE leggi dal database reale (anche in dry-run per statistiche corrette)
         try {
             $arbitri = DB::connection('real')->table('arbitri')->get();
-            //$this->command->info("🔍 Trovati {$arbitri->count()} arbitri nel database reale Sql1466239_4");
+            $this->command->info("🔍 Trovati {$arbitri->count()} arbitri nel database reale Sql1466239_4");
         } catch (\Exception $e) {
-            //$this->command->error("❌ Errore lettura arbitri: {$e->getMessage()}");
+            $this->command->error("❌ Errore lettura arbitri: {$e->getMessage()}");
             return;
         }
 
@@ -549,7 +554,7 @@ class MasterMigrationSeeder extends Seeder
             // Skip record GIOV - controllo su Livello_2025
             if ($this->isGiovRecord($arbitro)) {
                 $giovSkipped++;
-                //$this->command->info("⏭️ Saltato record GIOV: {$arbitro->Nome} {$arbitro->Cognome}");
+                $this->command->info("⏭️ Saltato record GIOV: {$arbitro->Nome} {$arbitro->Cognome}");
                 continue;
             }
 
@@ -559,23 +564,25 @@ class MasterMigrationSeeder extends Seeder
 
             if ($originalEmail !== $email) {
                 $conflictCount++;
-                //$this->command->info("🔄 Conflitto email risolto: {$originalEmail} → {$email}");
+                $this->command->info("🔄 Conflitto email risolto: {$originalEmail} → {$email}");
             }
 
             // Crea record user (con dati referee integrati)
             $userData = [
                 'name' => trim($arbitro->Nome . ' ' . $arbitro->Cognome),
+                'first_name' => trim($arbitro->Nome),
+                'last_name' => trim($arbitro->Cognome),
                 'email' => $email,
                 'password' => bcrypt($arbitro->Password),
                 'user_type' => 'referee',
                 'zone_id' => $this->mapZoneFromArbitro($arbitro),
-                'referee_code' => $arbitro->codice ?? $this->generateRefereeCode(),
+                'referee_code' => $arbitro->Password ?? $this->generateRefereeCode(),
                 'level' => $this->mapQualification($arbitro->Livello_2025 ?? 'aspirante'),
                 'category' => $this->mapCategory($arbitro->categoria ?? 'misto'),
                 'certified_date' => $this->parseDate($arbitro->Prima_Nomina ?? null),
                 'phone' => $arbitro->Cellulare ?? null,
                 'city' => $arbitro->Citta ?? null,
-                'is_active' => $this->mapBooleanValue($arbitro->attivo ?? 'Vero'),
+                'is_active' => ($this->mapQualification($arbitro->Livello_2025 === "ARCH")) ? false : true,
                 'email_verified_at' => now(),
                 'created_at' => now(),
                 'updated_at' => now(),
@@ -611,7 +618,7 @@ class MasterMigrationSeeder extends Seeder
         $this->stats['conflitti_risolti'] = $conflictCount;
         $this->stats['record_giov_saltati'] = $giovSkipped;
 
-        //$this->command->info("✅ Migrati {$processedCount} arbitri (conflitti risolti: {$conflictCount}, GIOV saltati: {$giovSkipped})");
+        $this->command->info("✅ Migrati {$processedCount} arbitri (conflitti risolti: {$conflictCount}, GIOV saltati: {$giovSkipped})");
     }
 
 
@@ -623,13 +630,13 @@ class MasterMigrationSeeder extends Seeder
      */
     private function migrateCircoli()
     {
-        //$this->command->info('⛳ Migrazione circoli...');
+        $this->command->info('⛳ Migrazione circoli...');
 
         try {
             $circoli = DB::connection('real')->table('circoli')->get();
-            //$this->command->info("🔍 Trovati {$circoli->count()} circoli nel database reale Sql1466239_4");
+            $this->command->info("🔍 Trovati {$circoli->count()} circoli nel database reale Sql1466239_4");
         } catch (\Exception $e) {
-            //$this->command->error("❌ Errore lettura circoli: {$e->getMessage()}");
+            $this->command->error("❌ Errore lettura circoli: {$e->getMessage()}");
             return;
         }
 
@@ -653,7 +660,7 @@ class MasterMigrationSeeder extends Seeder
                     ->first();
 
                 if ($existingClub) {
-                    //$this->command->info("⏭️ Club già esistente: {$name} (Codice: {$code})");
+                    $this->command->info("⏭️ Club già esistente: {$name} (Codice: {$code})");
                     $skippedCount++;
                     continue;
                 }
@@ -695,7 +702,7 @@ class MasterMigrationSeeder extends Seeder
         $this->createVirtualTBAClubs();
 
         $this->stats['circoli'] = $processedCount;
-        //$this->command->info("✅ Migrati {$processedCount} circoli (saltati: {$skippedCount}) + circoli TBA virtuali");
+        $this->command->info("✅ Migrati {$processedCount} circoli (saltati: {$skippedCount}) + circoli TBA virtuali");
     }
 
     /**
@@ -752,7 +759,7 @@ class MasterMigrationSeeder extends Seeder
         }
 
         if ($name !== $originalName) {
-            //$this->command->info("🔄 Nome club modificato: '{$originalName}' → '{$name}'");
+            $this->command->info("🔄 Nome club modificato: '{$originalName}' → '{$name}'");
         }
 
         return $name;
@@ -791,7 +798,7 @@ class MasterMigrationSeeder extends Seeder
         }
 
         if ($code !== strtoupper($originalCode)) {
-            //$this->command->info("🔄 Codice club modificato: '{$originalCode}' → '{$code}'");
+            $this->command->info("🔄 Codice club modificato: '{$originalCode}' → '{$code}'");
         }
 
         return $code;
@@ -802,9 +809,9 @@ class MasterMigrationSeeder extends Seeder
      */
     private function debugCircoloStructure($circolo)
     {
-        //$this->command->info("🔍 DEBUG - Struttura record circolo:");
+        $this->command->info("🔍 DEBUG - Struttura record circolo:");
         foreach ($circolo as $key => $value) {
-            //$this->command->line("  {$key}: " . ($value ?? 'NULL'));
+            $this->command->line("  {$key}: " . ($value ?? 'NULL'));
         }
     }
 
@@ -837,7 +844,7 @@ class MasterMigrationSeeder extends Seeder
                     ->where('name', 'LIKE', "%{$gara->$field}%")
                     ->first();
                 if ($club) {
-                    //$this->command->info("🎯 Club trovato via {$field}: {$club->name}");
+                    $this->command->info("🎯 Club trovato via {$field}: {$club->name}");
                     return $club->id;
                 }
             }
@@ -853,7 +860,7 @@ class MasterMigrationSeeder extends Seeder
                 ->first();
 
             if ($tbaClub) {
-                //$this->command->info("🎯 Usato TBA per zona {$zone->code}: {$tbaClub->name}");
+                $this->command->info("🎯 Usato TBA per zona {$zone->code}: {$tbaClub->name}");
                 return $tbaClub->id;
             }
         }
@@ -862,7 +869,7 @@ class MasterMigrationSeeder extends Seeder
         $fallbackClub = DB::table('clubs')->first();
 
         if ($fallbackClub) {
-            //$this->command->warn("⚠️ Fallback al primo club disponibile: {$fallbackClub->name}");
+            $this->command->warn("⚠️ Fallback al primo club disponibile: {$fallbackClub->name}");
             return $fallbackClub->id;
         }
 
@@ -877,9 +884,9 @@ class MasterMigrationSeeder extends Seeder
     {
         try {
             $zones = DB::table('zones')->get();
-            //$this->command->info("🏗️ Creazione circoli TBA per {$zones->count()} zone");
+            $this->command->info("🏗️ Creazione circoli TBA per {$zones->count()} zone");
         } catch (\Exception $e) {
-            //$this->command->error("❌ Errore lettura zone per TBA: {$e->getMessage()}");
+            $this->command->error("❌ Errore lettura zone per TBA: {$e->getMessage()}");
             return;
         }
 
@@ -897,7 +904,7 @@ class MasterMigrationSeeder extends Seeder
                     ->first();
 
                 if ($existingTBA) {
-                    //$this->command->info("⏭️ TBA già esistente per zona {$zone->code}: {$existingTBA->name}");
+                    $this->command->info("⏭️ TBA già esistente per zona {$zone->code}: {$existingTBA->name}");
                     continue;
                 }
             }
@@ -923,7 +930,7 @@ class MasterMigrationSeeder extends Seeder
             }
         }
 
-        //$this->command->info("  → Creati {$createdCount} circoli TBA virtuali");
+        $this->command->info("  → Creati {$createdCount} circoli TBA virtuali");
     }
 
 
@@ -933,11 +940,11 @@ class MasterMigrationSeeder extends Seeder
     private function cleanupDuplicateClubs()
     {
         if ($this->dryRun) {
-            //$this->command->info("🧪 DRY-RUN: Cleanup clubs duplicati");
+            $this->command->info("🧪 DRY-RUN: Cleanup clubs duplicati");
             return;
         }
 
-        //$this->command->info("🧹 Cleanup clubs duplicati...");
+        $this->command->info("🧹 Cleanup clubs duplicati...");
 
         // Trova duplicati per nome
         $duplicateNames = DB::table('clubs')
@@ -957,7 +964,7 @@ class MasterMigrationSeeder extends Seeder
             $toDelete = $duplicates->skip(1);
 
             foreach ($toDelete as $duplicate) {
-                //$this->command->info("🗑️ Eliminato club duplicato: {$duplicate->name} (ID: {$duplicate->id})");
+                $this->command->info("🗑️ Eliminato club duplicato: {$duplicate->name} (ID: {$duplicate->id})");
                 DB::table('clubs')->where('id', $duplicate->id)->delete();
             }
         }
@@ -979,7 +986,7 @@ class MasterMigrationSeeder extends Seeder
             $toDelete = $duplicates->skip(1);
 
             foreach ($toDelete as $duplicate) {
-                //$this->command->info("🗑️ Eliminato club codice duplicato: {$duplicate->code} (ID: {$duplicate->id})");
+                $this->command->info("🗑️ Eliminato club codice duplicato: {$duplicate->code} (ID: {$duplicate->id})");
                 DB::table('clubs')->where('id', $duplicate->id)->delete();
             }
         }
@@ -992,7 +999,7 @@ class MasterMigrationSeeder extends Seeder
      */
     private function migrateGare()
     {
-        //$this->command->info('🏆 Migrazione tornei multi-anno...');
+        $this->command->info('🏆 Migrazione tornei multi-anno...');
 
         $currentYear = date('Y');
 
@@ -1019,7 +1026,7 @@ class MasterMigrationSeeder extends Seeder
                 DB::table($destTable)->insert((array) $row);
             }
 
-            //$this->command->info("✅ Anno {$year}: copiati {$data->count()} record in {$destTable}");
+            $this->command->info("✅ Anno {$year}: copiati {$data->count()} record in {$destTable}");
 
 
             // POPOLA ASSIGNMENTS E AVAILABILITIES PER OGNI ANNO!
@@ -1175,19 +1182,19 @@ class MasterMigrationSeeder extends Seeder
         DB::table('availabilities')->truncate();
         DB::statement("INSERT INTO availabilities SELECT * FROM availabilities_{$currentYear}");
 
-        //$this->command->info("✅ Copiate tabelle principali dall'anno {$currentYear}");
+        $this->command->info("✅ Copiate tabelle principali dall'anno {$currentYear}");
     }
     /**
      * Migra anno corrente in tournaments + popola assignments/availabilities
      */
     private function migrateCurrentYear($year)
     {
-        //$this->command->info("📅 Migrazione anno corrente {$year}...");
+        $this->command->info("📅 Migrazione anno corrente {$year}...");
 
         $sourceTable = "gare_{$year}";
 
         if (!$this->tableExists('real', $sourceTable)) {
-            //$this->command->error("❌ Tabella {$sourceTable} non trovata");
+            $this->command->error("❌ Tabella {$sourceTable} non trovata");
             return;
         }
 
@@ -1213,7 +1220,7 @@ class MasterMigrationSeeder extends Seeder
             ]);
         }
 
-        //$this->command->info("✅ Inseriti {$gare->count()} tornei in tournaments");
+        $this->command->info("✅ Inseriti {$gare->count()} tornei in tournaments");
 
         // STEP 2: Crea anche tournaments_2025 CON I CAMPI CSV
         $destTable = "tournaments_{$year}";
@@ -1230,7 +1237,7 @@ class MasterMigrationSeeder extends Seeder
             DB::table($destTable)->insert((array) $row);
         }
 
-        //$this->command->info("✅ Creata anche {$destTable} con tutti i campi CSV");
+        $this->command->info("✅ Creata anche {$destTable} con tutti i campi CSV");
 
         // STEP 3: Popola assignments_2025 e availabilities_2025
         $this->populateAssignmentsFromYear($year);
@@ -1238,7 +1245,7 @@ class MasterMigrationSeeder extends Seeder
 
     private function populateMainTournaments($year)
     {
-        //$this->command->info("📅 Popolamento tournaments principale da tournaments_{$year}...");
+        $this->command->info("📅 Popolamento tournaments principale da tournaments_{$year}...");
 
         // Disabilita foreign keys
         DB::statement('SET FOREIGN_KEY_CHECKS=0');
@@ -1264,7 +1271,7 @@ class MasterMigrationSeeder extends Seeder
 
         DB::statement('SET FOREIGN_KEY_CHECKS=1');
 
-        //$this->command->info("✅ Popolati " . $tornei->count() . " tornei in tabella tournaments principale");
+        $this->command->info("✅ Popolati " . $tornei->count() . " tornei in tabella tournaments principale");
     }
     private function createYearlyTables($year)
     {
@@ -1275,11 +1282,16 @@ class MasterMigrationSeeder extends Seeder
                 $table->id();
                 $table->foreignId('tournament_id');
                 $table->foreignId('user_id');
-                $table->foreignId('assigned_by_id');
-                $table->string('role');
+                $table->foreignId('assigned_by_id')->default(1);
+                $table->enum('role', ['Arbitro', 'Direttore di Torneo', 'Osservatore'])->default('Arbitro');
+                $table->text('notes')->nullable();
+                $table->boolean('is_confirmed')->default(false);
+                $table->timestamp('confirmed_at')->nullable();
                 $table->timestamp('assigned_at')->nullable();
+                $table->boolean('notification_sent')->default(false);
+                $table->timestamp('notification_sent_at')->nullable();
                 $table->timestamps();
-                $table->unique(['tournament_id', 'user_id', 'role']);
+                $table->unique(['tournament_id', 'user_id']);
             });
         }
 
@@ -1301,7 +1313,7 @@ class MasterMigrationSeeder extends Seeder
      */
     private function populateAssignmentsFromYear($year)
     {
-        //$this->command->info("📋 Popolamento assignments_{$year} e availabilities_{$year}...");
+        $this->command->info("📋 Popolamento assignments_{$year} e availabilities_{$year}...");
 
         // Crea le tabelle se non esistono
         $this->createYearlyTables($year);
@@ -1356,7 +1368,7 @@ class MasterMigrationSeeder extends Seeder
         $this->stats['assignments'] = ($this->stats['assignments'] ?? 0) + $assignCount;
         $this->stats['availabilities'] = ($this->stats['availabilities'] ?? 0) + $availCount;
 
-        //$this->command->info("✅ Create {$assignCount} assignments e {$availCount} availabilities per anno {$year}");
+        $this->command->info("✅ Create {$assignCount} assignments e {$availCount} availabilities per anno {$year}");
     }
 
     /**
@@ -1413,7 +1425,7 @@ class MasterMigrationSeeder extends Seeder
         return match ($qual) {
             'ARCH', 'ARCHIVIO' => RefereeLevelsHelper::normalize('Archivio'),
             'ASP', 'ASPIRANTE' => RefereeLevelsHelper::normalize('Aspirante'),
-            'PRIMO', 'PRIMO_LIVELLO', '1_LIVELLO', '1° LIVELLO' => RefereeLevelsHelper::normalize('1_livello'),
+            '1°', 'PRIMO_LIVELLO', '1_LIVELLO', '1° LIVELLO' => RefereeLevelsHelper::normalize('1_livello'),
             'REG', 'REGIONALE' => RefereeLevelsHelper::normalize('Regionale'),
             'NAZ', 'NAZIONALE' => RefereeLevelsHelper::normalize('Nazionale'),
             'INT', 'INTERNAZIONALE' => RefereeLevelsHelper::normalize('Internazionale'),
@@ -1495,7 +1507,7 @@ class MasterMigrationSeeder extends Seeder
                 }
             }
 
-            //$this->command->warn("⚠️ Impossibile parsare data: {$dateString}");
+            $this->command->warn("⚠️ Impossibile parsare data: {$dateString}");
             return null;
         }
     }
@@ -1645,6 +1657,7 @@ class MasterMigrationSeeder extends Seeder
                 'user_id' => $userId,
                 'assigned_by_id' => 1,
                 'role' => $role,
+                'is_confirmed'=> false,
                 'assigned_at' => now(),
                 'created_at' => now(),
                 'updated_at' => now(),
@@ -1794,7 +1807,7 @@ class MasterMigrationSeeder extends Seeder
 
         // In dry-run, simula il processo ma non accede al database
         if ($this->dryRun) {
-            //$this->command->info("🧪 DRY-RUN: Inversione nome '{$cleanName}'");
+            $this->command->info("🧪 DRY-RUN: Inversione nome '{$cleanName}'");
             return $cleanName;
         }
 
@@ -1805,7 +1818,7 @@ class MasterMigrationSeeder extends Seeder
             ->first();
 
         if ($directMatch) {
-            // //$this->command->info("✅ Match diretto: '{$cleanName}' (ID: {$directMatch->id})");
+            // $this->command->info("✅ Match diretto: '{$cleanName}' (ID: {$directMatch->id})");
             return $cleanName;
         }
 
@@ -1820,7 +1833,7 @@ class MasterMigrationSeeder extends Seeder
                 ->first();
 
             if ($invertedMatch) {
-                // //$this->command->info("🔄 Inversione riuscita: '{$cleanName}' → '{$invertedName}' (ID: {$invertedMatch->id})");
+                // $this->command->info("🔄 Inversione riuscita: '{$cleanName}' → '{$invertedName}' (ID: {$invertedMatch->id})");
                 return $invertedName;
             }
         }
@@ -1832,12 +1845,12 @@ class MasterMigrationSeeder extends Seeder
             ->first();
 
         if ($partialMatch) {
-            //$this->command->info("🔍 Match parziale: '{$cleanName}' → '{$partialMatch->name}' (ID: {$partialMatch->id})");
+            $this->command->info("🔍 Match parziale: '{$cleanName}' → '{$partialMatch->name}' (ID: {$partialMatch->id})");
             return $partialMatch->name;
         }
 
         // STEP 4: Nessun match trovato
-        //$this->command->warn("⚠️ Nessun match per: '{$cleanName}' (né diretto, né invertito, né parziale)");
+        $this->command->warn("⚠️ Nessun match per: '{$cleanName}' (né diretto, né invertito, né parziale)");
         return $cleanName; // Restituisce originale
     }
 
@@ -1897,14 +1910,14 @@ class MasterMigrationSeeder extends Seeder
                     ->first();
 
                 if ($match) {
-                    // //$this->command->info("🎯 Strategia " . ($index + 1) . " riuscita: '{$originalName}' → '{$candidate}'");
+                    // $this->command->info("🎯 Strategia " . ($index + 1) . " riuscita: '{$originalName}' → '{$candidate}'");
                     return $candidate;
                 }
             }
         }
 
         // Se nessuna strategia funziona, usa la prima (più probabile)
-        // //$this->command->info("🔄 Inversione multipla (strategia 1): '{$originalName}' → '{$strategy1}'");
+        // $this->command->info("🔄 Inversione multipla (strategia 1): '{$originalName}' → '{$strategy1}'");
         return $strategy1;
     }
     // ========================================
@@ -1917,7 +1930,7 @@ class MasterMigrationSeeder extends Seeder
     private function dryRunInsert(string $table, array $data, string $description = ''): bool
     {
         if ($this->dryRun) {
-            //$this->command->info("🧪 DRY-RUN: " . ($description ?: "Insert in {$table}") . " su tabella '{$table}'");
+            $this->command->info("🧪 DRY-RUN: " . ($description ?: "Insert in {$table}") . " su tabella '{$table}'");
             return true;
         }
 
@@ -1930,7 +1943,7 @@ class MasterMigrationSeeder extends Seeder
     private function dryRunUpdateOrInsert(string $table, array $attributes, array $values, string $description = ''): bool
     {
         if ($this->dryRun) {
-            //$this->command->info("🧪 DRY-RUN: " . ($description ?: "UpdateOrInsert in {$table}") . " su tabella '{$table}'");
+            $this->command->info("🧪 DRY-RUN: " . ($description ?: "UpdateOrInsert in {$table}") . " su tabella '{$table}'");
             return true;
         }
 
@@ -1943,7 +1956,7 @@ class MasterMigrationSeeder extends Seeder
     private function dryRunInsertGetId(string $table, array $data, string $description = ''): ?int
     {
         if ($this->dryRun) {
-            //$this->command->info("🧪 DRY-RUN: " . ($description ?: "InsertGetId in {$table}") . " su tabella '{$table}'");
+            $this->command->info("🧪 DRY-RUN: " . ($description ?: "InsertGetId in {$table}") . " su tabella '{$table}'");
             return 999;
         }
 
@@ -1993,24 +2006,24 @@ class MasterMigrationSeeder extends Seeder
      */
     private function printFinalStats()
     {
-        //$this->command->info("\n📊 STATISTICHE MIGRAZIONE MASTER:");
-        //$this->command->line("┌─────────────────────────────────────┐");
-        //$this->command->line("│             MIGRAZIONE              │");
-        //$this->command->line("├─────────────────────────────────────┤");
-        //$this->command->line("│ Zone:                    {$this->formatStat($this->stats['zones'])} │");
-        //$this->command->line("│ Admin Users:             {$this->formatStat($this->stats['admin_users'])} │");  // ✅ AGGIUNTO
-        //$this->command->line("│ Tournament Types:        {$this->formatStat($this->stats['tournament_types'])} │");
-        //$this->command->line("│ Arbitri:                 {$this->formatStat($this->stats['arbitri'])} │");
-        //$this->command->line("│ Circoli:                 {$this->formatStat($this->stats['circoli'])} │");
-        //$this->command->line("│ Tornei:                  {$this->formatStat($this->stats['tornei'])} │");
-        //$this->command->line("│ Disponibilità:           {$this->formatStat($this->stats['disponibilita'])} │");
-        //$this->command->line("│ Assegnazioni:            {$this->formatStat($this->stats['assegnazioni'])} │");
-        //$this->command->line("├─────────────────────────────────────┤");
-        //$this->command->line("│             PULIZIA                 │");
-        //$this->command->line("├─────────────────────────────────────┤");
-        //$this->command->line("│ Conflitti email risolti: {$this->formatStat($this->stats['conflitti_risolti'])} │");
-        //$this->command->line("│ Record GIOV saltati:     {$this->formatStat($this->stats['record_giov_saltati'])} │");
-        //$this->command->line("└─────────────────────────────────────┘");
+        $this->command->info("\n📊 STATISTICHE MIGRAZIONE MASTER:");
+        $this->command->line("┌─────────────────────────────────────┐");
+        $this->command->line("│             MIGRAZIONE              │");
+        $this->command->line("├─────────────────────────────────────┤");
+        $this->command->line("│ Zone:                    {$this->formatStat($this->stats['zones'])} │");
+        $this->command->line("│ Admin Users:             {$this->formatStat($this->stats['admin_users'])} │");  // ✅ AGGIUNTO
+        $this->command->line("│ Tournament Types:        {$this->formatStat($this->stats['tournament_types'])} │");
+        $this->command->line("│ Arbitri:                 {$this->formatStat($this->stats['arbitri'])} │");
+        $this->command->line("│ Circoli:                 {$this->formatStat($this->stats['circoli'])} │");
+        $this->command->line("│ Tornei:                  {$this->formatStat($this->stats['tornei'])} │");
+        $this->command->line("│ Disponibilità:           {$this->formatStat($this->stats['disponibilita'])} │");
+        $this->command->line("│ Assegnazioni:            {$this->formatStat($this->stats['assegnazioni'])} │");
+        $this->command->line("├─────────────────────────────────────┤");
+        $this->command->line("│             PULIZIA                 │");
+        $this->command->line("├─────────────────────────────────────┤");
+        $this->command->line("│ Conflitti email risolti: {$this->formatStat($this->stats['conflitti_risolti'])} │");
+        $this->command->line("│ Record GIOV saltati:     {$this->formatStat($this->stats['record_giov_saltati'])} │");
+        $this->command->line("└─────────────────────────────────────┘");
     }
     /**
      * Formatta statistiche per output allineato
@@ -2027,9 +2040,9 @@ class MasterMigrationSeeder extends Seeder
     {
         try {
             DB::disconnect('real');
-            //$this->command->info('🔌 Connessione database Sql1466239_4 chiusa');
+            $this->command->info('🔌 Connessione database Sql1466239_4 chiusa');
         } catch (\Exception $e) {
-            //$this->command->warn('⚠️ Errore chiusura connessione: ' . $e->getMessage());
+            $this->command->warn('⚠️ Errore chiusura connessione: ' . $e->getMessage());
         }
     }
     /**
@@ -2057,7 +2070,7 @@ class MasterMigrationSeeder extends Seeder
             // COPIA STRUTTURA ESATTA da gare_YYYY con TUTTI i campi!
             DB::statement("CREATE TABLE {$tableName} LIKE gare_{$year}");
 
-            //$this->command->info("✅ Creata tabella {$tableName} con TUTTI i campi CSV");
+            $this->command->info("✅ Creata tabella {$tableName} con TUTTI i campi CSV");
         }
     }
 
@@ -2535,4 +2548,13 @@ class MasterMigrationSeeder extends Seeder
             return null;
         }
     }
+
+    /**
+     * Risolve zona ID da stringa
+     */
+    private function resolveZoneId($zonaString)
+    {
+        return $this->resolveZoneFromString($zonaString) ?? 1;
+    }
+
 }

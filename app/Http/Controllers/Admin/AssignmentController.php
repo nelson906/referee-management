@@ -2,69 +2,118 @@
 
 namespace App\Http\Controllers\Admin;
 
-use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Controller;
-use App\Models\Assignment;
+use App\Models\YearlyAssignment;
+use App\Models\YearlyTournament;
 use App\Models\Tournament;
+use App\Models\Assignment;
 use App\Models\User;
+use App\Services\YearService;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
 use Carbon\Carbon;
-use App\Services\DocumentGenerationService;
-use App\Models\Availability;
+use Illuminate\Support\Facades\DB;
 
 class AssignmentController extends Controller
 {
-
-    protected function getAssignmentTable()
+    public function index(Request $request, $tournamentId = null): View
     {
-        $year = session('selected_year', date('Y'));
-        return "assignments_{$year}";
-    }
-    protected $documentService;
-
-    public function __construct(DocumentGenerationService $documentService)
-    {
-        $this->documentService = $documentService;
-    }
-    /**
-     * Display assignments for a tournament
-     */
-    public function index(Request $request, $tournamentId = null)
-    {
-        // Se c'è un torneo specifico, imposta l'anno
+        // Gestione anno
         if ($tournamentId) {
             $tournament = Tournament::findOrFail($tournamentId);
             $year = Carbon::parse($tournament->start_date)->year;
-            session(['selected_year' => $year]);
+            YearService::setYear($year);
         }
 
-        $year = session('selected_year', date('Y'));
+        $year = YearService::getCurrentYear();
 
-        // Query diretta alla tabella corretta
-        $assignments = DB::table("assignments_{$year} as a")
-            ->join("tournaments_{$year} as t", 'a.tournament_id', '=', 't.id')
-            ->join('users as u', 'a.user_id', '=', 'u.id')
-            ->select(
-                'a.*',
-                't.name as tournament_name',
-                't.start_date',
-                'u.name as referee_name'
-            )
-            ->when($tournamentId, function($q) use ($tournamentId) {
-                $q->where('a.tournament_id', $tournamentId);
-            })
-            ->orderBy('t.start_date', 'desc')
-            ->paginate(20);
+        // Verifica che la tabella esista
+        if (!YearService::tableExists('assignments', $year)) {
+            return view('admin.assignments.index', [
+                'assignments' => collect(),
+                'year' => $year,
+                'tournaments' => collect(),
+                'referees' => User::where('user_type', 'referee')->where('is_active', true)->get()
+            ]);
+        }
 
-        return view('admin.assignments.index', compact('assignments', 'year'));
+        // Carica arbitri
+        $referees = User::where('user_type', 'referee')
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get();
+
+        // Carica tornei per l'anno selezionato
+        $tournaments = collect();
+        if (YearService::tableExists('tournaments', $year)) {
+            $tournaments = YearlyTournament::forYear($year)
+                ->with(['club'])
+                ->orderBy('start_date', 'desc')
+                ->get();
+        }
+
+        // Query assegnazioni
+        $assignmentsQuery = YearlyAssignment::forYear($year)
+            ->with([
+                'user',
+                'assignedBy'
+            ]);
+
+        // Applica filtri
+        if ($tournamentId) {
+            $assignmentsQuery->where('tournament_id', $tournamentId);
+        }
+
+        if ($request->filled('tournament_id') && !$tournamentId) {
+            $assignmentsQuery->where('tournament_id', $request->tournament_id);
+        }
+
+        if ($request->filled('user_id')) {
+            $assignmentsQuery->where('user_id', $request->user_id);
+        }
+
+        // Ottieni assegnazioni
+        $assignments = $assignmentsQuery
+            ->orderBy('created_at', 'desc')
+            ->paginate(20)
+            ->withQueryString();
+
+        // Carica i tornei separatamente per evitare problemi di relazione
+        $tournamentIds = $assignments->pluck('tournament_id')->unique();
+        $tournamentsData = [];
+
+        if ($tournamentIds->isNotEmpty() && YearService::tableExists('tournaments', $year)) {
+            $tournamentsData = YearlyTournament::forYear($year)
+                ->with('club')
+                ->whereIn('id', $tournamentIds)
+                ->get()
+                ->keyBy('id');
+        }
+
+        // Trasforma i dati per la view
+        $assignments->getCollection()->transform(function ($assignment) use ($tournamentsData) {
+            $assignment->referee_name = $assignment->user->name ?? 'N/A';
+
+            $tournament = $tournamentsData[$assignment->tournament_id] ?? null;
+            $assignment->tournament_name = $tournament->name ?? 'N/A';
+            $assignment->club_name = $tournament->club->name ?? 'N/A';
+            $assignment->tournament_start_date = $tournament->start_date ?? null;
+
+            return $assignment;
+        });
+
+        return view('admin.assignments.index', compact(
+            'assignments',
+            'year',
+            'tournaments',
+            'referees'
+        ));
     }
-
     /**
      * Store a new assignment
      */
-    public function store(Request $request)
+    public function store(Request $request): RedirectResponse
     {
         $request->validate([
             'tournament_id' => 'required|exists:tournaments,id',
@@ -76,16 +125,14 @@ class AssignmentController extends Controller
         $tournament = Tournament::findOrFail($request->tournament_id);
         $year = Carbon::parse($tournament->start_date)->year;
 
-        // Inserisci nella tabella corretta
-        DB::table("assignments_{$year}")->insert([
+        // Crea l'assegnazione usando YearlyAssignment
+        YearlyAssignment::forYear($year)->create([
             'tournament_id' => $request->tournament_id,
             'user_id' => $request->user_id,
             'assigned_by_id' => auth()->id(),
             'role' => $request->role,
             'assigned_at' => now(),
             'is_confirmed' => false,
-            'created_at' => now(),
-            'updated_at' => now()
         ]);
 
         return back()->with('success', 'Assegnazione creata con successo');
@@ -94,18 +141,159 @@ class AssignmentController extends Controller
     /**
      * Delete assignment
      */
-    public function destroy($tournamentId, $userId)
+    public function destroy($tournamentId, $userId): RedirectResponse
     {
+        // Trova il torneo per determinare l'anno
         $tournament = Tournament::findOrFail($tournamentId);
         $year = Carbon::parse($tournament->start_date)->year;
 
-        DB::table("assignments_{$year}")
+        // Elimina usando YearlyAssignment
+        YearlyAssignment::forYear($year)
             ->where('tournament_id', $tournamentId)
             ->where('user_id', $userId)
             ->delete();
 
         return back()->with('success', 'Assegnazione rimossa');
     }
+
+    /**
+     * Show assignment details
+     */
+    public function show($assignmentId): View
+    {
+        // Trova l'assegnazione in tutti gli anni disponibili
+        $assignment = null;
+
+        foreach (YearService::getAvailableYears() as $year) {
+            if (YearService::tableExists('assignments', $year)) {
+                $found = YearlyAssignment::forYear($year)
+                    ->with([
+                        'user',
+                        'tournament.club',
+                        'tournament.zone',
+                        'tournament.tournamentType',
+                        'assignedBy'
+                    ])
+                    ->find($assignmentId);
+
+                if ($found) {
+                    $assignment = $found;
+                    break;
+                }
+            }
+        }
+
+        if (!$assignment) {
+            abort(404, 'Assegnazione non trovata');
+        }
+
+        $this->checkAssignmentAccess($assignment);
+
+        return view('admin.assignments.show', compact('assignment'));
+    }
+
+    /**
+     * Bulk assign referees to tournament
+     */
+    public function bulkAssign(Request $request): RedirectResponse
+    {
+        $request->validate([
+            'tournament_id' => 'required',
+            'referees' => 'required|array|min:1',
+            'referees.*' => 'array',
+            'referees.*.selected' => 'nullable|in:1',
+            'referees.*.user_id' => 'required_with:referees.*.selected|exists:users,id',
+            'referees.*.role' => 'required_with:referees.*.selected|in:Arbitro,Direttore di Torneo,Osservatore',
+        ]);
+
+        // Trova torneo e anno
+        $tournament = Tournament::findOrFail($request->tournament_id);
+        $year = Carbon::parse($tournament->start_date)->year;
+
+        $this->checkTournamentAccess($tournament);
+
+        $assignedCount = 0;
+        $errors = [];
+
+        DB::beginTransaction();
+        try {
+            foreach ($request->referees as $refereeData) {
+                if (!isset($refereeData['selected']) || $refereeData['selected'] !== '1') {
+                    continue;
+                }
+
+                if (!isset($refereeData['user_id']) || !isset($refereeData['role'])) {
+                    continue;
+                }
+
+                $referee = User::findOrFail($refereeData['user_id']);
+
+                // Verifica se già assegnato
+                $existingAssignment = YearlyAssignment::forYear($year)
+                    ->where('tournament_id', $tournament->id)
+                    ->where('user_id', $referee->id)
+                    ->exists();
+
+                if ($existingAssignment) {
+                    $errors[] = "{$referee->name} è già assegnato a questo torneo";
+                    continue;
+                }
+
+                // Crea assegnazione
+                YearlyAssignment::forYear($year)->create([
+                    'tournament_id' => $tournament->id,
+                    'user_id' => $referee->id,
+                    'role' => $refereeData['role'],
+                    'notes' => $refereeData['notes'] ?? null,
+                    'assigned_at' => now(),
+                    'assigned_by_id' => auth()->id(),
+                    'is_confirmed' => true,
+                ]);
+
+                $assignedCount++;
+            }
+
+            DB::commit();
+
+            $message = "{$assignedCount} arbitri assegnati con successo.";
+            if (!empty($errors)) {
+                $message .= " Errori: " . implode(', ', $errors);
+            }
+
+            return redirect()->back()->with('success', $message);
+
+        } catch (\Exception $e) {
+            DB::rollback();
+            return redirect()->back()
+                ->with('error', 'Errore durante l\'assegnazione degli arbitri. Riprova.');
+        }
+    }
+
+    /**
+     * Check if user can access the tournament.
+     */
+    private function checkTournamentAccess($tournament): void
+    {
+        $user = auth()->user();
+
+        if (in_array($user->user_type, ['super_admin', 'national_admin'])) {
+            return;
+        }
+
+        if ($user->user_type === 'admin' && $tournament->zone_id !== $user->zone_id) {
+            // Per ora permetti l'accesso, in futuro potresti fare abort(403)
+            return;
+        }
+    }
+
+    /**
+     * Check if user can access the assignment.
+     */
+    private function checkAssignmentAccess($assignment): void
+    {
+        $this->checkTournamentAccess($assignment->tournament);
+    }
+
 
 
     /**
@@ -190,24 +378,6 @@ class AssignmentController extends Controller
 
 
     /**
-     * Display the specified assignment.
-     */
-    public function show(Assignment $assignment): View
-    {
-        $this->checkAssignmentAccess($assignment);
-
-        $assignment->load([
-            'user',
-            'tournament.club',
-            'tournament.zone',
-            'tournament.tournamentType',
-            'assignedBy'
-        ]);
-
-        return view('admin.assignments.show', compact('assignment'));
-    }
-
-    /**
      * Update the specified assignment.
      */
     public function update(Request $request, Assignment $assignment): RedirectResponse
@@ -242,33 +412,7 @@ class AssignmentController extends Controller
             ->with('success', 'Assegnazione confermata con successo.');
     }
 
-    /**
-     * Check if user can access the tournament.
-     */
-    private function checkTournamentAccess(Tournament $tournament): void
-    {
-        $user = auth()->user();
-
-        if ($user->user_type === 'super_admin' || $user->user_type === 'national_admin') {
-            return;
-        }
-
-        if ($user->user_type === 'admin' && $tournament->zone_id !== $user->zone_id) {
-            // abort(403, 'Non sei autorizzato ad accedere a questo torneo.');
-            return;
-        }
-    }
-
-    /**
-     * Check if user can access the assignment.
-     */
-    private function checkAssignmentAccess(Assignment $assignment): void
-    {
-        $this->checkTournamentAccess($assignment->tournament);
-    }
-
-
-    /**
+      /**
      * Get referees who declared availability for this tournament.
      */
     public function getAvailableReferees(Request $request)
@@ -398,78 +542,6 @@ class AssignmentController extends Controller
             'assignedReferees',
             'isNationalAdmin'
         ));
-    }
-
-    /**
-     * Assign multiple referees to tournament.
-     */
-    public function bulkAssign(Request $request): RedirectResponse
-    {
-        $request->validate([
-            'referees' => 'required|array|min:1',
-            'referees.*' => 'array',
-            'referees.*.selected' => 'nullable|in:1',
-            'referees.*.user_id' => 'required_with:referees.*.selected|exists:users,id',
-            'referees.*.role' => 'required_with:referees.*.selected|in:Arbitro,Direttore di Torneo,Osservatore',
-        ]);
-
-        $tournament = Tournament::findOrFail($request->tournament_id);
-        $this->checkTournamentAccess($tournament);
-
-        $assignedCount = 0;
-        $errors = [];
-
-        DB::beginTransaction();
-        try {
-            // Process the referees array
-            foreach ($request->referees as $key => $refereeData) {
-                // Controlla se il referee è stato selezionato
-                if (!isset($refereeData['selected']) || $refereeData['selected'] !== '1') {
-                    continue;
-                }
-
-                // Verifica che abbia i dati necessari
-                if (!isset($refereeData['user_id']) || !isset($refereeData['role'])) {
-                    continue;
-                }
-                $referee = User::findOrFail($refereeData['user_id']);
-
-                // Check if already assigned
-                if ($tournament->assignments()->where('user_id', $referee->id)->exists()) {
-                    $errors[] = "{$referee->name} è già assegnato a questo torneo";
-                    continue;
-                }
-
-                // Create assignment
-                Assignment::create([
-                    'tournament_id' => $tournament->id,
-                    'user_id' => $referee->id,
-                    'role' => $refereeData['role'],
-                    'notes' => $refereeData['notes'] ?? null,
-                    'assigned_at' => now(),
-                    'assigned_by_id' => auth()->id(),
-                    'is_confirmed' => true, // Always confirmed
-                ]);
-
-                $assignedCount++;
-            }
-
-            DB::commit();
-
-            $message = "{$assignedCount} arbitri assegnati con successo al torneo {$tournament->name}.";
-            if (!empty($errors)) {
-                $message .= " Errori: " . implode(', ', $errors);
-            }
-
-            return redirect()
-                ->route('admin.assignments.assign-referees', $tournament)
-                ->with('success', $message);
-        } catch (\Exception $e) {
-            DB::rollback();
-
-            return redirect()->back()
-                ->with('error', 'Errore durante l\'assegnazione degli arbitri. Riprova.');
-        }
     }
 
     /**
