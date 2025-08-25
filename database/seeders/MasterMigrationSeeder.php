@@ -577,7 +577,7 @@ class MasterMigrationSeeder extends Seeder
                 'certified_date' => $this->parseDate($arbitro->Prima_Nomina ?? null),
                 'phone' => $arbitro->Cellulare ?? null,
                 'city' => $arbitro->Citta ?? null,
-                'is_active' => ($this->mapQualification($arbitro->Livello_2025 === "ARCH")) ? false : true,
+                'is_active' => ($arbitro->Livello_2025 === "ARCH") ? false : true,
                 'email_verified_at' => now(),
                 'created_at' => now(),
                 'updated_at' => now(),
@@ -1045,7 +1045,6 @@ class MasterMigrationSeeder extends Seeder
             }
 
             $this->command->info("✅ Anno {$year}: creati {$data->count()} record in {$destTable}");
-
         } catch (\Exception $e) {
             $this->command->error("⚠ Errore migrazione anno {$year}: {$e->getMessage()}");
         }
@@ -1564,12 +1563,28 @@ class MasterMigrationSeeder extends Seeder
     {
         if (!isset($this->command)) {
             $this->command = new class {
-                public function info($msg) { echo "ℹ️ {$msg}\n"; }
-                public function error($msg) { echo "⚠ {$msg}\n"; }
-                public function warn($msg) { echo "⚠️ {$msg}\n"; }
-                public function line($msg) { echo "{$msg}\n"; }
-                public function confirm($msg, $default = false) { return $default; }
-                public function __call($method, $args) {
+                public function info($msg)
+                {
+                    echo "ℹ️ {$msg}\n";
+                }
+                public function error($msg)
+                {
+                    echo "⚠ {$msg}\n";
+                }
+                public function warn($msg)
+                {
+                    echo "⚠️ {$msg}\n";
+                }
+                public function line($msg)
+                {
+                    echo "{$msg}\n";
+                }
+                public function confirm($msg, $default = false)
+                {
+                    return $default;
+                }
+                public function __call($method, $args)
+                {
                     echo $args[0] ?? '';
                     echo "\n";
                 }
