@@ -77,14 +77,17 @@
                                 <option value="name" {{ request('sort', 'name') === 'name' ? 'selected' : '' }}>
                                     👤 Nome
                                 </option>
+                                <option value="first_name" {{ request('sort') === 'first_name' ? 'selected' : '' }}>
+                                    👤 Nome (A-Z)
+                                </option>
                                 <option value="last_name" {{ request('sort') === 'last_name' ? 'selected' : '' }}>
-                                    📝 Cognome
+                                    📝 Cognome (A-Z)
                                 </option>
                                 <option value="level" {{ request('sort') === 'level' ? 'selected' : '' }}>
                                     🏆 Livello
                                 </option>
                                 <option value="zone_name" {{ request('sort') === 'zone_name' ? 'selected' : '' }}>
-                                    📍 Zona
+                                    🏢 Zona
                                 </option>
                                 <option value="is_active" {{ request('sort') === 'is_active' ? 'selected' : '' }}>
                                     ⚡ Stato
@@ -93,30 +96,12 @@
                                     📅 Data creazione
                                 </option>
                             </select>
-
-                            {{-- Toggle direzione ordinamento --}}
-                            <button type="button" onclick="toggleSortDirection()"
-                                class="px-3 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-50 focus:ring-blue-500 focus:border-blue-500"
-                                title="Inverti ordinamento">
-                                @if (request('direction', 'asc') === 'asc')
-                                    ⬆️ A-Z
-                                @else
-                                    ⬇️ Z-A
-                                @endif
-                            </button>
-                            <input type="hidden" name="direction" value="{{ request('direction', 'asc') }}"
-                                id="direction">
                         </div>
                     </div>
 
                     {{-- Pulsanti azione --}}
                     <div class="flex gap-2">
-                        <button type="submit"
-                            class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 text-sm font-medium">
-                            🔍 Filtra
-                        </button>
-
-                        {{-- ✅ Reset torna al default "solo attivi" --}}
+                       {{-- ✅ Reset torna al default "solo attivi" --}}
                         <a href="{{ route('admin.referees.index', ['status' => 'active']) }}"
                             class="bg-gray-100 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-200 focus:ring-2 focus:ring-gray-500 text-sm font-medium">
                             🔄 Reset
@@ -374,4 +359,39 @@
             @endif
         </div>
     </div>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const searchInput = document.querySelector('input[name="search"]');
+            const selectElements = document.querySelectorAll(
+                'select[name="level"], select[name="zone_id"], select[name="status"], select[name="sort"]');
+            const form = searchInput.closest('form');
+            let searchTimeout;
+
+            // Auto-submit per select
+            selectElements.forEach(select => {
+                select.addEventListener('change', function() {
+                    form.submit();
+                });
+            });
+
+            // Debounced search per input ricerca
+            searchInput.addEventListener('input', function() {
+                clearTimeout(searchTimeout);
+
+                searchTimeout = setTimeout(function() {
+                    form.submit();
+                }, 400);
+            });
+
+            // Mostra loading durante submit
+            form.addEventListener('submit', function() {
+                const submitButton = form.querySelector('button[type="submit"]');
+                if (submitButton) {
+                    submitButton.innerHTML = '🔄 Ricerca...';
+                    submitButton.disabled = true;
+                }
+            });
+        });
+    </script>
+
 @endsection
