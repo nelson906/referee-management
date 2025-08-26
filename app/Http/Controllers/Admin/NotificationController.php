@@ -46,17 +46,29 @@ class NotificationController extends Controller
         $this->notificationService = $notificationService;
     }
 
-    /**
+/**
      * 📋 Vista principale - Notifiche raggruppate per torneo
      */
     public function index(Request $request)
     {
+        // ✅ AGGIUNGERE QUESTO BLOCCO ALL'INIZIO
+        $user = auth()->user();
+        $isNationalAdmin = $user->user_type === 'national_admin' || $user->user_type === 'super_admin';
+
         $query = TournamentNotification::with(['tournament.club', 'tournament.zone'])
             ->orderBy('sent_at', 'desc');
 
-        // Filtri
+        // ✅ FILTRO ZONA AUTOMATICO PER ADMIN
+        if (!$isNationalAdmin && $user->user_type !== 'super_admin') {
+            $query->whereHas('tournament', function($q) use ($user) {
+                $q->where('zone_id', $user->zone_id);
+            });
+        }
+        // ✅ FINE BLOCCO DA AGGIUNGERE
+
+        // Filtri manuali (il resto rimane uguale)
         if ($request->filled('zone_id')) {
-            $query->whereHas('tournament', function ($q) use ($request) {
+            $query->whereHas('tournament', function($q) use ($request) {
                 $q->where('zone_id', $request->zone_id);
             });
         }
@@ -75,16 +87,17 @@ class NotificationController extends Controller
 
         $tournamentNotifications = $query->paginate(20);
 
-        // Statistiche per dashboard
+        // ✅ ANCHE LE STATISTICHE DEVONO ESSERE FILTRATE
         $stats = [
-            'total_sent' => TournamentNotification::where('status', 'sent')->sum('total_recipients'),
-            'total_failed' => TournamentNotification::where('status', 'failed')->sum('total_recipients'),
-            'this_month' => TournamentNotification::whereMonth('sent_at', now()->month)->sum('total_recipients'),
-            'pending_tournaments' => Tournament::whereIn('status', ['closed', 'assigned'])->doesntHave('notifications')->count()
+            'total_sent' => $this->getFilteredStats('sent', $user, $isNationalAdmin),
+            'total_failed' => $this->getFilteredStats('failed', $user, $isNationalAdmin),
+            'this_month' => $this->getFilteredStatsThisMonth($user, $isNationalAdmin),
+            'pending_tournaments' => $this->getPendingTournaments($user, $isNationalAdmin)
         ];
 
         return view('admin.tournament-notifications.index', compact('tournamentNotifications', 'stats'));
     }
+
 
     /**
      * 🎯 Form invio notifiche per torneo specifico
@@ -1542,5 +1555,41 @@ class NotificationController extends Controller
 
         return back()->with('success', "Inviati reminder a {$referees->count()} arbitri");
     }
+    // ✅ AGGIUNGI QUESTI METODI HELPER PER STATISTICHE FILTRATE
+    private function getFilteredStats($status, $user, $isNationalAdmin)
+    {
+        $query = TournamentNotification::where('status', $status);
 
+        if (!$isNationalAdmin && $user->user_type !== 'super_admin') {
+            $query->whereHas('tournament', function($q) use ($user) {
+                $q->where('zone_id', $user->zone_id);
+            });
+        }
+
+        return $query->sum('total_recipients');
+    }
+
+    private function getFilteredStatsThisMonth($user, $isNationalAdmin)
+    {
+        $query = TournamentNotification::whereMonth('sent_at', now()->month);
+
+        if (!$isNationalAdmin && $user->user_type !== 'super_admin') {
+            $query->whereHas('tournament', function($q) use ($user) {
+                $q->where('zone_id', $user->zone_id);
+            });
+        }
+
+        return $query->sum('total_recipients');
+    }
+
+    private function getPendingTournaments($user, $isNationalAdmin)
+    {
+        $query = Tournament::whereIn('status', ['closed', 'assigned'])->doesntHave('notifications');
+
+        if (!$isNationalAdmin && $user->user_type !== 'super_admin') {
+            $query->where('zone_id', $user->zone_id);
+        }
+
+        return $query->count();
+    }
 }

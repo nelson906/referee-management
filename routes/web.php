@@ -55,20 +55,20 @@ Route::middleware(['auth'])->group(function () {
     // Dashboard - redirect based on user type
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
-    // Email verification routes
-    Route::get('/email/verify', function () {
-        return view('auth.verify-email');
-    })->name('verification.notice');
+    // // Email verification routes
+    // Route::get('/email/verify', function () {
+    //     return view('auth.verify-email');
+    // })->name('verification.notice.web');
 
-    Route::get('/email/verify/{id}/{hash}', function (EmailVerificationRequest $request) {
-        $request->fulfill();
-        return redirect('/dashboard');
-    })->middleware(['signed'])->name('verification.verify');
+    // Route::get('/email/verify/{id}/{hash}', function (EmailVerificationRequest $request) {
+    //     $request->fulfill();
+    //     return redirect('/dashboard');
+    // })->middleware(['signed'])->name('verification.verify');
 
-    Route::post('/email/verification-notification', function (Request $request) {
-        $request->user()->sendEmailVerificationNotification();
-        return back()->with('message', 'Verification link sent!');
-    })->middleware(['throttle:6,1'])->name('verification.send');
+    // Route::post('/email/verification-notification', function (Request $request) {
+    //     $request->user()->sendEmailVerificationNotification();
+    //     return back()->with('message', 'Verification link sent!');
+    // })->middleware(['throttle:6,1'])->name('verification.send');
 
     // =================================================================
     // ✅ UNIFIED TOURNAMENT ROUTES (tutti gli utenti autorizzati)
@@ -332,18 +332,21 @@ Route::middleware(['referee_or_admin'])->prefix('referee')->name('referee.')->gr
     Route::get('/', [Referee\DashboardController::class, 'index'])->name('dashboard');
 
     // Availability Management
-    Route::prefix('availability')->name('availability.')->group(function () {
-        Route::get('/', [Referee\AvailabilityController::class, 'index'])->name('index');
-        Route::get('/calendar', [Referee\AvailabilityController::class, 'calendar'])->name('calendar');
-        Route::post('/save', [Referee\AvailabilityController::class, 'save'])->name('save');
-        Route::post('/update', [Referee\AvailabilityController::class, 'update'])->name('update');
-        Route::post('/bulk-update', [Referee\AvailabilityController::class, 'bulkUpdate'])->name('bulk-update');
-        Route::post('/toggle', [Referee\AvailabilityController::class, 'toggle'])->name('toggle');
-        Route::post('/', [Referee\AvailabilityController::class, 'store'])->name('store');
-        Route::post('/bulk', [Referee\AvailabilityController::class, 'bulk'])->name('bulk');
-        Route::patch('/{availability}', [Referee\AvailabilityController::class, 'update'])->name('update');
-        Route::delete('/{availability}', [Referee\AvailabilityController::class, 'destroy'])->name('destroy');
-    });
+Route::prefix('availability')->name('availability.')->group(function () {
+    Route::get('/', [Referee\AvailabilityController::class, 'index'])->name('index');
+    Route::get('/calendar', [Referee\AvailabilityController::class, 'calendar'])->name('calendar');
+
+    // Operazioni bulk/multiple
+    Route::post('/save', [Referee\AvailabilityController::class, 'save'])->name('save');
+    Route::post('/bulk-update', [Referee\AvailabilityController::class, 'bulkUpdate'])->name('bulk-update');
+    Route::post('/bulk', [Referee\AvailabilityController::class, 'bulk'])->name('bulk');
+    Route::post('/toggle', [Referee\AvailabilityController::class, 'toggle'])->name('toggle');
+
+    // CRUD Operations
+    Route::post('/', [Referee\AvailabilityController::class, 'store'])->name('store');
+    Route::patch('/{availability}', [Referee\AvailabilityController::class, 'update'])->name('update'); // ✅ UNICA
+    Route::delete('/{availability}', [Referee\AvailabilityController::class, 'destroy'])->name('destroy');
+});
 
     // Tournament Applications
     Route::prefix('applications')->name('applications.')->group(function () {

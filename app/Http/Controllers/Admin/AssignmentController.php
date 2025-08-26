@@ -59,6 +59,16 @@ class AssignmentController extends Controller
                 'user',
                 'assignedBy'
             ]);
+$user = auth()->user();
+if ($user->user_type === 'admin' && $user->zone_id) {
+    // Filtra assignments per zona tramite tournament
+    $assignmentsQuery->whereExists(function($query) use ($user, $year) {
+        $query->select(DB::raw(1))
+              ->from("tournaments_{$year}")
+              ->whereColumn("tournaments_{$year}.id", "assignments_{$year}.tournament_id")
+              ->where("tournaments_{$year}.zone_id", $user->zone_id);
+    });
+}
 
         // Applica filtri
         if ($tournamentId) {
