@@ -345,9 +345,7 @@ public function show(Tournament $tournament)
     ]);
 
     // Ottieni gli arbitri assegnati
-    $assignedReferees = $tournament->assignments()
-        ->with('user')
-        ->get();
+    $assignedReferees = $tournament->assignedReferees;
 
     $availableReferees = $tournament->availabilities()
         ->with('user')

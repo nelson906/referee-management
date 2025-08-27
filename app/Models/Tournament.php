@@ -416,11 +416,9 @@ class Tournament extends Model
     public function assignedReferees()
     {
         return $this->belongsToMany(User::class, 'assignments', 'tournament_id', 'user_id')
-            ->withPivot('role', 'is_confirmed', 'assigned_at', 'assigned_by_id', 'notes')
+            ->withPivot('role', 'is_confirmed', 'assigned_at', 'assigned_by_id') // ← Rimosso 'notes'
             ->withTimestamps();
     }
-
-
 
     /**
      * 📧 Relazione con notifiche torneo (nuovo sistema)

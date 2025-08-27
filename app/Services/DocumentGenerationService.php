@@ -173,54 +173,214 @@ public function generateConvocationForTournament(Tournament $tournament): array
     /**
      * Generate facsimile for club
      */
-    public function generateClubDocument(Tournament $tournament): array
+public function generateClubDocument(Tournament $tournament): array
     {
-        $phpWord = new PhpWord();
-        $this->configureDocument($phpWord);
+        try {
+            // Crea documento PHPWord
+            $phpWord = new PhpWord();
 
-        $section = $phpWord->addSection();
-        // $this->addLetterhead($section, $tournament->zone_id);
-        $section->addText("facsimile comunicazione di convocazione", ['bold' => true, 'size' => 14, 'color' => 'red']);
+            // Impostazioni lingua e font di default
+            $language = new \PhpOffice\PhpWord\Style\Language(\PhpOffice\PhpWord\Style\Language::IT_IT);
+            $phpWord->getSettings()->setThemeFontLang($language);
+            $phpWord->setDefaultFontName('Times New Roman');
 
-        // Contenuto semplificato
-        // $section->addText("COMUNICAZIONE ARBITRI", ['bold' => true, 'size' => 14]);
-        $section->addTextBreak();
+            // Stili identici alla generateClubLetterDocument
+            $fontStyleName = 'rStyle';
+            $phpWord->addFontStyle($fontStyleName, [
+                'bold' => true,
+                'italic' => true,
+                'size' => 16,
+                'allCaps' => true,
+                'doubleStrikethrough' => true
+            ]);
 
-        $section->addText("Circolo: {$tournament->club->name}");
-        $section->addText("Torneo: {$tournament->name}");
-        $section->addText("Date: {$tournament->date_range}");
-        $section->addTextBreak();
+            $paragraphStyleName = 'pStyle';
+            $phpWord->addParagraphStyle($paragraphStyleName, [
+                'alignment' => \PhpOffice\PhpWord\SimpleType\Jc::CENTER,
+                'spaceAfter' => 100
+            ]);
 
-    // ORDINA GLI ARBITRI PER GERARCHIA
-    $sortedAssignments = RefereeRoleHelper::sortByRole($tournament->assignments);
+            $phpWord->addTitleStyle(1, [
+                'underline' => 'single',
+                'allCaps' => true,
+                'color' => 'red',
+                'alignment' => \PhpOffice\PhpWord\SimpleType\Jc::CENTER
+            ], ['spaceAfter' => 240]);
 
-    $section->addText("Arbitri assegnati:", ['bold' => true]);
+            $phpWord->addParagraphStyle('ConoscenzaStyle', [
+                'indentation' => ['left' => \PhpOffice\PhpWord\Shared\Converter::cmToTwip(12)],
+                'spaceAfter' => 100
+            ]);
 
-    // Mostra in ordine gerarchico con ruolo evidenziato
-    foreach ($sortedAssignments as $assignment) {
-        $roleText = strtoupper($assignment->role);
-        $section->addText("- {$assignment->user->name} ({$roleText})",
-            $assignment->role === 'Direttore di Torneo' ? ['bold' => true] : []
-        );
-    }
+            $phpWord->addParagraphStyle('ComitatoStyle', [
+                'tabs' => [new \PhpOffice\PhpWord\Style\Tab('left', \PhpOffice\PhpWord\Shared\Converter::cmToTwip(6))],
+                'lineHeight' => 1,
+                'spacing' => 60,
+            ]);
 
-        $filename = 'facsimile-' . Str::slug($tournament->club->name) . '-' . Str::slug($tournament->name) . '.docx';
-        $tempPath = storage_path('app/temp/' . $filename);
+            // Sezione
+            $section = $phpWord->addSection();
 
-        if (!is_dir(dirname($tempPath))) {
-            mkdir(dirname($tempPath), 0777, true);
+            // Margini
+            $sectionStyle = $section->getStyle();
+            $sectionStyle->setMarginLeft(\PhpOffice\PhpWord\Shared\Converter::cmToTwip(2.5));
+            $sectionStyle->setMarginRight(\PhpOffice\PhpWord\Shared\Converter::cmToTwip(2.5));
+
+            // Titolo identico
+            $section->addTitle(
+                'FAC SIMILE DA INVIARE SU CARTA INTESTATA DEL CIRCOLO ORGANIZZATORE' . "\n\r",
+                1
+            );
+            $section->addTextBreak();
+
+            // Destinatari - Arbitri assegnati
+            $section->addText('Ai Signori:', null, ['lineHeight' => 1, 'spacing' => 60]);
+
+            // ORDINA GLI ARBITRI PER GERARCHIA (mantengo il tuo sistema)
+            $sortedAssignments = RefereeRoleHelper::sortByRole($tournament->assignments);
+
+            foreach ($sortedAssignments as $assignment) {
+                // Controllo null safety
+                if ($assignment && $assignment->user && $assignment->user->name) {
+                    $section->addText($assignment->user->name);
+                }
+            }
+
+            // Conoscenza
+            $section->addText('e p.c.:', null, 'ConoscenzaStyle');
+
+            // Aggiungi Ufficio Campionati
+            $section->addText("Ufficio Campionati", null, 'ConoscenzaStyle');
+
+            // Aggiungi SZR - Controllo null safety per zone
+            $zoneId = $tournament->zone ? ($tournament->zone->id ?? 'X') : 'X';
+            $section->addText("Sezione Zonale Regole {$zoneId}", null, 'ConoscenzaStyle');
+
+            // Oggetto
+            $dateRange = $tournament->start_date->format('d/m/Y');
+            if ($tournament->end_date && !$tournament->start_date->isSameDay($tournament->end_date)) {
+                $dateRange .= " al " . $tournament->end_date->format('d/m/Y');
+            }
+
+            $tournamentName = $tournament->name ?? 'Torneo senza nome';
+            $oggetto = "OGGETTO: GARA {$tournamentName} {$dateRange}";
+            $oggetto = htmlspecialchars($oggetto);
+
+            $section->addText($oggetto, ['bold' => true], ['spaceBefore' => 240, 'spacing' => 240]);
+            $section->addTextBreak();
+
+            // Preambolo identico
+            $preambolo = "In qualità di Circolo Organizzatore Vi comunichiamo che siete convocati per la manifestazione indicata in " .
+                "oggetto con i compiti/ruoli sottoindicati:";
+
+            $section->addText($preambolo, null, [
+                'align' => 'both',
+                'spaceBefore' => 120,
+                'lineHeight' => 1.5,
+                'spacing' => 120
+            ]);
+
+            // Comitato di Gara
+            $section->addText('Comitato di Gara', [
+                'italic' => true,
+                'underline' => 'single'
+            ], ['spaceBefore' => 240, 'spacing' => 240]);
+
+            // Lista arbitri con ruoli (usando il tuo sistema di ordinamento)
+            foreach ($sortedAssignments as $assignment) {
+                // Controllo null safety
+                if ($assignment && $assignment->user && $assignment->user->name) {
+                    $ruolo = $assignment->role === 'Direttore di Torneo' ? 'Direttore di Torneo' : 'Arbitro';
+                    $section->addText(
+                        $assignment->user->name . "\t" . $ruolo,
+                        ['bold' => true],
+                        'ComitatoStyle'
+                    );
+                }
+            }
+
+            $section->addTextBreak();
+
+            // Istruzioni finali identiche
+            $preparazione = "Il Comitato e gli Osservatori sono tenuti a presenziare dalle ore 9.00 del giorno precedente l'inizio della " .
+                "manifestazione sino al termine della stessa o secondo le decisioni che verranno direttamente comunicate dal " .
+                "Direttore di Torneo.";
+
+            $section->addText($preparazione, null, [
+                'align' => 'both',
+                'spaceBefore' => 120,
+                'lineHeight' => 1.5,
+                'spacing' => 120
+            ]);
+
+            // Spese - Testo identico
+            $spese = "Si ricorda che questo Circolo Organizzatore, rimborserà le eventuali spese di viaggio, vitto e alloggio, così come " .
+                "previsto dalla Normativa Tecnica in vigore. Il rimborso sarà effettuato sulla base della nota spese emessa dal " .
+                "singolo soggetto. Tutte le spese sono rimborsate nei limiti previsti dalla FIG e indicati nelle \"Linee guida " .
+                "trasferte e rimborsi spese\" annualmente pubblicate.";
+
+            $section->addText($spese, null, [
+                'align' => 'both',
+                'spaceBefore' => 120,
+                'lineHeight' => 1.5,
+                'spacing' => 120
+            ]);
+
+            // Conferma - Controllo null safety per zone e club
+            $zoneId = $tournament->zone ? ($tournament->zone->id ?? 'X') : 'X';
+
+            // Gestione sicura del contact_info del club
+            $clubEmail = 'email-non-disponibile@esempio.com';
+            if ($tournament->club && $tournament->club->email) {
+                    $clubEmail = $tournament->club->email;
+            }
+
+            $conferma = "Si prega di confermare la propria presenza sia alla Sezione Zonale Regole di competenza (szr{$zoneId}@federgolf.it) sia " .
+                "a questo Circolo Organizzatore ({$clubEmail})";
+
+            $section->addText($conferma, null, [
+                'align' => 'both',
+                'spaceBefore' => 120,
+                'lineHeight' => 1.5,
+                'spacing' => 120
+            ]);
+
+            // Saluti identici
+            $saluti = "Cordiali saluti.";
+
+            $section->addText($saluti, null, [
+                'align' => 'both',
+                'spaceBefore' => 120,
+                'lineHeight' => 1.5,
+                'spacing' => 120
+            ]);
+
+            // Mantieni la tua logica di salvataggio
+            $filename = 'facsimile-' . Str::slug($tournament->club->name) . '-' . Str::slug($tournament->name) . '.docx';
+            $tempPath = storage_path('app/temp/' . $filename);
+
+            if (!is_dir(dirname($tempPath))) {
+                mkdir(dirname($tempPath), 0777, true);
+            }
+
+            $objWriter = IOFactory::createWriter($phpWord, 'Word2007');
+            $objWriter->save($tempPath);
+
+            return [
+                'path' => $tempPath,
+                'filename' => $filename,
+                'type' => 'club_letter'
+            ];
+
+        } catch (\Exception $e) {
+            Log::error('Errore generazione documento circolo', [
+                'tournament_id' => $tournament->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            throw $e;
         }
-
-        $objWriter = IOFactory::createWriter($phpWord, 'Word2007');
-        $objWriter->save($tempPath);
-
-        return [
-            'path' => $tempPath,
-            'filename' => $filename,
-            'type' => 'club_letter'
-        ];
     }
-
     /**
      * Save document using FileStorageService
      */

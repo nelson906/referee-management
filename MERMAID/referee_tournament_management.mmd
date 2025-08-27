@@ -1,0 +1,66 @@
+graph LR
+    subgraph Gestione Referees e Tornei
+        subgraph REFEREE
+            R(REFEREE)
+        end
+        subgraph SEZIONE
+            S(SEZIONE)
+        end
+        subgraph CRC
+            C(CRC)
+        end
+        subgraph SUPERADMIN
+            SA(SUPERADMIN)
+        end
+    end
+
+    subgraph Flusso Dati
+        TL(TOURNAMENT LIST)
+        A(AVAILABILITY)
+        M1(MAIL)
+
+        crud[CRUD]
+        assegna[ASSEGNA]
+        notifica[NOTIFICA]
+
+        M2(MAIL)
+
+        TR(TORNEI)
+        AR(ARBITRI)
+        CI(CIRCOLI)
+        TE1(TEMPLATES?)
+        LE1(LETTERHEAD?)
+        CO1(COMUNICAZIONI?)
+
+        AXT(ARBITRI X TORNEI)
+
+        MC(MEMBRI COMITATO)
+        CI2(CIRCOLO)
+        V(VARI)
+
+        TE2(TEMPLATES?)
+        LE2(LETTERHEAD?)
+        CO2(COMUNICAZIONI?)
+        IM(INSTITUTIONAL MAIL)
+    end
+
+    R --> TL --> A --> M1
+
+    M1 --> S
+    M1 --> C
+
+    S -- "verde" --> crud
+    S -- "verde" --> assegna
+    S -- "rosso" --> notifica
+
+    C -- "rosso" --> notifica
+
+    crud --> TR & AR & CI & TE1 & LE1 & CO1
+
+    assegna --> AXT
+
+    notifica --> MC & CI2 & V
+
+    MC & CI2 & V --> M2
+
+    SA --> TE2 & LE2 & CO2 & IM
