@@ -192,7 +192,7 @@ Route::middleware(['auth'])->group(function () {
         Route::resource('clubs', Admin\ClubController::class);
         Route::post('clubs/{club}/toggle-active', [Admin\ClubController::class, 'toggleActive'])->name('clubs.toggle-active');
         Route::get('clubs/{club}/tournaments', [Admin\ClubController::class, 'tournaments'])->name('clubs.tournaments');
-        Route::post('clubs/{club}/deactivate', [Admin\ClubController::class, 'deactivate'])->name('clubs.deactivate');
+        Route::post('clubs/{club}/deactivate', action: [Admin\ClubController::class, 'deactivate'])->name('clubs.deactivate');
 
         // Assignment Management
         Route::prefix('assignments')->name('assignments.')->group(function () {

@@ -20,7 +20,7 @@ class TournamentController extends Controller
     protected function getTournamentsTable()
     {
         $year = session('selected_year', date('Y'));
-        return "tournaments_{$year}";
+        return "tournaments";
     }
 
     /**
@@ -156,7 +156,7 @@ class TournamentController extends Controller
                     'zone' => $tournament->zone->name ?? 'N/A',
                     'zone_id' => $tournament->zone_id,
                     // ✅ FIXED: tournamentType relationship
-                    'category' => $tournament->tournamentType->name ?? 'N/A',
+                    'tournament_type" => $tournament->tournamentType->name ?? 'N/A',
                     'status' => $tournament->status,
                     'tournament_url' => route('admin.tournaments.show', $tournament),
                     'deadline' => $tournament->availability_deadline?->format('d/m/Y') ?? 'N/A',
